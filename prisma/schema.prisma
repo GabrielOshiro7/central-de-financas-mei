@@ -16,8 +16,86 @@ model User {
 
   sessions      Session[]
   resetTokens   PasswordResetToken[]
+  business      Business?
 
   @@map("users")
+}
+
+enum BusinessType {
+  RESTAURANTE
+  LOJA
+  SERVICOS
+  CONSTRUCAO
+  ECOMMERCE
+  ACADEMIA
+  OUTRO
+
+  @@map("business_type")
+}
+
+enum YearsInBusiness {
+  MENOS_DE_1_ANO
+  DE_1_A_3_ANOS
+  DE_3_A_5_ANOS
+  DE_5_A_10_ANOS
+  MAIS_DE_10_ANOS
+
+  @@map("years_in_business")
+}
+
+enum Currency {
+  JPY
+  BRL
+  USD
+
+  @@map("currency")
+}
+
+enum FinancialEntryType {
+  REVENUE
+  COST
+  EXPENSE
+
+  @@map("financial_entry_type")
+}
+
+model Business {
+  id     String @id @default(uuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name                  String?
+  businessType          BusinessType?        @map("business_type")
+  revenueModel          String[]             @map("revenue_model")
+  revenueModelOther     String?              @map("revenue_model_other")
+  yearsInBusiness       YearsInBusiness?     @map("years_in_business")
+  employeeCount         Int?                 @map("employee_count")
+  currency              Currency?
+  averageMonthlyRevenue Decimal?             @map("average_monthly_revenue") @db.Decimal(14, 2)
+
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
+  onboardingStep      Int     @default(1) @map("onboarding_step")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entries FinancialEntry[]
+
+  @@map("businesses")
+}
+
+model FinancialEntry {
+  id         String             @id @default(uuid())
+  businessId String             @map("business_id")
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type       FinancialEntryType
+  amount     Decimal            @db.Decimal(14, 2)
+  occurredAt DateTime           @map("occurred_at")
+  description String?
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  @@index([businessId, occurredAt])
+  @@map("financial_entries")
 }
 
 model Session {

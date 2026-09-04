@@ -34,6 +34,25 @@ export async function getCurrentUser() {
   return user;
 }
 
+// Como getCurrentUser(), mas tambem devolve o id da sessao atual - usado
+// pela troca de senha para invalidar as *outras* sessoes sem derrubar a
+// sessao de quem esta fazendo a troca.
+export async function getCurrentUserWithSession() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+
+  if (!token) {
+    return null;
+  }
+
+  const { user, session } = await validateSessionToken(token);
+  if (!user || !session) {
+    return null;
+  }
+
+  return { user, sessionId: session.id };
+}
+
 export async function destroyUserSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;

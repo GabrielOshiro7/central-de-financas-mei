@@ -72,8 +72,20 @@ export async function invalidateSession(token: string): Promise<void> {
   await prisma.session.delete({ where: { id: sessionId } }).catch(() => {});
 }
 
-// Usado apos redefinicao de senha: derruba todas as sessoes ativas do
-// usuario, ja que a senha antiga pode ter sido comprometida.
+// Usado apos redefinicao de senha (fluxo "esqueci minha senha"): derruba
+// todas as sessoes ativas do usuario, ja que a senha antiga pode ter sido
+// comprometida.
 export async function invalidateAllUserSessions(userId: string): Promise<void> {
   await prisma.session.deleteMany({ where: { userId } });
+}
+
+// Usado apos troca de senha estando logado: mantem a sessao atual (quem
+// trocou a senha nao precisa ser deslogado) e derruba as demais.
+export async function invalidateOtherSessions(
+  userId: string,
+  currentSessionId: string
+): Promise<void> {
+  await prisma.session.deleteMany({
+    where: { userId, id: { not: currentSessionId } },
+  });
 }

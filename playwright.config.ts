@@ -12,8 +12,13 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    // Sempre sobe um processo novo: reaproveitar um servidor ja rodando
+    // herdaria o estado em memoria do rate limiter (contagem de tentativas
+    // de login/cadastro) de qualquer uso anterior, o que gerou falhas
+    // intermitentes e dificeis de diagnosticar nos testes.
+    reuseExistingServer: false,
     timeout: 60_000,
+    env: { DISABLE_RATE_LIMIT: "1" },
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

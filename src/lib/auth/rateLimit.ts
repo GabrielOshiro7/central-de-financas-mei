@@ -32,6 +32,13 @@ export function rateLimit(
   limit: number,
   windowMs: number
 ): RateLimitResult {
+  // Usado apenas pelo servidor dev que a suite E2E sobe (ver
+  // playwright.config.ts) - os testes rodam do mesmo IP em sequencia rapida
+  // e esbarrariam no limite real. Nunca definido em desenvolvimento/producao.
+  if (process.env.DISABLE_RATE_LIMIT === "1") {
+    return { allowed: true, retryAfterMs: 0 };
+  }
+
   const now = Date.now();
 
   if (now - lastCleanup > CLEANUP_INTERVAL_MS) {

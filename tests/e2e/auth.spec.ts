@@ -32,21 +32,23 @@ test.describe("tela inicial", () => {
 });
 
 test.describe("cadastro", () => {
-  // Cenario 1: criar conta nova -> usuario criado no banco (comprovado pelo acesso ao dashboard).
-  test("criar conta nova leva ao dashboard com o nome do usuario", async ({ page }) => {
+  // Cenario 1: criar conta nova -> usuario criado no banco. Desde a Etapa 2,
+  // quem ainda nao completou o onboarding cai em /onboarding, nao direto no
+  // dashboard (ver tests/e2e/onboarding.spec.ts para o fluxo completo ate o
+  // dashboard).
+  test("criar conta nova leva ao onboarding", async ({ page }) => {
     const email = uniqueEmail();
     await register(page, "Usuario Teste", email);
 
-    await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Bem-vindo, Usuario Teste" })).toBeVisible();
-    await expect(page.getByText(email)).toBeVisible();
+    await expect(page).toHaveURL(/\/onboarding/);
+    await expect(page.getByRole("heading", { name: "Qual é o tipo do seu negócio?" })).toBeVisible();
   });
 
   // Cenario 2: criar conta com e-mail ja existente -> cadastro recusado.
   test("recusa cadastro com e-mail ja existente", async ({ page, context }) => {
     const email = uniqueEmail();
     await register(page, "Primeiro Usuario", email);
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/onboarding/);
 
     await context.clearCookies();
     await register(page, "Segundo Usuario", email);
@@ -57,13 +59,15 @@ test.describe("cadastro", () => {
 });
 
 test.describe("login e logout", () => {
-  // Cenario 3, 5, 8: login correto -> dashboard; logout -> volta ao login; dados persistem.
-  test("login com credenciais corretas acessa o dashboard, e logout encerra a sessao", async ({
+  // Login de um usuario que ainda nao completou o onboarding -> onboarding,
+  // nao dashboard. O fluxo completo (onboarding -> dashboard -> logout ->
+  // login -> direto ao dashboard) esta em onboarding.spec.ts.
+  test("login com credenciais corretas acessa o onboarding, e logout encerra a sessao", async ({
     page,
   }) => {
     const email = uniqueEmail();
     await register(page, "Usuario Login", email);
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/onboarding/);
 
     await page.getByRole("button", { name: "Sair" }).click();
     await expect(page).toHaveURL(/\/login/);
@@ -72,9 +76,7 @@ test.describe("login e logout", () => {
     await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await page.getByRole("button", { name: "Entrar" }).click();
 
-    await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Bem-vindo, Usuario Login" })).toBeVisible();
-    await expect(page.getByText(email)).toBeVisible();
+    await expect(page).toHaveURL(/\/onboarding/);
   });
 
   // Cenario 4: login com senha incorreta -> recusado, mensagem generica.
@@ -98,17 +100,17 @@ test.describe("login e logout", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  // Cenario 7: fechar e reabrir o navegador -> login continua funcionando (cookie persiste).
+  // Cenario 7: fechar e reabrir o navegador -> sessao continua funcionando (cookie persiste).
   test("sessao continua valida em uma nova aba do mesmo navegador", async ({ page, context }) => {
     const email = uniqueEmail();
     await register(page, "Usuario Persistencia", email);
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/onboarding/);
 
     const newPage = await context.newPage();
-    await newPage.goto("/dashboard");
-    await expect(newPage).toHaveURL(/\/dashboard/);
+    await newPage.goto("/onboarding");
+    await expect(newPage).toHaveURL(/\/onboarding/);
     await expect(
-      newPage.getByRole("heading", { name: "Bem-vindo, Usuario Persistencia" })
+      newPage.getByRole("heading", { name: "Qual é o tipo do seu negócio?" })
     ).toBeVisible();
   });
 });
