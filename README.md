@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nome do Sistema — Etapa 1: Autenticação
 
-## Getting Started
+Base de autenticação (login, cadastro, logout, recuperação de senha) do sistema de
+gestão empresarial. Ver [docs-etapa1-prompt.md](./docs-etapa1-prompt.md) para o
+escopo completo desta etapa.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router) + TypeScript
+- PostgreSQL (via Docker Compose para desenvolvimento local)
+- Prisma 7 (driver adapter `@prisma/adapter-pg`)
+- Sessão própria em cookie httpOnly (não usa Auth.js/NextAuth)
+- bcryptjs para hash de senha
+- Zod para validação (compartilhada entre frontend e backend)
+- Tailwind CSS
+- Vitest (testes unitários/integração) + Playwright (E2E)
+
+## Rodando localmente
+
+Pré-requisitos: Node.js 20+, Docker Desktop.
 
 ```bash
+# 1. instalar dependencias
+npm install
+
+# 2. copiar variaveis de ambiente
+cp .env.example .env
+# os valores padrao ja funcionam com o docker-compose abaixo
+
+# 3. subir o Postgres local
+docker compose up -d
+
+# 4. aplicar as migrations
+npx prisma migrate dev
+
+# 5. rodar o servidor de desenvolvimento
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Ver [.env.example](./.env.example). Nenhum segredo real é necessário nesta etapa —
+o `DATABASE_URL` padrão aponta para o Postgres do `docker-compose.yml`, e o envio
+de e-mail de recuperação de senha usa uma implementação de desenvolvimento que
+apenas loga o link no console do servidor (`src/lib/email/devEmailService.ts`).
 
-## Learn More
+## Testes
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# unitarios + integracao (precisa do Postgres rodando: docker compose up -d)
+npm run test
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# end-to-end (sobe o proprio dev server automaticamente)
+npm run test:e2e
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estrutura
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+prisma/schema.prisma          modelos User, Session, PasswordResetToken
+prisma.config.ts              config do Prisma 7 (conexao usada por migrate/generate)
+src/app/                      paginas (login, register, forgot-password, reset-password, dashboard)
+src/app/api/auth/             route handlers (register, login, logout, forgot-password, reset-password)
+src/lib/auth/                 hashing, sessao/cookies, rate limiting, token de reset
+src/lib/email/                interface EmailService + implementacao de dev
+src/lib/validation/           schemas Zod compartilhados
+src/proxy.ts                  protege /dashboard (checagem otimista de cookie)
+tests/unit/, tests/integration/  Vitest
+tests/e2e/                    Playwright
+```
