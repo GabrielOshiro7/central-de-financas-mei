@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
-import { summarizeEntries } from "@/lib/finance/calculations";
+import {
+  summarizeEntries,
+  summarizeByCategory,
+  calculateVariationPercent,
+  marginPointsDelta,
+} from "@/lib/finance/calculations";
 
 const { Decimal } = Prisma;
 
@@ -40,5 +45,54 @@ describe("summarizeEntries", () => {
     const summary = summarizeEntries([]);
     expect(summary.hasAnyEntries).toBe(false);
     expect(summary.netMargin).toBeNull();
+    expect(summary.grossMargin).toBeNull();
+  });
+});
+
+describe("summarizeByCategory", () => {
+  it("agrupa por categoria e calcula o percentual sobre o total", () => {
+    const breakdown = summarizeByCategory([
+      { categoryId: "a", categoryName: "Aluguel", amount: new Decimal(600) },
+      { categoryId: "b", categoryName: "Marketing", amount: new Decimal(300) },
+      { categoryId: "a", categoryName: "Aluguel", amount: new Decimal(100) },
+    ]);
+
+    expect(breakdown).toHaveLength(2);
+    expect(breakdown[0].categoryName).toBe("Aluguel");
+    expect(breakdown[0].amount.toString()).toBe("700");
+    expect(breakdown[0].percentage?.toNumber()).toBe(70);
+    expect(breakdown[1].percentage?.toNumber()).toBe(30);
+  });
+
+  it("sem lançamentos, retorna lista vazia", () => {
+    expect(summarizeByCategory([])).toEqual([]);
+  });
+});
+
+describe("calculateVariationPercent", () => {
+  it("calcula a variação percentual entre dois valores", () => {
+    const variation = calculateVariationPercent(new Decimal(112.4), new Decimal(100));
+    expect(variation?.toNumber()).toBeCloseTo(12.4);
+  });
+
+  it("retorna null quando o valor anterior é zero (sem base para comparar)", () => {
+    expect(calculateVariationPercent(new Decimal(100), new Decimal(0))).toBeNull();
+  });
+
+  it("calcula queda (variação negativa)", () => {
+    const variation = calculateVariationPercent(new Decimal(80), new Decimal(100));
+    expect(variation?.toNumber()).toBe(-20);
+  });
+});
+
+describe("marginPointsDelta", () => {
+  it("calcula a diferença em pontos percentuais entre duas margens", () => {
+    const delta = marginPointsDelta(new Decimal(11), new Decimal(16));
+    expect(delta?.toNumber()).toBe(-5);
+  });
+
+  it("retorna null quando qualquer uma das margens é null", () => {
+    expect(marginPointsDelta(null, new Decimal(10))).toBeNull();
+    expect(marginPointsDelta(new Decimal(10), null)).toBeNull();
   });
 });

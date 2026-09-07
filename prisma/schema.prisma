@@ -14,9 +14,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  sessions      Session[]
-  resetTokens   PasswordResetToken[]
-  business      Business?
+  sessions         Session[]
+  resetTokens      PasswordResetToken[]
+  business         Business?
+  financialEntries FinancialEntry[]
 
   @@map("users")
 }
@@ -59,19 +60,26 @@ enum FinancialEntryType {
   @@map("financial_entry_type")
 }
 
+enum EntrySource {
+  MANUAL
+  IMPORT
+
+  @@map("entry_source")
+}
+
 model Business {
   id     String @id @default(uuid())
   userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name                  String?
-  businessType          BusinessType?        @map("business_type")
-  revenueModel          String[]             @map("revenue_model")
-  revenueModelOther     String?              @map("revenue_model_other")
-  yearsInBusiness       YearsInBusiness?     @map("years_in_business")
-  employeeCount         Int?                 @map("employee_count")
+  businessType          BusinessType?    @map("business_type")
+  revenueModel          String[]         @map("revenue_model")
+  revenueModelOther     String?          @map("revenue_model_other")
+  yearsInBusiness       YearsInBusiness? @map("years_in_business")
+  employeeCount         Int?             @map("employee_count")
   currency              Currency?
-  averageMonthlyRevenue Decimal?             @map("average_monthly_revenue") @db.Decimal(14, 2)
+  averageMonthlyRevenue Decimal?         @map("average_monthly_revenue") @db.Decimal(14, 2)
 
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
   onboardingStep      Int     @default(1) @map("onboarding_step")
@@ -79,22 +87,57 @@ model Business {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  entries FinancialEntry[]
+  entries    FinancialEntry[]
+  categories Category[]
 
   @@map("businesses")
 }
 
-model FinancialEntry {
+// Categorias padrao do sistema tem businessId nulo e ficam visiveis para
+// todas as empresas; uma empresa pode criar as proprias (businessId
+// preenchido). "active" permite desativar sem quebrar lancamentos antigos
+// que ja referenciam a categoria.
+model Category {
   id         String             @id @default(uuid())
-  businessId String             @map("business_id")
-  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String?            @map("business_id")
+  business   Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name       String
   type       FinancialEntryType
-  amount     Decimal            @db.Decimal(14, 2)
-  occurredAt DateTime           @map("occurred_at")
-  description String?
+  isDefault  Boolean            @default(false) @map("is_default")
+  active     Boolean            @default(true)
   createdAt  DateTime           @default(now()) @map("created_at")
 
+  entries FinancialEntry[]
+
+  // So evita duplicata dentro das categorias proprias de uma mesma empresa
+  // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
+  // isso nao cobre as categorias padrao do sistema; a idempotencia do seed das
+  // categorias padrao e garantida no proprio script de seed.
+  @@unique([businessId, type, name])
+  @@index([businessId, type])
+  @@map("categories")
+}
+
+model FinancialEntry {
+  id          String             @id @default(uuid())
+  businessId  String             @map("business_id")
+  business    Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId      String             @map("user_id")
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        FinancialEntryType
+  categoryId  String             @map("category_id")
+  category    Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount      Decimal            @db.Decimal(14, 2)
+  occurredAt  DateTime           @map("occurred_at")
+  description String
+  notes       String?
+  source      EntrySource        @default(MANUAL)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
   @@index([businessId, occurredAt])
+  @@index([businessId, type])
+  @@index([categoryId])
   @@map("financial_entries")
 }
 
@@ -111,12 +154,12 @@ model Session {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  tokenHash String   @unique @map("token_hash")
-  expiresAt DateTime @map("expires_at")
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

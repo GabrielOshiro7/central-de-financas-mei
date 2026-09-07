@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummary } from "@/lib/finance/queries";
@@ -6,8 +6,22 @@ import { getFinancialSummary } from "@/lib/finance/queries";
 describe("resumo financeiro (dados inseridos diretamente no banco de teste)", () => {
   let userId: string;
   let businessId: string;
+  let revenueCategoryId: string;
+  let costCategoryId: string;
+  let expenseCategoryId: string;
 
-  it("calcula lucro e margem a partir de lançamentos reais", async () => {
+  beforeAll(async () => {
+    const [revenueCategory, costCategory, expenseCategory] = await Promise.all([
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE" } }),
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "COST" } }),
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE" } }),
+    ]);
+    revenueCategoryId = revenueCategory.id;
+    costCategoryId = costCategory.id;
+    expenseCategoryId = expenseCategory.id;
+  });
+
+  it("calcula lucro, margem líquida e margem bruta a partir de lançamentos reais", async () => {
     const user = await prisma.user.create({
       data: {
         name: "Teste Financeiro",
@@ -25,9 +39,33 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
     const now = new Date();
     await prisma.financialEntry.createMany({
       data: [
-        { businessId, type: "REVENUE", amount: "1000", occurredAt: now },
-        { businessId, type: "COST", amount: "400", occurredAt: now },
-        { businessId, type: "EXPENSE", amount: "100", occurredAt: now },
+        {
+          businessId,
+          userId,
+          type: "REVENUE",
+          categoryId: revenueCategoryId,
+          description: "Venda",
+          amount: "1000",
+          occurredAt: now,
+        },
+        {
+          businessId,
+          userId,
+          type: "COST",
+          categoryId: costCategoryId,
+          description: "Mercadoria",
+          amount: "400",
+          occurredAt: now,
+        },
+        {
+          businessId,
+          userId,
+          type: "EXPENSE",
+          categoryId: expenseCategoryId,
+          description: "Aluguel",
+          amount: "100",
+          occurredAt: now,
+        },
       ],
     });
 
@@ -38,19 +76,30 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
     expect(summary.expenses.toString()).toBe("100");
     expect(summary.netProfit.toString()).toBe("500");
     expect(summary.netMargin?.toNumber()).toBe(50);
+    // margem bruta = (1000 - 400) / 1000 * 100 = 60
+    expect(summary.grossMargin?.toNumber()).toBe(60);
   });
 
-  it("faturamento zero no período retorna margem null (N/A), sem erro de divisão por zero", async () => {
+  it("faturamento zero no período retorna margens null (N/A), sem erro de divisão por zero", async () => {
     const now = new Date();
     await prisma.financialEntry.deleteMany({ where: { businessId } });
     await prisma.financialEntry.create({
-      data: { businessId, type: "COST", amount: "200", occurredAt: now },
+      data: {
+        businessId,
+        userId,
+        type: "COST",
+        categoryId: costCategoryId,
+        description: "Mercadoria",
+        amount: "200",
+        occurredAt: now,
+      },
     });
 
     const summary = await getFinancialSummary(businessId, "THIS_MONTH", now);
 
     expect(summary.revenue.toString()).toBe("0");
     expect(summary.netMargin).toBeNull();
+    expect(summary.grossMargin).toBeNull();
   });
 
   it("período sem nenhum lançamento retorna resumo vazio, não um erro", async () => {
