@@ -2,7 +2,8 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import {
   getFinancialSummaryForRange,
   getCategoryBreakdown,
-  getMonthlySeries,
+  getMonthlySeriesForRange,
+  getDailySeriesForRange,
 } from "@/lib/finance/queries";
 import {
   resolvePeriodRange,
@@ -16,13 +17,18 @@ import { calculateVariationPercent } from "@/lib/finance/calculations";
 import { formatMoney } from "@/lib/money";
 import { formatPercent, formatVariation } from "@/lib/finance/format";
 import { generateAlerts, computeFinancialHealth, generateSummaryText } from "@/lib/finance/insights";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { FinancialChart } from "@/components/dashboard/FinancialChart";
+import { MetricCard, type MetricVariation } from "@/components/dashboard/MetricCard";
+import { FinancialChart, toEvolutionPoints } from "@/components/dashboard/FinancialChart";
 import { FinanceiroPeriodSelector } from "@/components/financeiro/FinanceiroPeriodSelector";
 import { HealthBadge } from "@/components/financeiro/HealthBadge";
 import { AlertsPanel } from "@/components/financeiro/AlertsPanel";
 import { IndicatorsPanel, type IndicatorItem } from "@/components/financeiro/IndicatorsPanel";
 import { CategoryBreakdownChart } from "@/components/financeiro/CategoryBreakdownChart";
+
+function directionFor(value: { isZero: () => boolean; isPositive: () => boolean } | null): "up" | "down" | "flat" {
+  if (value === null || value.isZero()) return "flat";
+  return value.isPositive() ? "up" : "down";
+}
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 
@@ -45,13 +51,20 @@ export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financ
   const previousRange = getPreviousPeriodRange(range);
   const currency = business.currency ?? "BRL";
 
-  const [summary, previousSummary, costBreakdown, expenseBreakdown, series] = await Promise.all([
+  const [summary, previousSummary, costBreakdown, expenseBreakdown, rawSeries] = await Promise.all([
     getFinancialSummaryForRange(business.id, range),
     getFinancialSummaryForRange(business.id, previousRange),
     getCategoryBreakdown(business.id, range, "COST"),
     getCategoryBreakdown(business.id, range, "EXPENSE"),
-    getMonthlySeries(business.id, effectivePeriod, now, customRange),
+    // Granularidade segue o alignment do periodo (Etapa 4): periodos por dia
+    // (TODAY, LAST_7/30/90_DAYS, CUSTOM) nao devem ser resumidos em barras
+    // mensais, senao o grafico somaria dias fora do periodo escolhido - ver
+    // comentario em getDailySeriesForRange (queries.ts).
+    range.alignment === "day"
+      ? getDailySeriesForRange(business.id, range)
+      : getMonthlySeriesForRange(business.id, range),
   ]);
+  const series = toEvolutionPoints(rawSeries);
 
   // So comparamos contra o periodo anterior se ele de fato tiver dado -
   // "sem dados suficientes" vira N/A em vez de comparar contra zero (secao 16).
@@ -67,31 +80,39 @@ export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financ
   const profitDisplay = summary.hasAnyEntries ? formatMoney(summary.netProfit, currency) : null;
   const marginDisplay = summary.hasAnyEntries ? formatPercent(summary.netMargin) : null;
 
+  // Reaproveitados tanto pelos MetricCards (variation) quanto pelo painel de
+  // indicadores abaixo - calculados uma unica vez.
+  const revenueGrowth = previousForComparison
+    ? calculateVariationPercent(summary.revenue, previousForComparison.revenue)
+    : null;
+  const costsGrowth = previousForComparison
+    ? calculateVariationPercent(summary.costs, previousForComparison.costs)
+    : null;
+  const expensesGrowth = previousForComparison
+    ? calculateVariationPercent(summary.expenses, previousForComparison.expenses)
+    : null;
+  const profitGrowth = previousForComparison
+    ? calculateVariationPercent(summary.netProfit, previousForComparison.netProfit)
+    : null;
+
+  const revenueVariation: MetricVariation | null = previousForComparison
+    ? { text: formatVariation(revenueGrowth), direction: directionFor(revenueGrowth), description: "vs período anterior" }
+    : null;
+  const costsVariation: MetricVariation | null = previousForComparison
+    ? { text: formatVariation(costsGrowth), direction: directionFor(costsGrowth), description: "vs período anterior" }
+    : null;
+  const expensesVariation: MetricVariation | null = previousForComparison
+    ? { text: formatVariation(expensesGrowth), direction: directionFor(expensesGrowth), description: "vs período anterior" }
+    : null;
+  const profitVariation: MetricVariation | null = previousForComparison
+    ? { text: formatVariation(profitGrowth), direction: directionFor(profitGrowth), description: "vs período anterior" }
+    : null;
+
   const indicators: IndicatorItem[] = [
-    {
-      label: "Crescimento do faturamento",
-      value: previousForComparison
-        ? formatVariation(calculateVariationPercent(summary.revenue, previousForComparison.revenue))
-        : "N/A",
-    },
-    {
-      label: "Variação dos custos",
-      value: previousForComparison
-        ? formatVariation(calculateVariationPercent(summary.costs, previousForComparison.costs))
-        : "N/A",
-    },
-    {
-      label: "Variação das despesas",
-      value: previousForComparison
-        ? formatVariation(calculateVariationPercent(summary.expenses, previousForComparison.expenses))
-        : "N/A",
-    },
-    {
-      label: "Variação do lucro",
-      value: previousForComparison
-        ? formatVariation(calculateVariationPercent(summary.netProfit, previousForComparison.netProfit))
-        : "N/A",
-    },
+    { label: "Crescimento do faturamento", value: previousForComparison ? formatVariation(revenueGrowth) : "N/A" },
+    { label: "Variação dos custos", value: previousForComparison ? formatVariation(costsGrowth) : "N/A" },
+    { label: "Variação das despesas", value: previousForComparison ? formatVariation(expensesGrowth) : "N/A" },
+    { label: "Variação do lucro", value: previousForComparison ? formatVariation(profitGrowth) : "N/A" },
     { label: "Margem bruta", value: formatPercent(summary.grossMargin) },
     { label: "Margem líquida", value: formatPercent(summary.netMargin) },
   ];
@@ -104,10 +125,10 @@ export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financ
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <MetricCard label="Faturamento" value={revenueDisplay} />
-        <MetricCard label="Custos" value={costsDisplay} />
-        <MetricCard label="Despesas" value={expensesDisplay} />
-        <MetricCard label="Lucro" value={profitDisplay} />
+        <MetricCard label="Faturamento" value={revenueDisplay} icon="💰" variation={revenueVariation} />
+        <MetricCard label="Custos" value={costsDisplay} icon="📦" variation={costsVariation} />
+        <MetricCard label="Despesas" value={expensesDisplay} icon="🧾" variation={expensesVariation} />
+        <MetricCard label="Lucro" value={profitDisplay} icon="📈" variation={profitVariation} />
         <MetricCard label="Margem bruta" value={summary.hasAnyEntries ? formatPercent(summary.grossMargin) : null} />
         <MetricCard label="Margem líquida" value={marginDisplay} />
       </div>

@@ -1,8 +1,8 @@
 import { Prisma, type Currency } from "@prisma/client";
-import type { FinancialSummary, CategoryBreakdownEntry } from "@/lib/finance/calculations";
+import type { FinancialSummary, CategoryBreakdownEntry, SignedGrowth } from "@/lib/finance/calculations";
 import { calculateVariationPercent, marginPointsDelta } from "@/lib/finance/calculations";
 import { formatMoney } from "@/lib/money";
-import { formatPercent } from "@/lib/finance/format";
+import { formatPercent, formatVariation } from "@/lib/finance/format";
 
 type Decimal = Prisma.Decimal;
 
@@ -172,4 +172,25 @@ export function generateSummaryText(params: {
   sentences.push(`A margem líquida foi de ${formatPercent(summary.netMargin)}.`);
 
   return sentences.join(" ");
+}
+
+// Texto de exibicao para SignedGrowth (calculations.ts) - so essa funcao
+// conhece moeda/formatacao; describeSignedGrowth em si e Decimal puro. No
+// caso de troca de sinal (ADENDO da Etapa 4), soletra a transicao em valor
+// absoluto em vez de uma porcentagem enganosa.
+export function formatSignedGrowthText(growth: SignedGrowth, currency: Currency): string {
+  switch (growth.kind) {
+    case "no_base":
+      return "Sem base de comparação";
+    case "percent":
+      return formatVariation(growth.value);
+    case "sign_flip":
+      return growth.fromNegative
+        ? `Saiu de prejuízo de ${formatMoney(growth.previous.abs(), currency)} para lucro de ${formatMoney(growth.current, currency)}`
+        : `Saiu de lucro de ${formatMoney(growth.previous, currency)} para prejuízo de ${formatMoney(growth.current.abs(), currency)}`;
+    default: {
+      const exhaustiveCheck: never = growth;
+      throw new Error(`SignedGrowth não tratado: ${JSON.stringify(exhaustiveCheck)}`);
+    }
+  }
 }

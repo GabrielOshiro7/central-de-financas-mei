@@ -1,4 +1,37 @@
-import type { MonthlyPoint } from "@/lib/finance/queries";
+import { Prisma } from "@prisma/client";
+import type { MonthlyPoint, DailyPoint } from "@/lib/finance/queries";
+
+type Decimal = Prisma.Decimal;
+
+// Forma generica de ponto de serie temporal, independente de granularidade
+// (mes ou dia). MonthlyPoint (chave year+month) e DailyPoint (chave date) sao
+// convertidos aqui pra essa forma comum - necessario desde que a Etapa 4
+// introduziu periodos por dia (TODAY, LAST_7/30/90_DAYS, CUSTOM) que nao
+// devem ser agrupados por mes inteiro (ver getDailySeriesForRange/
+// getMonthlySeriesForRange em queries.ts e o comentario de alignment em
+// period.ts) - vale tanto pro grafico principal de /dashboard quanto pro de
+// /financeiro, que compartilham este componente.
+export type EvolutionPoint = {
+  key: string;
+  label: string;
+  revenue: Decimal;
+  costs: Decimal;
+  expenses: Decimal;
+  netProfit: Decimal;
+  hasAnyEntries: boolean;
+};
+
+export function toEvolutionPoints(points: (MonthlyPoint | DailyPoint)[]): EvolutionPoint[] {
+  return points.map((p) => ({
+    key: "month" in p ? `${p.year}-${p.month}` : p.date.toISOString(),
+    label: p.label,
+    revenue: p.revenue,
+    costs: p.costs,
+    expenses: p.expenses,
+    netProfit: p.netProfit,
+    hasAnyEntries: p.hasAnyEntries,
+  }));
+}
 
 const SERIES_STYLE = [
   { key: "revenue", label: "Faturamento", className: "bg-emerald-500" },
@@ -7,7 +40,7 @@ const SERIES_STYLE = [
   { key: "netProfit", label: "Lucro", className: "bg-blue-500" },
 ] as const;
 
-export function FinancialChart({ series }: { series: MonthlyPoint[] }) {
+export function FinancialChart({ series }: { series: EvolutionPoint[] }) {
   const hasData = series.some((m) => m.hasAnyEntries);
 
   if (!hasData) {
@@ -27,7 +60,7 @@ export function FinancialChart({ series }: { series: MonthlyPoint[] }) {
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-end gap-4 overflow-x-auto pb-2">
         {series.map((point) => (
-          <div key={`${point.year}-${point.month}`} className="flex flex-col items-center gap-1">
+          <div key={point.key} className="flex flex-col items-center gap-1">
             <div className="flex h-32 items-end gap-0.5">
               {SERIES_STYLE.map((s) => (
                 <div

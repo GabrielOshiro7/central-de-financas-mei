@@ -74,13 +74,20 @@ test.describe("onboarding", () => {
     await completeOnboarding(page, { name: "Empresa Onboarding Completo", revenue: "15000" });
 
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Olá, Dono Loja" })).toBeVisible();
+    // Etapa 4: o dashboard gerencial passou a ter "Visão Geral" como titulo
+    // (nao mais uma saudacao pessoal "Ola, <nome>") e, para uma empresa que
+    // nunca lancou nada, mostra o estado vazio real (secao 27) em vez de uma
+    // grade de cards individuais com "Sem dados".
+    await expect(page.getByRole("heading", { name: "Visão Geral" })).toBeVisible();
     await expect(page.getByRole("main").getByText("Empresa Onboarding Completo")).toBeVisible();
 
-    // Cenario 7: sem lancamentos financeiros, os cards mostram estado vazio,
+    // Cenario 7: sem lancamentos financeiros, mostra o estado vazio real -
     // nunca um numero calculado ou o average_monthly_revenue do onboarding.
-    const cardValues = page.locator("main >> text=Sem dados");
-    await expect(cardValues).toHaveCount(5);
+    await expect(
+      page.getByRole("heading", { name: "Seu dashboard ainda não possui dados suficientes" })
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Importar dados" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Adicionar lançamento" })).toBeVisible();
     await expect(page.getByText("15,000")).toHaveCount(0);
     await expect(page.getByText("R$15,000")).toHaveCount(0);
   });

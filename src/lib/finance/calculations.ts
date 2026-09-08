@@ -113,3 +113,102 @@ export function marginPointsDelta(current: Decimal | null, previous: Decimal | n
   if (current === null || previous === null) return null;
   return current.minus(previous);
 }
+
+// Crescimento entre dois valores que podem trocar de sinal (lucro bruto/
+// liquido - diferente de receita/custos/despesas, que sao sempre >= 0).
+// calculateVariationPercent (acima) e usado pelos alertas/indicadores ja
+// testados e continua exatamente como esta; esta funcao e so para os
+// lugares que precisam soletrar explicitamente uma troca de sinal (prejuizo
+// -> lucro ou vice-versa), onde uma "variacao percentual" e matematicamente
+// enganosa (ADENDO da Etapa 4: ex. de -500 pra +300 nao e "-160%" de nada
+// util pro usuario leigo).
+export type SignedGrowth =
+  | { kind: "no_base" }
+  | { kind: "sign_flip"; fromNegative: boolean; previous: Decimal; current: Decimal }
+  | { kind: "percent"; value: Decimal };
+
+export function describeSignedGrowth(current: Decimal, previous: Decimal): SignedGrowth {
+  if (previous.isZero()) return { kind: "no_base" };
+
+  // gt(0)/lt(0) em vez de isPositive()/isNegative(): em decimal.js,
+  // Decimal(0).isPositive() e' true (zero nao tem sinal, e tratado como nao-
+  // negativo), entao isPositive() sozinho classificaria "prejuizo -> exatamente
+  // zero" como troca de sinal - o ADENDO da Etapa 4 exige estritamente "atual
+  // > 0" (ou < 0), entao zero cai no ramo normal de porcentagem abaixo.
+  const signFlipped = (previous.gt(0) && current.lt(0)) || (previous.lt(0) && current.gt(0));
+  if (signFlipped) {
+    return { kind: "sign_flip", fromNegative: previous.isNegative(), previous, current };
+  }
+
+  const value = calculateVariationPercent(current, previous);
+  return value === null ? { kind: "no_base" } : { kind: "percent", value };
+}
+
+export type BreakEvenResult =
+  | { status: "insufficient"; reason: string }
+  | { status: "ok"; breakEvenRevenue: Decimal; contributionMarginRatio: Decimal };
+
+// Ponto de equilibrio (secao 21 da Etapa 4). ATENCAO a nomenclatura deste
+// projeto, que e o INVERSO do que "custo fixo" normalmente sugere: EXPENSE
+// (Despesas) = custo fixo da formula classica; COST (Custos) = custo
+// variavel. Nao inverter.
+//   margem de contribuicao = (receita - custos variaveis) / receita
+//   receita de equilibrio = despesas fixas / margem de contribuicao
+export function calculateBreakEven(summary: FinancialSummary): BreakEvenResult {
+  if (summary.revenue.isZero()) {
+    return { status: "insufficient", reason: "Sem faturamento no período para calcular." };
+  }
+
+  const contributionMarginRatio = summary.revenue.minus(summary.costs).dividedBy(summary.revenue);
+  if (contributionMarginRatio.lte(0)) {
+    return { status: "insufficient", reason: "Margem de contribuição não é positiva neste período." };
+  }
+
+  const breakEvenRevenue = summary.expenses.dividedBy(contributionMarginRatio);
+  return { status: "ok", breakEvenRevenue, contributionMarginRatio };
+}
+
+export type AverageTicketResult =
+  | { status: "unavailable"; reason: string }
+  | { status: "ok"; amount: Decimal };
+
+// Nao ha campo de quantidade/numero de vendas em FinancialEntry nem na
+// importacao (ver IMPORT_COLUMNS) - por isso sempre retorna "unavailable"
+// hoje (secao 20/28 da Etapa 4: "N/D" em vez de inventar). A assinatura ja
+// aceita salesCount para quando esse dado existir, sem precisar redesenhar
+// o tipo de retorno nos componentes que o consomem.
+export function calculateAverageTicket(revenue: Decimal, salesCount: number | null): AverageTicketResult {
+  if (salesCount === null || salesCount <= 0) {
+    return { status: "unavailable", reason: "Quantidade de vendas não disponível." };
+  }
+  return { status: "ok", amount: revenue.dividedBy(salesCount) };
+}
+
+export type TopCategoriesRanking = {
+  entries: CategoryBreakdownEntry[];
+  otherAmount: Decimal | null;
+  otherPercentage: Decimal | null;
+  grandTotal: Decimal;
+};
+
+// Ranking unico "Principais gastos" (secao 19 da Etapa 4) combinando Custos
+// (COST) e Despesas (EXPENSE) num so top N + "Outros". Deliberadamente
+// separado dos graficos de distribuicao por tipo das secoes 17/18
+// (CategoryBreakdownChart, que continua mostrando cada tipo isoladamente) -
+// os dois recortes coexistem, nao se substituem. Categoria e sempre de um
+// unico tipo (Category.type), entao nao ha risco de um mesmo categoryId
+// aparecer nos dois lados da uniao abaixo.
+export function buildTopCategoriesRanking(
+  entries: { categoryId: string; categoryName: string; amount: Decimal }[],
+  limit = 5
+): TopCategoriesRanking {
+  const all = summarizeByCategory(entries);
+  const grandTotal = all.reduce((total, e) => total.plus(e.amount), new Decimal(0));
+  const top = all.slice(0, limit);
+  const rest = all.slice(limit);
+  const otherAmount = rest.length > 0 ? rest.reduce((total, e) => total.plus(e.amount), new Decimal(0)) : null;
+  const otherPercentage =
+    otherAmount !== null && !grandTotal.isZero() ? otherAmount.dividedBy(grandTotal).times(100) : null;
+
+  return { entries: top, otherAmount, otherPercentage, grandTotal };
+}
