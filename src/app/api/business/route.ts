@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
-
-const { Decimal } = Prisma;
-import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { businessEditSchema } from "@/lib/onboarding/schema";
+import { updateBusinessProfile } from "@/lib/onboarding/businessMutations";
 
 // Atualiza a empresa do usuario autenticado. O id da empresa nunca vem do
 // cliente - e sempre resolvido via where: { userId: user.id }, entao nao ha
@@ -24,21 +21,11 @@ export async function PATCH(request: Request) {
     );
   }
 
-  const existing = await prisma.business.findUnique({ where: { userId: user.id } });
-  if (!existing) {
-    return NextResponse.json({ error: "Empresa não encontrada." }, { status: 404 });
+  const result = await updateBusinessProfile(user.id, parsed.data);
+  if (!result.ok) {
+    const status = result.error === "Empresa não encontrada." ? 404 : 409;
+    return NextResponse.json({ error: result.error }, { status });
   }
 
-  const business = await prisma.business.update({
-    where: { userId: user.id },
-    data: {
-      name: parsed.data.name,
-      yearsInBusiness: parsed.data.yearsInBusiness,
-      employeeCount: parsed.data.employeeCount,
-      currency: parsed.data.currency,
-      averageMonthlyRevenue: new Decimal(parsed.data.averageMonthlyRevenue),
-    },
-  });
-
-  return NextResponse.json({ business: { id: business.id, name: business.name } });
+  return NextResponse.json({ business: result.business });
 }

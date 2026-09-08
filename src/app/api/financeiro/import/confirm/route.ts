@@ -4,8 +4,14 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { confirmImport } from "@/lib/finance/importConfirm";
 
+const categoryDecisionSchema = z.discriminatedUnion("action", [
+  z.object({ key: z.string().min(1), action: z.literal("create") }),
+  z.object({ key: z.string().min(1), action: z.literal("map"), mapToCategoryId: z.string().min(1) }),
+]);
+
 const confirmSchema = z.object({
   duplicateAction: z.enum(["skip", "import_anyway"]),
+  categoryDecisions: z.array(categoryDecisionSchema).default([]),
   rows: z
     .array(
       z.object({
@@ -28,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
-  if (!business || !business.currency) {
+  if (!business) {
     return NextResponse.json({ error: "Empresa não encontrada." }, { status: 404 });
   }
 
@@ -46,7 +52,8 @@ export async function POST(request: Request) {
     user.id,
     business.currency,
     parsed.data.rows,
-    parsed.data.duplicateAction
+    parsed.data.duplicateAction,
+    parsed.data.categoryDecisions
   );
 
   return NextResponse.json(result);

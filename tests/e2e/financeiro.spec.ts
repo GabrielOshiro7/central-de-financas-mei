@@ -163,11 +163,13 @@ test.describe("financeiro - importação", () => {
 
     await page.goto("/financeiro/importar");
 
+    // Categoria desconhecida NAO e mais um erro bloqueante (Etapa 3.1) - so
+    // data invalida e valor invalido continuam bloqueando a linha aqui.
     const csvContent =
       "data,tipo,categoria,descricao,valor,observacao\n" +
       "2026-01-05,receita,Venda de produtos,Linha válida,100,\n" +
       "data-invalida,receita,Venda de produtos,Linha com data inválida,100,\n" +
-      "2026-01-06,receita,Categoria Inexistente,Linha com categoria inválida,100,\n";
+      "2026-01-06,receita,Venda de produtos,Linha com valor inválido,abc,\n";
 
     const fileInput = page.locator('input[type="file"][accept=".csv"]');
     await fileInput.setInputFiles({
@@ -180,6 +182,79 @@ test.describe("financeiro - importação", () => {
     await expect(page.getByText("✓ 1 registros válidos")).toBeVisible();
     await expect(page.getByText("⚠ 2 registros com problemas")).toBeVisible();
     await expect(page.getByText("Data inválida.")).toBeVisible();
-    await expect(page.getByText("Categoria não encontrada.")).toBeVisible();
+    await expect(page.getByText("Valor inválido.")).toBeVisible();
+  });
+
+  // Etapa 3.1, "Categorias adaptaveis": uma categoria desconhecida vira uma
+  // secao "sera criada ao confirmar" na previa, em vez de bloquear a linha.
+  test("categoria nova é detectada na prévia e criada ao confirmar", async ({ page }) => {
+    const email = uniqueEmail();
+    await register(page, "Dono Categoria Nova", email);
+    await completeOnboarding(page, "Empresa Categoria Nova E2E");
+
+    await page.goto("/financeiro/importar");
+
+    const today = todayIso();
+    const novaCategoria = `Categoria Nova E2E ${Date.now()}`;
+    const csvContent =
+      "data,tipo,categoria,descricao,valor,observacao\n" +
+      `${today},custo,${novaCategoria},Compra com categoria nova,50,\n`;
+
+    const fileInput = page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.setInputFiles({
+      name: "categoria-nova.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csvContent, "utf-8"),
+    });
+
+    await expect(page.getByText("✓ 1 registros válidos")).toBeVisible();
+    await expect(page.getByText("1 nova categoria será criada ao confirmar:")).toBeVisible();
+    await expect(page.getByText(novaCategoria)).toBeVisible();
+
+    await page.getByRole("button", { name: /Importar 1 lançamento/ }).click();
+    await expect(page.getByText(/1 lançamento importado com sucesso/)).toBeVisible();
+    await expect(page.getByText(/1 categoria\(s\) nova\(s\) criada\(s\)/)).toBeVisible();
+
+    await page.goto("/financeiro/custos");
+    const newRow = page.getByRole("row", { name: /Compra com categoria nova/ });
+    await expect(newRow).toBeVisible();
+    await expect(newRow.getByText(novaCategoria)).toBeVisible();
+  });
+
+  // Etapa 3.1, item 2: mapear a categoria nova para uma ja existente em vez
+  // de criar uma nova (ex.: "Salario" -> "Salários").
+  test("categoria nova pode ser mapeada para uma categoria já existente", async ({ page }) => {
+    const email = uniqueEmail();
+    await register(page, "Dono Mapear Categoria", email);
+    await completeOnboarding(page, "Empresa Mapear Categoria E2E");
+
+    await page.goto("/financeiro/importar");
+
+    const today = todayIso();
+    const csvContent =
+      "data,tipo,categoria,descricao,valor,observacao\n" +
+      `${today},despesa,Salario,Pagamento equipe,2000,\n`;
+
+    const fileInput = page.locator('input[type="file"][accept=".csv"]');
+    await fileInput.setInputFiles({
+      name: "mapear-categoria.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csvContent, "utf-8"),
+    });
+
+    await expect(page.getByText("1 nova categoria será criada ao confirmar:")).toBeVisible();
+    await page
+      .getByLabel('O que fazer com a categoria nova "Salario"')
+      .selectOption({ label: 'Mapear para "Salários"' });
+
+    await page.getByRole("button", { name: /Importar 1 lançamento/ }).click();
+    await expect(page.getByText(/1 lançamento importado com sucesso/)).toBeVisible();
+    // 0 categorias novas criadas - foi mapeada para "Salários", que ja existe.
+    await expect(page.getByText(/categoria\(s\) nova\(s\) criada\(s\)/)).toHaveCount(0);
+
+    await page.goto("/financeiro/despesas");
+    await expect(page.getByText("Pagamento equipe")).toBeVisible();
+    const row = page.getByRole("row", { name: /Pagamento equipe/ });
+    await expect(row.getByText("Salários", { exact: true })).toBeVisible();
   });
 });

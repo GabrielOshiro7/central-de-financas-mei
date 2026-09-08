@@ -1,4 +1,5 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
+import { prisma } from "@/lib/db";
 import {
   BUSINESS_TYPE_LABELS,
   REVENUE_MODEL_OPTIONS,
@@ -10,6 +11,7 @@ import { EmpresaForm } from "./EmpresaForm";
 
 export default async function EmpresaPage() {
   const { business } = await requireOnboardedUser();
+  const entryCount = await prisma.financialEntry.count({ where: { businessId: business.id } });
 
   const revenueLabels =
     business.businessType && business.businessType !== "OUTRO"
@@ -69,6 +71,7 @@ export default async function EmpresaPage() {
           currency: business.currency,
           averageMonthlyRevenue: business.averageMonthlyRevenue?.toString() ?? "",
         }}
+        currencyLocked={entryCount > 0}
       />
     </div>
   );

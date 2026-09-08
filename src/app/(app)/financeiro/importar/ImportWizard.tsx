@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Currency } from "@prisma/client";
+import type { Currency, FinancialEntryType } from "@prisma/client";
+import { normalizeCategoryName } from "@/lib/finance/categoryName";
+import { parseImportEntryType, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
 
 type RawFields = {
   data: string;
@@ -13,9 +15,14 @@ type RawFields = {
   observacao: string;
 };
 
+type CategoryStatus = "existing" | "new" | "missing";
+
 type PreviewRow = {
   rowNumber: number;
   raw: RawFields;
+  type: FinancialEntryType | null;
+  categoryStatus: CategoryStatus;
+  categoryNormalized: string;
   errors: string[];
   isDuplicate: boolean;
 };
@@ -23,12 +30,67 @@ type PreviewRow = {
 type ConfirmResult = {
   inserted: number;
   skippedDuplicates: number;
+  categoriesCreated: number;
   failed: { rowNumber: number; errors: string[] }[];
 };
 
 type DuplicateAction = "skip" | "import_anyway";
 
-export function ImportWizard({ currency }: { currency: Currency | null }) {
+export type ImportCategoryOption = { id: string; name: string; type: FinancialEntryType };
+
+type NewCategoryGroup = {
+  key: string;
+  type: FinancialEntryType;
+  normalizedName: string;
+  name: string;
+  rowCount: number;
+};
+
+function groupNewCategories(rows: PreviewRow[]): NewCategoryGroup[] {
+  const groups = new Map<string, NewCategoryGroup>();
+  for (const row of rows) {
+    if (row.errors.length > 0 || row.categoryStatus !== "new" || !row.type) continue;
+    const key = `${row.type}:${row.categoryNormalized}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.rowCount += 1;
+    } else {
+      groups.set(key, {
+        key,
+        type: row.type,
+        normalizedName: row.categoryNormalized,
+        name: row.raw.categoria.trim(),
+        rowCount: 1,
+      });
+    }
+  }
+  return Array.from(groups.values());
+}
+
+// Reclassifica categoria/tipo de uma linha apos edicao na previa, usando so
+// as categorias ja visiveis para a empresa (passadas por prop) - a mesma
+// logica de normalizeCategoryName usada no servidor, para a previa nao
+// mostrar um estado que a confirmacao (autoritativa) vai contradizer.
+function reclassify(
+  type: FinancialEntryType | null,
+  categoriaRaw: string,
+  categories: ImportCategoryOption[]
+): { categoryStatus: CategoryStatus; categoryNormalized: string } {
+  const categoryNormalized = normalizeCategoryName(categoriaRaw);
+  if (!categoryNormalized) return { categoryStatus: "missing", categoryNormalized };
+  const match = type
+    ? categories.find((c) => c.type === type && normalizeCategoryName(c.name) === categoryNormalized)
+    : undefined;
+  return { categoryStatus: match ? "existing" : "new", categoryNormalized };
+}
+
+export function ImportWizard({
+  currency,
+  categories,
+}: {
+  currency: Currency | null;
+  categories: ImportCategoryOption[];
+}) {
   const router = useRouter();
   const csvInputRef = useRef<HTMLInputElement>(null);
   const xlsxInputRef = useRef<HTMLInputElement>(null);
@@ -36,6 +98,7 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [hasPreview, setHasPreview] = useState(false);
   const [duplicateAction, setDuplicateAction] = useState<DuplicateAction | null>(null);
+  const [categoryDecisions, setCategoryDecisions] = useState<Map<string, string>>(new Map()); // key -> mapToCategoryId ("" = criar nova, o padrao)
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -46,6 +109,7 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
   const duplicateCount = rows.filter((r) => r.errors.length === 0 && r.isDuplicate).length;
   const importableCount =
     duplicateAction === "skip" ? rows.filter((r) => r.errors.length === 0 && !r.isDuplicate).length : validCount;
+  const newCategoryGroups = useMemo(() => groupNewCategories(rows), [rows]);
 
   async function handleFileSelected(file: File) {
     setUploading(true);
@@ -61,14 +125,28 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
         return;
       }
       setRows(
-        data.rows.map((r: { rowNumber: number; raw: RawFields; errors: string[]; isDuplicate: boolean }) => ({
-          rowNumber: r.rowNumber,
-          raw: r.raw,
-          errors: r.errors,
-          isDuplicate: r.isDuplicate,
-        }))
+        data.rows.map(
+          (r: {
+            rowNumber: number;
+            raw: RawFields;
+            type: FinancialEntryType | null;
+            categoryStatus: CategoryStatus;
+            categoryNormalized: string;
+            errors: string[];
+            isDuplicate: boolean;
+          }) => ({
+            rowNumber: r.rowNumber,
+            raw: r.raw,
+            type: r.type,
+            categoryStatus: r.categoryStatus,
+            categoryNormalized: r.categoryNormalized,
+            errors: r.errors,
+            isDuplicate: r.isDuplicate,
+          })
+        )
       );
       setDuplicateAction(null);
+      setCategoryDecisions(new Map());
       setHasPreview(true);
     } catch {
       setUploadError("Erro de conexão. Tente novamente.");
@@ -79,11 +157,13 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
 
   function updateRow(rowNumber: number, field: keyof RawFields, value: string) {
     setRows((prev) =>
-      prev.map((r) =>
-        r.rowNumber === rowNumber
-          ? { ...r, raw: { ...r.raw, [field]: value }, errors: [], isDuplicate: false }
-          : r
-      )
+      prev.map((r) => {
+        if (r.rowNumber !== rowNumber) return r;
+        const raw = { ...r.raw, [field]: value };
+        const type = field === "tipo" ? parseImportEntryType(value) : r.type;
+        const { categoryStatus, categoryNormalized } = reclassify(type, raw.categoria, categories);
+        return { ...r, raw, type, categoryStatus, categoryNormalized, errors: [], isDuplicate: false };
+      })
     );
   }
 
@@ -95,6 +175,7 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
     setRows([]);
     setHasPreview(false);
     setDuplicateAction(null);
+    setCategoryDecisions(new Map());
     setUploadError(null);
     setResult(null);
   }
@@ -103,11 +184,16 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
     setConfirming(true);
     setUploadError(null);
     try {
+      const decisions = newCategoryGroups
+        .filter((g) => categoryDecisions.get(g.key))
+        .map((g) => ({ key: g.key, action: "map" as const, mapToCategoryId: categoryDecisions.get(g.key)! }));
+
       const res = await fetch("/api/financeiro/import/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           duplicateAction: duplicateAction ?? "import_anyway",
+          categoryDecisions: decisions,
           rows: rows.map((r) => ({ rowNumber: r.rowNumber, ...r.raw })),
         }),
       });
@@ -223,8 +309,54 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
           {result.inserted} lançamento{result.inserted === 1 ? "" : "s"} importado{result.inserted === 1 ? "" : "s"}{" "}
           com sucesso.
+          {result.categoriesCreated > 0 && ` ${result.categoriesCreated} categoria(s) nova(s) criada(s).`}
           {result.skippedDuplicates > 0 && ` ${result.skippedDuplicates} duplicado(s) ignorado(s).`}
           {result.failed.length > 0 && ` ${result.failed.length} continuam com problema - corrija abaixo e tente de novo.`}
+        </div>
+      )}
+
+      {newCategoryGroups.length > 0 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+          <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
+            {newCategoryGroups.length} nova{newCategoryGroups.length === 1 ? "" : "s"} categoria
+            {newCategoryGroups.length === 1 ? "" : "s"} será{newCategoryGroups.length === 1 ? "" : "ão"} criada
+            {newCategoryGroups.length === 1 ? "" : "s"} ao confirmar:
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {newCategoryGroups.map((group) => {
+              const optionsForType = categories.filter((c) => c.type === group.type);
+              const selected = categoryDecisions.get(group.key) ?? "";
+              return (
+                <li key={group.key} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-blue-900 dark:text-blue-200">
+                    <strong>{group.name}</strong> ({ENTRY_TYPE_LABELS[group.type]}, {group.rowCount} linha
+                    {group.rowCount === 1 ? "" : "s"})
+                  </span>
+                  <select
+                    aria-label={`O que fazer com a categoria nova "${group.name}"`}
+                    value={selected}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setCategoryDecisions((prev) => {
+                        const next = new Map(prev);
+                        if (value) next.set(group.key, value);
+                        else next.delete(group.key);
+                        return next;
+                      });
+                    }}
+                    className="rounded-lg border border-blue-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-blue-800 dark:bg-neutral-800 dark:text-neutral-100"
+                  >
+                    <option value="">Criar como nova categoria</option>
+                    {optionsForType.map((opt) => (
+                      <option key={opt.id} value={opt.id}>
+                        Mapear para &quot;{opt.name}&quot;
+                      </option>
+                    ))}
+                  </select>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
@@ -280,7 +412,7 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
               <th className="px-3 py-2 font-medium">Tipo</th>
               <th className="px-3 py-2 font-medium">Categoria</th>
               <th className="px-3 py-2 font-medium">Descrição</th>
-              <th className="px-3 py-2 font-medium">Valor</th>
+              <th className="px-3 py-2 font-medium">Valor {currency ? `(${currency})` : ""}</th>
               <th className="px-3 py-2 font-medium">Observação</th>
               <th className="px-3 py-2 font-medium">Ações</th>
             </tr>
@@ -294,7 +426,9 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
                     ? "bg-red-50 dark:bg-red-950/30"
                     : row.isDuplicate
                       ? "bg-amber-50 dark:bg-amber-950/20"
-                      : ""
+                      : row.categoryStatus === "new"
+                        ? "bg-blue-50 dark:bg-blue-950/20"
+                        : ""
                 }`}
               >
                 <td className="px-3 py-2 text-gray-500 dark:text-neutral-400">{row.rowNumber}</td>
@@ -324,6 +458,9 @@ export function ImportWizard({ currency }: { currency: Currency | null }) {
                   )}
                   {row.isDuplicate && row.errors.length === 0 && (
                     <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Possível duplicado</p>
+                  )}
+                  {row.categoryStatus === "new" && row.errors.length === 0 && (
+                    <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">Categoria nova</p>
                   )}
                 </td>
               </tr>

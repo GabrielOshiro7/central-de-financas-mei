@@ -19,7 +19,13 @@ export type EmpresaFormData = {
   averageMonthlyRevenue: string;
 };
 
-export function EmpresaForm({ business }: { business: EmpresaFormData }) {
+export function EmpresaForm({
+  business,
+  currencyLocked = false,
+}: {
+  business: EmpresaFormData;
+  currencyLocked?: boolean;
+}) {
   const router = useRouter();
   const [name, setName] = useState(business.name ?? "");
   const [yearsInBusiness, setYearsInBusiness] = useState(business.yearsInBusiness);
@@ -113,7 +119,11 @@ export function EmpresaForm({ business }: { business: EmpresaFormData }) {
         <div className="flex gap-2">
           {CURRENCY_OPTIONS.map((opt) => (
             <div key={opt.value} className="flex-1">
-              <ChoiceButton selected={currency === opt.value} onClick={() => setCurrency(opt.value)}>
+              <ChoiceButton
+                selected={currency === opt.value}
+                onClick={() => setCurrency(opt.value)}
+                disabled={currencyLocked}
+              >
                 <span className="block text-center">
                   {opt.symbol} {opt.value}
                 </span>
@@ -121,6 +131,12 @@ export function EmpresaForm({ business }: { business: EmpresaFormData }) {
             </div>
           ))}
         </div>
+        {currencyLocked && (
+          <p className="mt-2 text-xs text-gray-400 dark:text-neutral-500">
+            A moeda não pode ser alterada porque esta empresa já tem lançamentos financeiros
+            registrados.
+          </p>
+        )}
       </div>
 
       <FormField

@@ -78,7 +78,13 @@ model Business {
   revenueModelOther     String?          @map("revenue_model_other")
   yearsInBusiness       YearsInBusiness? @map("years_in_business")
   employeeCount         Int?             @map("employee_count")
-  currency              Currency?
+  // Nunca inferida por locale/navegador/header - sempre escolha explicita do
+  // usuario no onboarding (ou editada em /empresa). Default BRL so serve
+  // para linhas que ja existiam antes desse campo virar obrigatorio (ver
+  // migration) e para negocios que ainda nao terminaram o onboarding.
+  // Trocar depois de a empresa ja ter lancamentos e bloqueado na API (secao
+  // "Bug 1" da Etapa 3.1) - nesta etapa nao ha conversao/cambio retroativo.
+  currency              Currency         @default(BRL)
   averageMonthlyRevenue Decimal?         @map("average_monthly_revenue") @db.Decimal(14, 2)
 
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
@@ -98,14 +104,20 @@ model Business {
 // preenchido). "active" permite desativar sem quebrar lancamentos antigos
 // que ja referenciam a categoria.
 model Category {
-  id         String             @id @default(uuid())
-  businessId String?            @map("business_id")
-  business   Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name       String
-  type       FinancialEntryType
-  isDefault  Boolean            @default(false) @map("is_default")
-  active     Boolean            @default(true)
-  createdAt  DateTime           @default(now()) @map("created_at")
+  id             String             @id @default(uuid())
+  businessId     String?            @map("business_id")
+  business       Business?          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name           String
+  // Forma canonica de `name` (sem acento, minuscula, espacos colapsados -
+  // ver normalizeCategoryName). Persistida (nao so calculada em memoria)
+  // para que a constraint UNIQUE abaixo proteja de verdade contra corrida
+  // entre duas importacoes simultaneas criando "Frete" e "frete" ao mesmo
+  // tempo (Etapa 3.1, secao "Categorias adaptaveis").
+  normalizedName String             @map("normalized_name")
+  type           FinancialEntryType
+  isDefault      Boolean            @default(false) @map("is_default")
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @map("created_at")
 
   entries FinancialEntry[]
 
@@ -113,7 +125,7 @@ model Category {
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
   // isso nao cobre as categorias padrao do sistema; a idempotencia do seed das
   // categorias padrao e garantida no proprio script de seed.
-  @@unique([businessId, type, name])
+  @@unique([businessId, type, normalizedName])
   @@index([businessId, type])
   @@map("categories")
 }

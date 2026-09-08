@@ -4,6 +4,16 @@ import { normalizeCategoryName } from "@/lib/finance/categories";
 import { parseImportEntryType } from "@/lib/finance/options";
 import type { RawImportRow } from "@/lib/finance/importParsing";
 
+// "existing": nome bateu (tolerante a maiuscula/espaco/acento) com uma
+// categoria ja visivel para a empresa - categoryId preenchido.
+// "new": nome informado, mas nao bate com nenhuma categoria existente - NAO
+// e mais um erro bloqueante (Etapa 3.1, "Categorias adaptaveis"); a linha
+// fica valida e a categoria e criada (ou mapeada para uma existente, se o
+// usuario escolher isso na previa) so na confirmacao.
+// "missing": campo categoria vazio/ausente - esse sim continua bloqueando a
+// linha, e o unico caso em que "categoria" gera erro.
+export type CategoryMatchStatus = "existing" | "new" | "missing";
+
 export type ValidatedImportRow = {
   rowNumber: number; // numero da linha na planilha (cabecalho = 1)
   // Valores originais em texto, como vieram do arquivo - permite reexibir os
@@ -15,6 +25,8 @@ export type ValidatedImportRow = {
   description: string;
   categoryId: string | null;
   categoryName: string;
+  categoryStatus: CategoryMatchStatus;
+  categoryNormalized: string;
   amount: number | null;
   notes: string;
   errors: string[];
@@ -86,17 +98,28 @@ export function validateImportRow(
   const description = (raw.descricao ?? "").trim();
   if (!description) errors.push("Descrição obrigatória.");
 
+  // So bloqueia a linha se a categoria estiver vazia/ausente (Etapa 3.1,
+  // item 3). Um nome preenchido que nao bate com nada existente vira "new" -
+  // a categoria e criada (ou mapeada para uma ja existente) na confirmacao,
+  // nunca durante a previa (nada e gravado antes da confirmacao explicita).
   const categoryRaw = (raw.categoria ?? "").trim();
+  const categoryNormalized = normalizeCategoryName(categoryRaw);
   let categoryId: string | null = null;
-  if (type) {
-    const target = normalizeCategoryName(categoryRaw);
-    const match = target
-      ? categories.find((c) => c.type === type && normalizeCategoryName(c.name) === target)
-      : undefined;
-    categoryId = match?.id ?? null;
-    if (!categoryId) errors.push("Categoria não encontrada.");
+  let categoryStatus: CategoryMatchStatus;
+
+  if (!categoryNormalized) {
+    categoryStatus = "missing";
+    errors.push("Categoria obrigatória.");
   } else {
-    errors.push("Categoria não encontrada.");
+    const match = type
+      ? categories.find((c) => c.type === type && c.normalizedName === categoryNormalized)
+      : undefined;
+    if (match) {
+      categoryId = match.id;
+      categoryStatus = "existing";
+    } else {
+      categoryStatus = "new";
+    }
   }
 
   const amount = parseFlexibleAmount(raw.valor ?? "");
@@ -123,6 +146,8 @@ export function validateImportRow(
     description,
     categoryId,
     categoryName: categoryRaw,
+    categoryStatus,
+    categoryNormalized,
     amount,
     notes: (raw.observacao ?? "").trim(),
     errors,

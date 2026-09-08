@@ -1,5 +1,6 @@
 import { parse } from "csv-parse/sync";
 import ExcelJS from "exceljs";
+import { stripDiacritics } from "@/lib/text";
 
 // Limites concretos da secao 26 do prompt da Etapa 3.
 export const MAX_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -16,12 +17,8 @@ export type ParseResult = ParseSuccess | ParseFailure;
 
 // Remove acentos e normaliza espaco/maiuscula para comparar nomes de coluna
 // de forma tolerante (igual a regra de nome de categoria - secao 4).
-const COMBINING_DIACRITICS = new RegExp(`[${String.fromCharCode(0x0300)}-${String.fromCharCode(0x036f)}]`, "g");
-
 function normalizeHeader(header: string): string {
-  return header
-    .normalize("NFD")
-    .replace(COMBINING_DIACRITICS, "")
+  return stripDiacritics(header)
     .trim()
     .toLowerCase();
 }

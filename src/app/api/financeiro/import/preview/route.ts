@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   }
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
-  if (!business || !business.currency) {
+  if (!business) {
     return NextResponse.json({ error: "Empresa não encontrada." }, { status: 404 });
   }
 
