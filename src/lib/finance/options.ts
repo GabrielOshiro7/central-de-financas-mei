@@ -15,11 +15,13 @@ export const ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
 export const SOURCE_LABELS: Record<EntrySource, string> = {
   MANUAL: "Manual",
   IMPORT: "Importado",
+  RECURRING: "Recorrente",
 };
 
 export const SOURCE_OPTIONS: { value: EntrySource; label: string }[] = [
   { value: "MANUAL", label: "Manual" },
   { value: "IMPORT", label: "Importado" },
+  { value: "RECURRING", label: "Recorrente" },
 ];
 
 // Aceita variacoes comuns de como o tipo pode vir escrito em uma planilha

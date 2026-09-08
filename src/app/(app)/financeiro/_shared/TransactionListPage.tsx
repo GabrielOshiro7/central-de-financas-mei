@@ -1,5 +1,6 @@
 import type { EntrySource, FinancialEntryType } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
+import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { listTransactions } from "@/lib/finance/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import {
@@ -45,7 +46,8 @@ export async function TransactionListPage({
   title: string;
   searchParams: SearchParams;
 }) {
-  const { business } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
+  await materializeRecurringEntries(business.id, user.id);
 
   const periodParam = paramString(searchParams, "period");
   const period: PeriodKey =

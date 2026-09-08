@@ -19,6 +19,12 @@ export type UpdateBusinessResult =
 // existe algum lancamento financeiro, a moeda fica travada - trocar depois
 // misturaria valores em moedas diferentes sob o mesmo total, sem conversao
 // cambial (fora de escopo aqui).
+//
+// Etapa 4.1: a trava tambem precisa considerar RecurringEntry ativos, nao so
+// FinancialEntry - um molde recem-criado pode ainda nao ter nenhuma
+// ocorrencia materializada (a materializacao e preguicosa, so acontece na
+// proxima leitura de dados financeiros) e mesmo assim ja representa um
+// compromisso financeiro na moeda atual da empresa.
 export async function updateBusinessProfile(
   userId: string,
   input: BusinessEditInput
@@ -29,12 +35,15 @@ export async function updateBusinessProfile(
   }
 
   if (input.currency !== existing.currency) {
-    const entryCount = await prisma.financialEntry.count({ where: { businessId: existing.id } });
-    if (entryCount > 0) {
+    const [entryCount, activeRecurringCount] = await Promise.all([
+      prisma.financialEntry.count({ where: { businessId: existing.id } }),
+      prisma.recurringEntry.count({ where: { businessId: existing.id, isActive: true } }),
+    ]);
+    if (entryCount > 0 || activeRecurringCount > 0) {
       return {
         ok: false,
         error:
-          "Não é possível trocar a moeda: esta empresa já tem lançamentos financeiros registrados. Para usar outra moeda, seria necessário zerar o histórico financeiro, o que esta etapa não permite fazer automaticamente.",
+          "Não é possível trocar a moeda: esta empresa já tem lançamentos financeiros ou recorrências ativas registradas. Para usar outra moeda, seria necessário zerar o histórico financeiro, o que esta etapa não permite fazer automaticamente.",
       };
     }
   }

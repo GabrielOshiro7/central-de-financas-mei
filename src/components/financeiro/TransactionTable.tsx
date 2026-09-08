@@ -98,7 +98,16 @@ export function TransactionTable({
               <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100">
                 {currency ? formatMoney(row.amount, currency) : row.amount}
               </td>
-              <td className="px-4 py-3 text-gray-500 dark:text-neutral-400">{SOURCE_LABELS[row.source]}</td>
+              <td className="px-4 py-3 text-gray-500 dark:text-neutral-400">
+                {row.source === "RECURRING" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                    <span aria-hidden="true">🔁</span>
+                    {SOURCE_LABELS.RECURRING}
+                  </span>
+                ) : (
+                  SOURCE_LABELS[row.source]
+                )}
+              </td>
               <td className="px-4 py-3">
                 <div className="flex gap-3">
                   <button

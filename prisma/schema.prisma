@@ -63,8 +63,17 @@ enum FinancialEntryType {
 enum EntrySource {
   MANUAL
   IMPORT
+  RECURRING
 
   @@map("entry_source")
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  YEARLY
+
+  @@map("recurrence_frequency")
 }
 
 model Business {
@@ -93,8 +102,9 @@ model Business {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  entries    FinancialEntry[]
-  categories Category[]
+  entries         FinancialEntry[]
+  categories      Category[]
+  recurringEntries RecurringEntry[]
 
   @@map("businesses")
 }
@@ -119,7 +129,8 @@ model Category {
   active         Boolean            @default(true)
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  entries FinancialEntry[]
+  entries         FinancialEntry[]
+  recurringEntries RecurringEntry[]
 
   // So evita duplicata dentro das categorias proprias de uma mesma empresa
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
@@ -147,10 +158,64 @@ model FinancialEntry {
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
+  // Preenchido so em ocorrencias materializadas de um RecurringEntry (Etapa
+  // 4.1) - null pra todo lancamento manual/importado, exatamente como hoje.
+  // onDelete: SetNull -> excluir o molde desvincula as ocorrencias ja
+  // geradas em vez de apaga-las (viram lancamentos avulsos no historico).
+  recurringEntryId String?         @map("recurring_entry_id")
+  recurringEntry   RecurringEntry? @relation(fields: [recurringEntryId], references: [id], onDelete: SetNull)
+
   @@index([businessId, occurredAt])
   @@index([businessId, type])
   @@index([categoryId])
+  // Chave de idempotencia da materializacao (secao "MATERIALIZACAO" da Etapa
+  // 4.1): NULL e tratado como distinto pelo Postgres, entao essa constraint
+  // nunca restringe lancamentos manuais/importados entre si - so impede que
+  // o MESMO molde gere duas linhas para a MESMA data de ocorrencia, mesmo
+  // sob duas materializacoes concorrentes (ver materializeRecurringEntries).
+  @@unique([recurringEntryId, occurredAt])
   @@map("financial_entries")
+}
+
+// Molde de lancamento recorrente (Etapa 4.1). NUNCA um calculo virtual na
+// hora de exibir - so existe pra gerar FinancialEntry reais (materializacao
+// preguicosa, ver src/lib/finance/recurring/materialize.ts), que sao os
+// unicos registros que calculations.ts/queries.ts/dashboardService.ts
+// enxergam. Editar amount/categoria aqui nunca altera ocorrencias ja
+// materializadas - so as futuras.
+model RecurringEntry {
+  id          String             @id @default(uuid())
+  businessId  String             @map("business_id")
+  business    Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type        FinancialEntryType
+  categoryId  String             @map("category_id")
+  category    Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  amount      Decimal            @db.Decimal(14, 2)
+  description String
+
+  frequency RecurrenceFrequency
+
+  // Preenchido conforme frequency; os demais ficam null - validado na
+  // aplicacao (mesmo padrao de isIntegerCurrency em finance/schema.ts), o
+  // Prisma/Postgres nao tem CHECK cross-column simples aqui.
+  dayOfWeek  Int? @map("day_of_week") // WEEKLY: 0=domingo..6=sabado
+  dayOfMonth Int? @map("day_of_month") // MONTHLY e YEARLY: 1-31
+  yearMonth  Int? @map("year_month") // YEARLY: 0=jan..11=dez
+
+  // Sempre meia-noite local (mesmo fuso ja documentado em period.ts) - as
+  // ocorrencias materializadas usam essa mesma convencao de horario, exigido
+  // pra constraint de unicidade acima pegar duplicata de forma confiavel.
+  startDate DateTime  @map("start_date")
+  endDate   DateTime? @map("end_date")
+  isActive  Boolean   @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  entries FinancialEntry[]
+
+  @@index([businessId, isActive])
+  @@map("recurring_entries")
 }
 
 model Session {

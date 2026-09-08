@@ -2,10 +2,11 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import type { Currency, FinancialEntryType } from "@prisma/client";
+import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS } from "@/lib/finance/options";
+import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
 
 export type CategoryOption = { id: string; name: string; type: FinancialEntryType };
 
@@ -61,12 +62,25 @@ export function TransactionFormModal({
   const [pending, setPending] = useState(false);
   const [creatingCategory, setCreatingCategory] = useState(false);
 
+  // Recorrencia (Etapa 4.1) - so faz sentido ao CRIAR um lancamento novo,
+  // nunca ao editar uma ocorrencia ja materializada (isso nao deve afetar o
+  // molde nem virar uma recorrencia nova - ver "CANCELAMENTO / EXCLUSAO" e
+  // "MUDANCA DE VALOR" do prompt da Etapa 4.1).
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<RecurrenceFrequency>("MONTHLY");
+  const [dayOfWeek, setDayOfWeek] = useState(1);
+  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [yearMonth, setYearMonth] = useState(0);
+  const [endDate, setEndDate] = useState("");
+
   const categoriesForType = useMemo(
     () => localCategories.filter((c) => c.type === type),
     [localCategories, type]
   );
 
   if (!open) return null;
+
+  const showPastStartDateWarning = isRecurring && occurredAt < todayInputValue();
 
   function reset() {
     setType(defaultType ?? "REVENUE");
@@ -77,6 +91,12 @@ export function TransactionFormModal({
     setNotes("");
     setNewCategoryName("");
     setError(null);
+    setIsRecurring(false);
+    setFrequency("MONTHLY");
+    setDayOfWeek(1);
+    setDayOfMonth(1);
+    setYearMonth(0);
+    setEndDate("");
   }
 
   function handleClose() {
@@ -122,15 +142,34 @@ export function TransactionFormModal({
 
     setPending(true);
     try {
-      const payload = { type, occurredAt, description, categoryId, amount, notes: notes || undefined };
-      const res = await fetch(
-        isEditing ? `/api/financeiro/transactions/${initial!.id}` : "/api/financeiro/transactions",
-        {
-          method: isEditing ? "PATCH" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const url =
+        isRecurring && !isEditing
+          ? "/api/financeiro/recurring"
+          : isEditing
+            ? `/api/financeiro/transactions/${initial!.id}`
+            : "/api/financeiro/transactions";
+
+      const payload =
+        isRecurring && !isEditing
+          ? {
+              type,
+              categoryId,
+              description,
+              amount,
+              frequency,
+              dayOfWeek: frequency === "WEEKLY" ? dayOfWeek : undefined,
+              dayOfMonth: frequency === "MONTHLY" || frequency === "YEARLY" ? dayOfMonth : undefined,
+              yearMonth: frequency === "YEARLY" ? yearMonth : undefined,
+              startDate: occurredAt,
+              endDate: endDate || undefined,
+            }
+          : { type, occurredAt, description, categoryId, amount, notes: notes || undefined };
+
+      const res = await fetch(url, {
+        method: isEditing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const result = await res.json();
       if (!res.ok) {
         setError(result.error ?? "Não foi possível salvar o lançamento.");
@@ -185,7 +224,7 @@ export function TransactionFormModal({
 
           <FormField
             id="occurredAt"
-            label="Data"
+            label={isRecurring ? "Data de início" : "Data"}
             type="date"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
@@ -248,6 +287,115 @@ export function TransactionFormModal({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
+
+          {!isEditing && (
+            <div className="rounded-lg border border-gray-200 p-3 dark:border-neutral-700">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 dark:border-neutral-600"
+                />
+                Recorrente
+              </label>
+
+              {isRecurring && (
+                <div className="mt-3 flex flex-col gap-3">
+                  <div>
+                    <label htmlFor="frequency" className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">
+                      Frequência
+                    </label>
+                    <select
+                      id="frequency"
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                    >
+                      {FREQUENCY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {frequency === "WEEKLY" && (
+                    <div>
+                      <label htmlFor="dayOfWeek" className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">
+                        Dia da semana
+                      </label>
+                      <select
+                        id="dayOfWeek"
+                        value={dayOfWeek}
+                        onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      >
+                        {WEEKDAY_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {(frequency === "MONTHLY" || frequency === "YEARLY") && (
+                    <div className="flex gap-3">
+                      {frequency === "YEARLY" && (
+                        <div className="flex-1">
+                          <label htmlFor="yearMonth" className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">
+                            Mês
+                          </label>
+                          <select
+                            id="yearMonth"
+                            value={yearMonth}
+                            onChange={(e) => setYearMonth(Number(e.target.value))}
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                          >
+                            {MONTH_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <FormField
+                          id="dayOfMonth"
+                          label="Dia do mês"
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={String(dayOfMonth)}
+                          onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                        />
+                        <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
+                          Em meses/anos sem esse dia, usa o último dia disponível.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <FormField
+                    id="endDate"
+                    label="Data de fim (opcional)"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+
+                  {showPastStartDateWarning && (
+                    <p role="alert" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                      Isso pode gerar lançamentos duplicados se você já tiver registrado esses meses
+                      manualmente. Revise antes de confirmar.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label htmlFor="notes" className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">

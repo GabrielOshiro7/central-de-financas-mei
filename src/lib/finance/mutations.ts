@@ -17,8 +17,10 @@ export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: str
 // Confere que a categoria escolhida existe, esta ativa, e e visivel para essa
 // empresa (padrao do sistema OU propria dela) e bate com o tipo do
 // lancamento. Nunca confiamos apenas na validacao do formulario - um cliente
-// mal-intencionado poderia enviar o categoryId de outra empresa.
-async function assertCategoryMatches(
+// mal-intencionado poderia enviar o categoryId de outra empresa. Exportada
+// (Etapa 4.1) para ser reaproveitada tambem na criacao/edicao de
+// RecurringEntry e a cada materializacao - a mesma regra, nao uma copia.
+export async function assertCategoryMatches(
   businessId: string,
   categoryId: string,
   type: FinancialEntryType

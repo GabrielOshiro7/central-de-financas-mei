@@ -1,4 +1,5 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
+import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import {
   PERIOD_OPTIONS,
@@ -42,7 +43,11 @@ const COMPARISON_DESCRIPTIONS: Record<ComparisonMode, string> = {
 };
 
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
-  const { business } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
+  // Materializacao preguicosa (Etapa 4.1): gera as ocorrencias de
+  // recorrencias ativas ate agora antes de qualquer leitura financeira desta
+  // pagina - nunca via cron/job em background.
+  await materializeRecurringEntries(business.id, user.id);
   const searchParams = await props.searchParams;
 
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;

@@ -1,4 +1,5 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
+import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import {
   getFinancialSummaryForRange,
   getCategoryBreakdown,
@@ -33,7 +34,8 @@ function directionFor(value: { isZero: () => boolean; isPositive: () => boolean 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 
 export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financeiro">) {
-  const { business } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
+  await materializeRecurringEntries(business.id, user.id);
   const searchParams = await props.searchParams;
 
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;
