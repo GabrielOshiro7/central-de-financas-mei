@@ -19,7 +19,8 @@ import { formatMoney } from "@/lib/money";
 import { formatPercent, formatVariation } from "@/lib/finance/format";
 import { generateAlerts, computeFinancialHealth, generateSummaryText } from "@/lib/finance/insights";
 import { MetricCard, type MetricVariation } from "@/components/dashboard/MetricCard";
-import { FinancialChart, toEvolutionPoints } from "@/components/dashboard/FinancialChart";
+import { FinancialChart } from "@/components/dashboard/FinancialChart";
+import { toEvolutionPoints } from "@/components/dashboard/evolutionPoints";
 import { FinanceiroPeriodSelector } from "@/components/financeiro/FinanceiroPeriodSelector";
 import { HealthBadge } from "@/components/financeiro/HealthBadge";
 import { AlertsPanel } from "@/components/financeiro/AlertsPanel";
@@ -149,7 +150,7 @@ export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financ
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-neutral-100">Evolução financeira</h2>
-        <FinancialChart series={series} />
+        <FinancialChart series={series} currency={currency} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -1,37 +1,12 @@
-import { Prisma } from "@prisma/client";
-import type { MonthlyPoint, DailyPoint } from "@/lib/finance/queries";
+"use client";
 
-type Decimal = Prisma.Decimal;
+import { useState } from "react";
+import type { Currency } from "@prisma/client";
+import { formatMoney } from "@/lib/money";
+import { ChartTooltip, computeTooltipAnchor, type TooltipAnchor } from "@/components/dashboard/ChartTooltip";
+import type { EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 
-// Forma generica de ponto de serie temporal, independente de granularidade
-// (mes ou dia). MonthlyPoint (chave year+month) e DailyPoint (chave date) sao
-// convertidos aqui pra essa forma comum - necessario desde que a Etapa 4
-// introduziu periodos por dia (TODAY, LAST_7/30/90_DAYS, CUSTOM) que nao
-// devem ser agrupados por mes inteiro (ver getDailySeriesForRange/
-// getMonthlySeriesForRange em queries.ts e o comentario de alignment em
-// period.ts) - vale tanto pro grafico principal de /dashboard quanto pro de
-// /financeiro, que compartilham este componente.
-export type EvolutionPoint = {
-  key: string;
-  label: string;
-  revenue: Decimal;
-  costs: Decimal;
-  expenses: Decimal;
-  netProfit: Decimal;
-  hasAnyEntries: boolean;
-};
-
-export function toEvolutionPoints(points: (MonthlyPoint | DailyPoint)[]): EvolutionPoint[] {
-  return points.map((p) => ({
-    key: "month" in p ? `${p.year}-${p.month}` : p.date.toISOString(),
-    label: p.label,
-    revenue: p.revenue,
-    costs: p.costs,
-    expenses: p.expenses,
-    netProfit: p.netProfit,
-    hasAnyEntries: p.hasAnyEntries,
-  }));
-}
+export type { EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 
 const SERIES_STYLE = [
   { key: "revenue", label: "Faturamento", className: "bg-emerald-500" },
@@ -40,7 +15,15 @@ const SERIES_STYLE = [
   { key: "netProfit", label: "Lucro", className: "bg-blue-500" },
 ] as const;
 
-export function FinancialChart({ series }: { series: EvolutionPoint[] }) {
+function buildAriaLabel(point: EvolutionPoint, currency: Currency): string {
+  const parts = SERIES_STYLE.map((s) => `${s.label}: ${formatMoney(point[s.key], currency)}`);
+  return `${point.label} — ${parts.join(", ")}`;
+}
+
+export function FinancialChart({ series, currency }: { series: EvolutionPoint[]; currency: Currency }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [anchor, setAnchor] = useState<TooltipAnchor | null>(null);
+
   const hasData = series.some((m) => m.hasAnyEntries);
 
   if (!hasData) {
@@ -51,27 +34,49 @@ export function FinancialChart({ series }: { series: EvolutionPoint[] }) {
     );
   }
 
-  const maxValue = Math.max(
-    1,
-    ...series.flatMap((m) => SERIES_STYLE.map((s) => Math.abs(m[s.key].toNumber())))
-  );
+  const maxValue = Math.max(1, ...series.flatMap((m) => SERIES_STYLE.map((s) => Math.abs(m[s.key]))));
+
+  function show(index: number, el: Element) {
+    setActiveIndex(index);
+    setAnchor(computeTooltipAnchor(el.getBoundingClientRect()));
+  }
+
+  function hide() {
+    setActiveIndex(null);
+    setAnchor(null);
+  }
+
+  const activePoint = activeIndex !== null ? series[activeIndex] : null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-end gap-4 overflow-x-auto pb-2">
-        {series.map((point) => (
+        {series.map((point, i) => (
           <div key={point.key} className="flex flex-col items-center gap-1">
-            <div className="flex h-32 items-end gap-0.5">
+            <div className="relative flex h-32 items-end gap-0.5 px-1.5">
               {SERIES_STYLE.map((s) => (
                 <div
                   key={s.key}
-                  className={`w-2 rounded-t ${s.className}`}
+                  className={`pointer-events-none w-2 rounded-t ${s.className}`}
                   style={{
-                    height: `${Math.max(2, Math.round((Math.abs(point[s.key].toNumber()) / maxValue) * 100))}%`,
+                    height: `${Math.max(2, Math.round((Math.abs(point[s.key]) / maxValue) * 100))}%`,
                   }}
-                  title={`${s.label}: ${point[s.key].toString()}`}
                 />
               ))}
+              {/* Faixa invisivel cobrindo toda a altura do grafico por dia
+                  (nao so a largura fina das barras) - facilita acertar com o
+                  mouse ou o dedo, especialmente em valores pequenos. Um
+                  <button> da foco/toque/clique de graca, alem de hover. */}
+              <button
+                type="button"
+                aria-label={buildAriaLabel(point, currency)}
+                className="absolute -inset-x-1 inset-y-0 z-10 cursor-default touch-manipulation"
+                onMouseEnter={(e) => show(i, e.currentTarget)}
+                onMouseLeave={hide}
+                onFocus={(e) => show(i, e.currentTarget)}
+                onBlur={hide}
+                onClick={(e) => (activeIndex === i ? hide() : show(i, e.currentTarget))}
+              />
             </div>
             <span className="text-xs text-gray-500 dark:text-neutral-400">{point.label}</span>
           </div>
@@ -85,6 +90,27 @@ export function FinancialChart({ series }: { series: EvolutionPoint[] }) {
           </span>
         ))}
       </div>
+
+      <ChartTooltip anchor={anchor}>
+        {activePoint && (
+          <>
+            <div className="font-semibold text-gray-900 dark:text-neutral-100">{activePoint.label}</div>
+            <div className="mt-1 flex flex-col gap-0.5">
+              {SERIES_STYLE.map((s) => (
+                <div key={s.key} className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${s.className}`} aria-hidden="true" />
+                    {s.label}
+                  </span>
+                  <span className="font-medium text-gray-900 dark:text-neutral-100">
+                    {formatMoney(activePoint[s.key], currency)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </ChartTooltip>
     </div>
   );
 }

@@ -35,7 +35,7 @@ import {
   type FinancialAlert,
   type FinancialHealth,
 } from "@/lib/finance/insights";
-import { toEvolutionPoints, type EvolutionPoint } from "@/components/dashboard/FinancialChart";
+import { toEvolutionPoints, type EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 import type { TrendPoint } from "@/components/dashboard/TrendMiniChart";
 
 type Decimal = Prisma.Decimal;

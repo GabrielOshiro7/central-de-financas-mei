@@ -193,7 +193,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
       <div>
         <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-neutral-100">Evolução financeira</h2>
-        <FinancialChart series={data.evolutionSeries} />
+        <FinancialChart series={data.evolutionSeries} currency={currency} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
