@@ -1,0 +1,249 @@
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db";
+import { startOfDay } from "@/lib/finance/period";
+import { type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
+
+const { Decimal } = Prisma;
+
+function addDays(d: Date, days: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + days);
+  return r;
+}
+
+function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
+  return direction === "PAYABLE"
+    ? { category: { type: { in: ["COST", "EXPENSE"] } } }
+    : { category: { type: "REVENUE" } };
+}
+
+// "OVERDUE" nunca e uma condicao persistida - vira status=PENDING + dueDate
+// no passado (mesma nocao de "hoje" de period.ts), espelhando
+// deriveBillStatus (bills/status.ts) do lado da query.
+function displayStatusWhere(displayStatus: BillDisplayStatus, now: Date): Prisma.BillWhereInput {
+  const today = startOfDay(now);
+  switch (displayStatus) {
+    case "PENDING":
+      return { status: "PENDING", dueDate: { gte: today } };
+    case "OVERDUE":
+      return { status: "PENDING", dueDate: { lt: today } };
+    case "PAID":
+      return { status: "PAID" };
+    case "CANCELLED":
+      return { status: "CANCELLED" };
+    default: {
+      const exhaustiveCheck: never = displayStatus;
+      throw new Error(`Status não tratado: ${exhaustiveCheck}`);
+    }
+  }
+}
+
+export type BillFilters = {
+  direction: BillDirection;
+  displayStatus?: BillDisplayStatus;
+  categoryId?: string;
+  search?: string;
+  dueRange?: { start: Date; end: Date };
+  amountMin?: number;
+  amountMax?: number;
+  page?: number;
+  pageSize?: number;
+};
+
+export type BillListItem = Prisma.BillGetPayload<{
+  include: { category: { select: { id: true; name: true; type: true } } };
+}>;
+
+// Nunca aceite um businessId vindo do cliente - sempre resolvido a partir da
+// sessao autenticada no server component/route handler chamador (mesmo
+// padrao de listTransactions em finance/queries.ts).
+export async function listBills(
+  businessId: string,
+  filters: BillFilters,
+  now: Date = new Date()
+): Promise<{ items: BillListItem[]; total: number; page: number; pageSize: number }> {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+
+  const amountFilter =
+    filters.amountMin !== undefined || filters.amountMax !== undefined
+      ? {
+          amount: {
+            ...(filters.amountMin !== undefined ? { gte: filters.amountMin } : {}),
+            ...(filters.amountMax !== undefined ? { lte: filters.amountMax } : {}),
+          },
+        }
+      : {};
+
+  const where: Prisma.BillWhereInput = {
+    businessId,
+    ...directionWhere(filters.direction),
+    ...(filters.displayStatus ? displayStatusWhere(filters.displayStatus, now) : {}),
+    ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
+    ...(filters.dueRange ? { dueDate: { gte: filters.dueRange.start, lt: filters.dueRange.end } } : {}),
+    ...amountFilter,
+    ...(filters.search
+      ? {
+          OR: [
+            { description: { contains: filters.search, mode: "insensitive" } },
+            { counterpartyName: { contains: filters.search, mode: "insensitive" } },
+            { documentNumber: { contains: filters.search, mode: "insensitive" } },
+            { category: { name: { contains: filters.search, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.bill.findMany({
+      where,
+      include: { category: { select: { id: true, name: true, type: true } } },
+      orderBy: { dueDate: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.bill.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize };
+}
+
+export async function getBillById(businessId: string, id: string) {
+  return prisma.bill.findFirst({
+    where: { id, businessId },
+    include: {
+      category: { select: { id: true, name: true, type: true } },
+      financialEntry: { select: { id: true } },
+    },
+  });
+}
+
+export async function hasAnyBillsEver(businessId: string, direction: BillDirection): Promise<boolean> {
+  const first = await prisma.bill.findFirst({
+    where: { businessId, ...directionWhere(direction) },
+    select: { id: true },
+  });
+  return first !== null;
+}
+
+export type BillSummary = {
+  totalOpenAmount: Prisma.Decimal; // PENDING + OVERDUE (obrigacao futura, nao cancelada nem paga)
+  totalOverdueAmount: Prisma.Decimal;
+  totalPendingAmount: Prisma.Decimal; // PENDING e ainda nao vencida
+  totalPaidAmount: Prisma.Decimal; // PAID com paidAt dentro de paidRange
+  dueTodayAmount: Prisma.Decimal;
+  dueTodayCount: number;
+  dueNext7Amount: Prisma.Decimal;
+  dueNext7Count: number;
+  dueNext30Amount: Prisma.Decimal;
+  dueNext30Count: number;
+};
+
+// Indicadores do topo da pagina de Contas (secao "DASHBOARD DO MODULO" da
+// Etapa 5). totalOpen/Overdue/Pending refletem o estado ATUAL (nunca
+// dependem do periodo selecionado - uma conta vencida continua vencida
+// independente do filtro de periodo aplicado na tabela); so totalPaidAmount
+// e recortado por `paidRange`, do mesmo jeito que o resto do financeiro usa
+// PeriodKey para "quanto foi pago/recebido nesse periodo".
+export async function getBillSummary(
+  businessId: string,
+  direction: BillDirection,
+  paidRange: { start: Date; end: Date },
+  now: Date = new Date()
+): Promise<BillSummary> {
+  const today = startOfDay(now);
+  const tomorrow = addDays(today, 1);
+  const next7End = addDays(today, 7);
+  const next30End = addDays(today, 30);
+
+  const [openBills, paidBills] = await Promise.all([
+    prisma.bill.findMany({
+      where: { businessId, status: "PENDING", ...directionWhere(direction) },
+      select: { amount: true, dueDate: true },
+    }),
+    prisma.bill.findMany({
+      where: {
+        businessId,
+        status: "PAID",
+        ...directionWhere(direction),
+        paidAt: { gte: paidRange.start, lt: paidRange.end },
+      },
+      select: { amount: true },
+    }),
+  ]);
+
+  let totalOpenAmount = new Decimal(0);
+  let totalOverdueAmount = new Decimal(0);
+  let totalPendingAmount = new Decimal(0);
+  let dueTodayAmount = new Decimal(0);
+  let dueTodayCount = 0;
+  let dueNext7Amount = new Decimal(0);
+  let dueNext7Count = 0;
+  let dueNext30Amount = new Decimal(0);
+  let dueNext30Count = 0;
+
+  for (const bill of openBills) {
+    totalOpenAmount = totalOpenAmount.plus(bill.amount);
+    const due = startOfDay(bill.dueDate);
+
+    if (due.getTime() < today.getTime()) {
+      totalOverdueAmount = totalOverdueAmount.plus(bill.amount);
+    } else {
+      totalPendingAmount = totalPendingAmount.plus(bill.amount);
+    }
+
+    if (due.getTime() >= today.getTime() && due.getTime() < tomorrow.getTime()) {
+      dueTodayAmount = dueTodayAmount.plus(bill.amount);
+      dueTodayCount += 1;
+    }
+    if (due.getTime() >= today.getTime() && due.getTime() < next7End.getTime()) {
+      dueNext7Amount = dueNext7Amount.plus(bill.amount);
+      dueNext7Count += 1;
+    }
+    if (due.getTime() >= today.getTime() && due.getTime() < next30End.getTime()) {
+      dueNext30Amount = dueNext30Amount.plus(bill.amount);
+      dueNext30Count += 1;
+    }
+  }
+
+  const totalPaidAmount = paidBills.reduce((total, b) => total.plus(b.amount), new Decimal(0));
+
+  return {
+    totalOpenAmount,
+    totalOverdueAmount,
+    totalPendingAmount,
+    totalPaidAmount,
+    dueTodayAmount,
+    dueTodayCount,
+    dueNext7Amount,
+    dueNext7Count,
+    dueNext30Amount,
+    dueNext30Count,
+  };
+}
+
+export type ForecastBalance = {
+  upcomingReceivables: Prisma.Decimal;
+  upcomingPayables: Prisma.Decimal;
+  // Recebimentos futuros - pagamentos futuros. Rotulado explicitamente como
+  // PREVISAO em toda a UI (secao "FLUXO DE CAIXA PREVISTO" da Etapa 5) -
+  // NUNCA exibido como se fosse o saldo bancario real.
+  projectedNet: Prisma.Decimal;
+};
+
+// Reaproveita getBillSummary para as duas direcoes em vez de duplicar a
+// query de soma - paidRange vazio (start===end) porque so o total EM ABERTO
+// interessa aqui, nunca o que ja foi pago/recebido.
+export async function getForecastBalance(businessId: string, now: Date = new Date()): Promise<ForecastBalance> {
+  const emptyRange = { start: now, end: now };
+  const [payable, receivable] = await Promise.all([
+    getBillSummary(businessId, "PAYABLE", emptyRange, now),
+    getBillSummary(businessId, "RECEIVABLE", emptyRange, now),
+  ]);
+
+  return {
+    upcomingReceivables: receivable.totalOpenAmount,
+    upcomingPayables: payable.totalOpenAmount,
+    projectedNet: receivable.totalOpenAmount.minus(payable.totalOpenAmount),
+  };
+}

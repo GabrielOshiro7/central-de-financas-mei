@@ -37,8 +37,15 @@ import {
 } from "@/lib/finance/insights";
 import { toEvolutionPoints, type EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 import type { TrendPoint } from "@/components/dashboard/TrendMiniChart";
+import { getBillSummary, getForecastBalance, type BillSummary, type ForecastBalance } from "@/lib/finance/bills/queries";
 
 type Decimal = Prisma.Decimal;
+
+export type BillDashboardIndicators = {
+  payable: BillSummary;
+  receivable: BillSummary;
+  forecast: ForecastBalance;
+};
 
 export type DashboardFilters = {
   period: PeriodKey;
@@ -74,6 +81,7 @@ export type DashboardData = {
   health: FinancialHealth;
   summaryText: string;
   hasAnyEntriesEver: boolean;
+  bills: BillDashboardIndicators;
 };
 
 function toTrendPoints(points: (MonthlyPoint | DailyPoint)[], key: "revenue" | "netProfit"): TrendPoint[] {
@@ -104,16 +112,34 @@ export async function getDashboardData(
   const fetchSeries = (r: { start: Date; end: Date }) =>
     range.alignment === "day" ? getDailySeriesForRange(businessId, r) : getMonthlySeriesForRange(businessId, r);
 
-  const [summary, series, costBreakdown, expenseBreakdown, hasAnyEntriesEver, previousSummaryRaw, comparisonSeriesRaw] =
-    await Promise.all([
-      getFinancialSummaryForRange(businessId, range),
-      fetchSeries(range),
-      getCategoryBreakdown(businessId, range, "COST"),
-      getCategoryBreakdown(businessId, range, "EXPENSE"),
-      hasAnyFinancialEntriesEver(businessId),
-      comparisonRange ? getFinancialSummaryForRange(businessId, comparisonRange) : Promise.resolve(null),
-      comparisonRange ? fetchSeries(comparisonRange) : Promise.resolve(null),
-    ]);
+  const [
+    summary,
+    series,
+    costBreakdown,
+    expenseBreakdown,
+    hasAnyEntriesEver,
+    previousSummaryRaw,
+    comparisonSeriesRaw,
+    payableSummary,
+    receivableSummary,
+    forecast,
+  ] = await Promise.all([
+    getFinancialSummaryForRange(businessId, range),
+    fetchSeries(range),
+    getCategoryBreakdown(businessId, range, "COST"),
+    getCategoryBreakdown(businessId, range, "EXPENSE"),
+    hasAnyFinancialEntriesEver(businessId),
+    comparisonRange ? getFinancialSummaryForRange(businessId, comparisonRange) : Promise.resolve(null),
+    comparisonRange ? fetchSeries(comparisonRange) : Promise.resolve(null),
+    // Indicadores de Contas a Pagar/Receber (Etapa 5) integrados ao
+    // dashboard existente - reaproveita getBillSummary/getForecastBalance
+    // (bills/queries.ts), nenhum calculo novo aqui. `range` so importa pro
+    // "total pago/recebido no periodo"; vencido/hoje/proximos dias refletem
+    // sempre o estado atual, independente do periodo selecionado.
+    getBillSummary(businessId, "PAYABLE", range, now),
+    getBillSummary(businessId, "RECEIVABLE", range, now),
+    getForecastBalance(businessId, now),
+  ]);
 
   // So comparamos contra o periodo de comparacao se ele de fato teve dado -
   // "sem dados suficientes" vira null (N/A) em vez de comparar contra zero.
@@ -173,5 +199,6 @@ export async function getDashboardData(
     health,
     summaryText,
     hasAnyEntriesEver,
+    bills: { payable: payableSummary, receivable: receivableSummary, forecast },
   };
 }

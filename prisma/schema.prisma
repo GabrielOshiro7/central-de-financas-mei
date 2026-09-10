@@ -64,6 +64,7 @@ enum EntrySource {
   MANUAL
   IMPORT
   RECURRING
+  BILL
 
   @@map("entry_source")
 }
@@ -74,6 +75,28 @@ enum RecurrenceFrequency {
   YEARLY
 
   @@map("recurrence_frequency")
+}
+
+enum BillStatus {
+  PENDING
+  PAID
+  CANCELLED
+
+  @@map("bill_status")
+}
+
+// "Atrasado" nao entra aqui de proposito - nunca e persistido, sempre
+// derivado em runtime (status PENDING + dueDate no passado). Ver
+// deriveBillStatus em src/lib/finance/bills/status.ts.
+enum RecurringBillFrequency {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  YEARLY
+
+  @@map("recurring_bill_frequency")
 }
 
 model Business {
@@ -105,6 +128,8 @@ model Business {
   entries         FinancialEntry[]
   categories      Category[]
   recurringEntries RecurringEntry[]
+  bills           Bill[]
+  recurringBills  RecurringBill[]
 
   @@map("businesses")
 }
@@ -131,6 +156,8 @@ model Category {
 
   entries         FinancialEntry[]
   recurringEntries RecurringEntry[]
+  bills           Bill[]
+  recurringBills  RecurringBill[]
 
   // So evita duplicata dentro das categorias proprias de uma mesma empresa
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
@@ -164,6 +191,17 @@ model FinancialEntry {
   // geradas em vez de apaga-las (viram lancamentos avulsos no historico).
   recurringEntryId String?         @map("recurring_entry_id")
   recurringEntry   RecurringEntry? @relation(fields: [recurringEntryId], references: [id], onDelete: SetNull)
+
+  // Preenchido quando este lancamento nasceu da confirmacao de pagamento/
+  // recebimento de uma Bill (Etapa 5) - null para todo lancamento manual/
+  // importado/RECURRING. @unique (nao composto, diferente de
+  // recurringEntryId): uma Bill representa UM compromisso, entao so pode
+  // gerar NO MAXIMO um lancamento financeiro - a propria constraint garante
+  // a idempotencia de "marcar como pago" mesmo sob duplo clique ou
+  // requisicoes concorrentes. onDelete: SetNull -> reverter o pagamento
+  // desvincula o lancamento (vira avulso no historico) em vez de apaga-lo.
+  billId String? @unique @map("bill_id")
+  bill   Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
 
   @@index([businessId, occurredAt])
   @@index([businessId, type])
@@ -216,6 +254,114 @@ model RecurringEntry {
 
   @@index([businessId, isActive])
   @@map("recurring_entries")
+}
+
+// Conta a pagar/receber (Etapa 5). Um unico modelo para as duas direcoes - a
+// direcao (pagar vs receber) e derivada de category.type (COST/EXPENSE =
+// pagar, REVENUE = receber), o mesmo discriminador que FinancialEntry/
+// RecurringEntry ja usam, em vez de duas tabelas paralelas (ver ADENDO da
+// Etapa 5).
+//
+// "Atrasado" NUNCA e persistido - e sempre derivado em runtime a partir de
+// status===PENDING && dueDate no passado (ver deriveBillStatus em
+// src/lib/finance/bills/status.ts), usando a mesma nocao de "hoje" (fuso
+// local do processo Node) ja estabelecida em period.ts.
+model Bill {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  description String
+  amount      Decimal    @db.Decimal(14, 2)
+  issueDate   DateTime?  @map("issue_date")
+  dueDate     DateTime   @map("due_date")
+  // Data REAL do pagamento/recebimento - nunca a data de vencimento. Uma
+  // conta paga com atraso conta no mes em que foi paga (occurredAt do
+  // FinancialEntry gerado usa esta data, nao dueDate).
+  paidAt      DateTime?  @map("paid_at")
+  status      BillStatus @default(PENDING)
+
+  documentNumber String? @map("document_number")
+  // Fornecedor (contas a pagar) ou cliente (contas a receber) - texto livre
+  // (decisao do adendo da Etapa 5): nao ha cadastro de Cliente/Fornecedor no
+  // sistema hoje, e criar essas entidades e escopo maior que o pedido nesta
+  // etapa.
+  counterpartyName String? @map("counterparty_name")
+  paymentMethod    String? @map("payment_method")
+  bankAccount      String? @map("bank_account")
+  costCenter       String? @map("cost_center")
+  notes            String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  financialEntry FinancialEntry?
+
+  // Preenchido so em ocorrencias geradas por uma RecurringBill (mesmo padrao
+  // de FinancialEntry.recurringEntryId). onDelete: SetNull -> excluir o
+  // molde desvincula as ocorrencias ja geradas em vez de apaga-las.
+  recurringBillId String?        @map("recurring_bill_id")
+  recurringBill   RecurringBill? @relation(fields: [recurringBillId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, status])
+  @@index([businessId, dueDate])
+  @@index([categoryId])
+  // Chave de idempotencia da materializacao de recorrencia - mesmo padrao de
+  // FinancialEntry @@unique([recurringEntryId, occurredAt]).
+  @@unique([recurringBillId, dueDate])
+  @@map("bills")
+}
+
+// Molde de conta recorrente (Etapa 5) - aluguel, internet, mensalidade etc.
+// Deliberadamente uma entidade separada de RecurringEntry (ver ADENDO da
+// Etapa 5): RecurringEntry materializa um FinancialEntry automaticamente ao
+// chegar a data (debito automatico certo, sem confirmacao); RecurringBill
+// materializa uma Bill PENDENTE, que so vira FinancialEntry quando o usuario
+// confirma o pagamento/recebimento. O calculo de datas (frequencia/dia) e
+// resolvido reaproveitando as mesmas funcoes puras de
+// src/lib/finance/recurring/occurrences.ts (ver
+// src/lib/finance/bills/occurrences.ts) - nunca duplica a logica de clamp de
+// dia 29/30/31 nem a regra de primeira ocorrencia; BIWEEKLY/QUARTERLY/
+// SEMIANNUAL sao resolvidas como multiplos de WEEKLY/MONTHLY sobre essas
+// mesmas funcoes, nao como um calculo de calendario novo.
+model RecurringBill {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  description String
+  amount      Decimal @db.Decimal(14, 2)
+
+  frequency RecurringBillFrequency
+
+  dayOfWeek  Int? @map("day_of_week")
+  dayOfMonth Int? @map("day_of_month")
+  yearMonth  Int? @map("year_month")
+
+  startDate DateTime  @map("start_date")
+  endDate   DateTime? @map("end_date")
+  isActive  Boolean   @default(true) @map("is_active")
+
+  // Copiados para cada Bill gerada na materializacao (mesmo texto livre em
+  // todas as ocorrencias do molde) - ver src/lib/finance/bills/materialize.ts.
+  documentNumber   String? @map("document_number")
+  counterpartyName String? @map("counterparty_name")
+  paymentMethod    String? @map("payment_method")
+  bankAccount      String? @map("bank_account")
+  costCenter       String? @map("cost_center")
+  notes            String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  bills Bill[]
+
+  @@index([businessId, isActive])
+  @@map("recurring_bills")
 }
 
 model Session {

@@ -62,7 +62,12 @@ function startOfMonth(year: number, month: number): Date {
   return new Date(year, month, 1, 0, 0, 0, 0);
 }
 
-function startOfDay(d: Date): Date {
+// Exportado (Etapa 5) para o modulo de Contas a Pagar/Receber derivar
+// "atrasado" (status PENDING + dueDate < hoje) com a MESMA nocao de "hoje"
+// usada em todo o resto do financeiro/dashboard - nunca uma segunda
+// convencao de data independente (ver deriveBillStatus em
+// src/lib/finance/bills/status.ts).
+export function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
 

@@ -16,12 +16,16 @@ export const SOURCE_LABELS: Record<EntrySource, string> = {
   MANUAL: "Manual",
   IMPORT: "Importado",
   RECURRING: "Recorrente",
+  // Lancamento gerado pela confirmacao de pagamento/recebimento de uma Bill
+  // (Etapa 5) - ver settleBill em bills/mutations.ts.
+  BILL: "Conta paga/recebida",
 };
 
 export const SOURCE_OPTIONS: { value: EntrySource; label: string }[] = [
   { value: "MANUAL", label: "Manual" },
   { value: "IMPORT", label: "Importado" },
   { value: "RECURRING", label: "Recorrente" },
+  { value: "BILL", label: "Conta paga/recebida" },
 ];
 
 // Aceita variacoes comuns de como o tipo pode vir escrito em uma planilha

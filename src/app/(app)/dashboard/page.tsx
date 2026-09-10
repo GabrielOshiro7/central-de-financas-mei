@@ -1,5 +1,6 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
+import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import {
   PERIOD_OPTIONS,
@@ -27,6 +28,7 @@ import { HealthBadge } from "@/components/financeiro/HealthBadge";
 import { AlertsPanel } from "@/components/financeiro/AlertsPanel";
 import { IndicatorsPanel, type IndicatorItem } from "@/components/financeiro/IndicatorsPanel";
 import { CategoryBreakdownChart } from "@/components/financeiro/CategoryBreakdownChart";
+import { BillsForecastPanel } from "@/components/dashboard/BillsForecastPanel";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_COMPARISONS = new Set<string>(COMPARISON_OPTIONS.map((o) => o.value));
@@ -48,6 +50,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   // recorrencias ativas ate agora antes de qualquer leitura financeira desta
   // pagina - nunca via cron/job em background.
   await materializeRecurringEntries(business.id, user.id);
+  await materializeRecurringBills(business.id);
   const searchParams = await props.searchParams;
 
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;
@@ -225,6 +228,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       </div>
 
       <AlertsPanel alerts={data.alerts} />
+
+      <BillsForecastPanel bills={data.bills} currency={currency} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CategoryBreakdownChart title="Distribuição de custos" entries={data.costBreakdown} currency={currency} />
