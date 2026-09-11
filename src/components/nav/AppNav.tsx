@@ -5,12 +5,16 @@ import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
 
 // "Minha empresa" saiu do menu principal na Etapa 5.1 - o conteudo mudou
-// para dentro de Configuracoes (secao "Empresa"). Ordem fixada pelo prompt
-// da Etapa 5.1 (nao e decisao livre): Dashboard, Financeiro, Caixa,
-// Assistente, Configuracoes.
+// para dentro de Configuracoes (secao "Empresa"). Ordem base fixada pelo
+// prompt da Etapa 5.1 (nao e decisao livre): Dashboard, Financeiro, Caixa,
+// Assistente, Configuracoes. Clientes/Vendas (Etapa 6) foram inseridos logo
+// apos Financeiro - sao a camada comercial que alimenta o financeiro, mesma
+// vizinhanca conceitual.
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
   { href: "/financeiro", label: "Financeiro", icon: "💰" },
+  { href: "/clientes", label: "Clientes", icon: "👥" },
+  { href: "/vendas", label: "Vendas", icon: "🛒" },
   { href: "/caixa", label: "Caixa", icon: "🏦" },
   { href: "/assistente", label: "Assistente", icon: "🤖" },
   { href: "/configuracoes", label: "Configurações", icon: "⚙️" },

@@ -29,6 +29,7 @@ import { AlertsPanel } from "@/components/financeiro/AlertsPanel";
 import { IndicatorsPanel, type IndicatorItem } from "@/components/financeiro/IndicatorsPanel";
 import { CategoryBreakdownChart } from "@/components/financeiro/CategoryBreakdownChart";
 import { BillsForecastPanel } from "@/components/dashboard/BillsForecastPanel";
+import { CommercialPanel } from "@/components/dashboard/CommercialPanel";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_COMPARISONS = new Set<string>(COMPARISON_OPTIONS.map((o) => o.value));
@@ -230,6 +231,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       <AlertsPanel alerts={data.alerts} />
 
       <BillsForecastPanel bills={data.bills} currency={currency} />
+
+      <CommercialPanel commercial={data.commercial} currency={currency} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CategoryBreakdownChart title="Distribuição de custos" entries={data.costBreakdown} currency={currency} />

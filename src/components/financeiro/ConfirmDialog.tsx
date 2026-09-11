@@ -5,6 +5,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Confirmar",
+  pendingLabel = "Excluindo...",
   pending,
   onConfirm,
   onCancel,
@@ -13,6 +14,10 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel?: string;
+  // Default preservado para nao alterar o texto ja exibido pelos dialogs
+  // existentes (revert/cancel de Bill) - so sobrescrito por chamadores cuja
+  // acao nao e uma exclusao (ex.: inativar cliente, cancelar venda).
+  pendingLabel?: string;
   pending: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -47,7 +52,7 @@ export function ConfirmDialog({
             disabled={pending}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? "Excluindo..." : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </button>
         </div>
       </div>

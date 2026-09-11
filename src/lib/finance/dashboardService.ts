@@ -38,6 +38,7 @@ import {
 import { toEvolutionPoints, type EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 import type { TrendPoint } from "@/components/dashboard/TrendMiniChart";
 import { getBillSummary, getForecastBalance, type BillSummary, type ForecastBalance } from "@/lib/finance/bills/queries";
+import { getSalesSummary, getTopClients, type SalesSummary, type TopClientEntry } from "@/lib/sales/queries";
 
 type Decimal = Prisma.Decimal;
 
@@ -46,6 +47,19 @@ export type BillDashboardIndicators = {
   receivable: BillSummary;
   forecast: ForecastBalance;
 };
+
+// Etapa 6: secao comercial do dashboard, adicionada de forma aditiva (mesmo
+// padrao de `bills` na Etapa 5) - nada do calculo financeiro existente muda
+// de forma. `sales.averageTicket` (calculado em getSalesSummary a partir de
+// Sale.total) e DELIBERADAMENTE um campo separado do `averageTicket`
+// existente acima (baseado em FinancialEntry.revenue / null): misturar os
+// dois seria comparar populacoes diferentes - nem toda receita do financeiro
+// vem de uma Sale (lancamento manual, importacao), entao "faturamento total
+// / numero de vendas cadastradas" seria um ticket medio artificialmente
+// distorcido. O ticket medio COMERCIAL (so vendas) fica aqui; o ticket medio
+// GERAL do negocio continua "N/D" ate existir uma nocao de "transacao" no
+// financeiro como um todo.
+export type CommercialDashboardIndicators = SalesSummary & { topClients: TopClientEntry[] };
 
 export type DashboardFilters = {
   period: PeriodKey;
@@ -82,6 +96,7 @@ export type DashboardData = {
   summaryText: string;
   hasAnyEntriesEver: boolean;
   bills: BillDashboardIndicators;
+  commercial: CommercialDashboardIndicators;
 };
 
 function toTrendPoints(points: (MonthlyPoint | DailyPoint)[], key: "revenue" | "netProfit"): TrendPoint[] {
@@ -123,6 +138,8 @@ export async function getDashboardData(
     payableSummary,
     receivableSummary,
     forecast,
+    salesSummary,
+    topClients,
   ] = await Promise.all([
     getFinancialSummaryForRange(businessId, range),
     fetchSeries(range),
@@ -139,6 +156,10 @@ export async function getDashboardData(
     getBillSummary(businessId, "PAYABLE", range, now),
     getBillSummary(businessId, "RECEIVABLE", range, now),
     getForecastBalance(businessId, now),
+    // Secao comercial (Etapa 6) - reaproveita getSalesSummary/getTopClients
+    // (sales/queries.ts) tal como estao, nenhum calculo novo aqui.
+    getSalesSummary(businessId, range, now),
+    getTopClients(businessId, range, 5),
   ]);
 
   // So comparamos contra o periodo de comparacao se ele de fato teve dado -
@@ -200,5 +221,6 @@ export async function getDashboardData(
     summaryText,
     hasAnyEntriesEver,
     bills: { payable: payableSummary, receivable: receivableSummary, forecast },
+    commercial: { ...salesSummary, topClients },
   };
 }

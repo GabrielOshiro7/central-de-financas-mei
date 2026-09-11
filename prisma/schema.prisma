@@ -18,6 +18,7 @@ model User {
   resetTokens      PasswordResetToken[]
   business         Business?
   financialEntries FinancialEntry[]
+  sales            Sale[]
 
   @@map("users")
 }
@@ -85,6 +86,39 @@ enum BillStatus {
   @@map("bill_status")
 }
 
+// Pessoa fisica vs juridica - nunca assume que o cliente tem CPF/CNPJ
+// (Etapa 6): o campo `document` em Client fica livre/opcional para cobrir
+// clientes japoneses e de outros paises sem numero de documento equivalente.
+enum ClientType {
+  PESSOA_FISICA
+  PESSOA_JURIDICA
+
+  @@map("client_type")
+}
+
+// Estado COMERCIAL da venda - nunca confundir com status de pagamento
+// (Etapa 6, ADENDO): pagamento e sempre DERIVADO dos Bills relacionados
+// (ver deriveSalePaymentStatus em src/lib/sales/status.ts), nunca persistido
+// aqui. DRAFT nao gera nenhum Bill/FinancialEntry - so CONFIRMED (via
+// createSale direto ou confirmSale a partir de um DRAFT) materializa as
+// parcelas. COMPLETED e um marcador comercial manual (ex.: entrega
+// concluida) sem nenhum efeito financeiro.
+enum SaleStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+
+  @@map("sale_status")
+}
+
+enum SaleDiscountType {
+  FIXED
+  PERCENTAGE
+
+  @@map("sale_discount_type")
+}
+
 // "Atrasado" nao entra aqui de proposito - nunca e persistido, sempre
 // derivado em runtime (status PENDING + dueDate no passado). Ver
 // deriveBillStatus em src/lib/finance/bills/status.ts.
@@ -134,6 +168,16 @@ model Business {
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
   onboardingStep      Int     @default(1) @map("onboarding_step")
 
+  // Contador para numeracao sequencial de vendas (Etapa 6, "Venda #1025").
+  // Alocado via UPDATE ... SET last_sale_number = last_sale_number + 1
+  // RETURNING (Prisma `increment`) dentro da mesma transacao de createSale -
+  // atomico por construcao (serializa no lock da linha), nunca um SELECT
+  // MAX()+1 seguido de INSERT (que sob concorrencia real colidiria com a
+  // constraint unica e abortaria a transacao inteira no Postgres sem
+  // possibilidade de retry dentro da mesma transacao). Ver
+  // src/lib/sales/mutations.ts.
+  lastSaleNumber Int @default(0) @map("last_sale_number")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -142,6 +186,9 @@ model Business {
   recurringEntries RecurringEntry[]
   bills           Bill[]
   recurringBills  RecurringBill[]
+  clients         Client[]
+  products        Product[]
+  sales           Sale[]
 
   @@map("businesses")
 }
@@ -170,6 +217,7 @@ model Category {
   recurringEntries RecurringEntry[]
   bills           Bill[]
   recurringBills  RecurringBill[]
+  sales           Sale[]
 
   // So evita duplicata dentro das categorias proprias de uma mesma empresa
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
@@ -317,9 +365,19 @@ model Bill {
   recurringBillId String?        @map("recurring_bill_id")
   recurringBill   RecurringBill? @relation(fields: [recurringBillId], references: [id], onDelete: SetNull)
 
+  // Preenchido quando esta Bill representa UMA PARCELA de uma Sale (Etapa 6)
+  // - a venda a vista tambem passa por aqui (uma unica Bill, ja PAID). NAO
+  // e @unique: uma Sale a prazo gera varias Bills (uma por parcela), ao
+  // contrario de FinancialEntry.billId (uma Bill so pode gerar UM
+  // lancamento). onDelete: SetNull -> excluir a venda desvincula as parcelas
+  // ja geradas em vez de apaga-las (mesmo padrao de recurringBillId).
+  saleId String? @map("sale_id")
+  sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
+
   @@index([businessId, status])
   @@index([businessId, dueDate])
   @@index([categoryId])
+  @@index([saleId])
   // Chave de idempotencia da materializacao de recorrencia - mesmo padrao de
   // FinancialEntry @@unique([recurringEntryId, occurredAt]).
   @@unique([recurringBillId, dueDate])
@@ -374,6 +432,155 @@ model RecurringBill {
 
   @@index([businessId, isActive])
   @@map("recurring_bills")
+}
+
+// Cliente (Etapa 6). Deliberadamente generico o suficiente para clientes
+// brasileiros, japoneses e de outros paises: `document` e texto livre sem
+// validacao de formato (nunca exige CPF/CNPJ), `phone`/`whatsapp` sao texto
+// livre (sem mascara de pais fixa). Nunca excluido - "active" (default true)
+// e a unica forma de remover um cliente da lista de selecao em novas vendas
+// sem apagar o historico (mesmo padrao de Category.active).
+model Client {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name       String
+  tradeName  String?    @map("trade_name")
+  clientType ClientType @default(PESSOA_FISICA) @map("client_type")
+  document   String?
+  phone      String?
+  whatsapp   String?
+  email      String?
+  addressLine String?   @map("address_line")
+  city       String?
+  state      String?
+  country    String?
+  notes      String?
+  active     Boolean    @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sales Sale[]
+
+  @@index([businessId, active])
+  @@index([businessId, name])
+  @@map("clients")
+}
+
+// Catalogo minimo de produtos/servicos (Etapa 6) - sem estoque/inventario,
+// so o necessario para reaproveitar nome/preco padrao ao lancar itens de
+// venda e para o ranking de "Top produtos". `defaultPrice` e so um valor
+// sugerido no formulario - SaleItem sempre copia description/unitPrice no
+// momento da venda (nunca le o Product de volta depois), mesmo principio de
+// RecurringBill -> Bill.
+model Product {
+  id           String   @id @default(uuid())
+  businessId   String   @map("business_id")
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  name         String
+  description  String?
+  defaultPrice Decimal? @map("default_price") @db.Decimal(14, 2)
+  active       Boolean  @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  saleItems SaleItem[]
+
+  @@index([businessId, active])
+  @@map("products")
+}
+
+// Venda (Etapa 6). status e SEMPRE o estado comercial (rascunho/confirmada/
+// cancelada/concluida) - o status de pagamento nunca e armazenado aqui,
+// sempre derivado dos Bills relacionados em tempo de leitura (ver
+// deriveSalePaymentStatus em src/lib/sales/status.ts), pelo mesmo motivo que
+// BillDisplayStatus.OVERDUE nunca e persistido. `categoryId` deve sempre
+// apontar para uma Category type=REVENUE (validado em createSale/updateSale
+// via assertCategoryMatches, reaproveitado de finance/mutations.ts) - todo
+// Bill gerado por esta venda copia esse mesmo categoryId, nunca um derivado.
+model Sale {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String   @map("client_id")
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Numeracao amigavel sequencial por empresa ("Venda #1025") - alocada via
+  // incremento atomico de Business.lastSaleNumber dentro da mesma transacao
+  // de criacao (ver src/lib/sales/mutations.ts). @@unique abaixo e so uma
+  // invariante passiva: a alocacao atomica ja impede colisao por construcao.
+  saleNumber Int        @map("sale_number")
+  saleDate   DateTime   @map("sale_date")
+  status     SaleStatus @default(CONFIRMED)
+
+  subtotal       Decimal           @db.Decimal(14, 2)
+  discountType   SaleDiscountType? @map("discount_type")
+  discountValue  Decimal?          @map("discount_value") @db.Decimal(14, 2)
+  // Sempre recalculado pelo backend a partir de discountType/discountValue -
+  // nunca confia no valor computado pelo frontend.
+  discountAmount Decimal           @default(0) @map("discount_amount") @db.Decimal(14, 2)
+  total          Decimal           @db.Decimal(14, 2)
+
+  paymentMethod String? @map("payment_method")
+  notes         String?
+
+  // Idempotencia de criacao (Etapa 6, ADENDO item 4): gerado uma vez no
+  // frontend ao abrir o formulario. Duplo clique/retry de rede reencontra a
+  // venda ja criada (ver createSale) em vez de duplicar - mesmo principio de
+  // duas camadas (check-then-create + constraint como rede de seguranca) que
+  // settleBill ja usa para idempotencia de pagamento.
+  clientRequestId String @map("client_request_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items SaleItem[]
+  bills Bill[]
+
+  @@unique([businessId, clientRequestId])
+  @@unique([businessId, saleNumber])
+  @@index([businessId, saleDate])
+  @@index([businessId, status])
+  @@index([clientId])
+  @@map("sales")
+}
+
+// Item de uma venda (Etapa 6). `description`/`unitPrice` sao SEMPRE copiados
+// no momento da venda (a partir do Product escolhido ou digitados livremente)
+// - nunca lidos de volta do Product depois, entao renomear/repreçar um
+// Product nao altera vendas passadas (mesmo principio de RecurringBill ->
+// Bill). `lineTotal` e sempre recalculado pelo backend (quantity * unitPrice),
+// nunca confia no valor computado pelo frontend.
+model SaleItem {
+  id        String   @id @default(uuid())
+  saleId    String   @map("sale_id")
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String?  @map("product_id")
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  description String
+  // Decimal (nao Int) porque a quantidade pode ser fracionaria (kg, horas
+  // etc.). Para moeda sem casas decimais (JPY), a validacao em
+  // src/lib/sales/schema.ts exige quantity inteira tambem, para que
+  // quantity * unitPrice nunca produza um valor fracionario de iene mesmo
+  // com unitPrice inteiro.
+  quantity  Decimal  @db.Decimal(14, 2)
+  unitPrice Decimal  @map("unit_price") @db.Decimal(14, 2)
+  lineTotal Decimal  @map("line_total") @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
 }
 
 model Session {
