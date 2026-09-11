@@ -39,6 +39,8 @@ import { toEvolutionPoints, type EvolutionPoint } from "@/components/dashboard/e
 import type { TrendPoint } from "@/components/dashboard/TrendMiniChart";
 import { getBillSummary, getForecastBalance, type BillSummary, type ForecastBalance } from "@/lib/finance/bills/queries";
 import { getSalesSummary, getTopClients, type SalesSummary, type TopClientEntry } from "@/lib/sales/queries";
+import { getInsightsForBusiness } from "@/lib/insights/queries";
+import type { InsightCardData } from "@/components/insights/InsightCard";
 
 type Decimal = Prisma.Decimal;
 
@@ -97,6 +99,7 @@ export type DashboardData = {
   hasAnyEntriesEver: boolean;
   bills: BillDashboardIndicators;
   commercial: CommercialDashboardIndicators;
+  insights: InsightCardData[];
 };
 
 function toTrendPoints(points: (MonthlyPoint | DailyPoint)[], key: "revenue" | "netProfit"): TrendPoint[] {
@@ -140,6 +143,7 @@ export async function getDashboardData(
     forecast,
     salesSummary,
     topClients,
+    insights,
   ] = await Promise.all([
     getFinancialSummaryForRange(businessId, range),
     fetchSeries(range),
@@ -160,6 +164,12 @@ export async function getDashboardData(
     // (sales/queries.ts) tal como estao, nenhum calculo novo aqui.
     getSalesSummary(businessId, range, now),
     getTopClients(businessId, range, 5),
+    // Insights (Etapa 7) - le o MESMO getInsightsForBusiness usado pela
+    // pagina /insights, nunca chama IA (withAI so acontece atras do botao
+    // manual de regenerar) - o dashboard nunca bloqueia por causa disso.
+    // Independente de `range`/`comparison` (sempre reflete o mes corrente,
+    // como o resto do modulo de insights).
+    getInsightsForBusiness(businessId, now),
   ]);
 
   // So comparamos contra o periodo de comparacao se ele de fato teve dado -
@@ -222,5 +232,6 @@ export async function getDashboardData(
     hasAnyEntriesEver,
     bills: { payable: payableSummary, receivable: receivableSummary, forecast },
     commercial: { ...salesSummary, topClients },
+    insights,
   };
 }

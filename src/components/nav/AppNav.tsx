@@ -9,12 +9,15 @@ import { LogoutButton } from "@/components/LogoutButton";
 // prompt da Etapa 5.1 (nao e decisao livre): Dashboard, Financeiro, Caixa,
 // Assistente, Configuracoes. Clientes/Vendas (Etapa 6) foram inseridos logo
 // apos Financeiro - sao a camada comercial que alimenta o financeiro, mesma
-// vizinhanca conceitual.
+// vizinhanca conceitual. Insights (Etapa 7) foi inserido logo apos Vendas -
+// e uma camada de leitura sobre o financeiro/comercial, faz sentido ficar
+// junto dessa vizinhanca antes de Caixa.
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
   { href: "/financeiro", label: "Financeiro", icon: "💰" },
   { href: "/clientes", label: "Clientes", icon: "👥" },
   { href: "/vendas", label: "Vendas", icon: "🛒" },
+  { href: "/insights", label: "Insights", icon: "💡" },
   { href: "/caixa", label: "Caixa", icon: "🏦" },
   { href: "/assistente", label: "Assistente", icon: "🤖" },
   { href: "/configuracoes", label: "Configurações", icon: "⚙️" },

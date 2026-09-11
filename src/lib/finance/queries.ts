@@ -150,6 +150,20 @@ export async function hasAnyFinancialEntriesEver(businessId: string): Promise<bo
   return first !== null;
 }
 
+// Usado pela Etapa 7 (Insights) para decidir "inicio frio" de forma
+// deliberadamente DESACOPLADA de qualquer recorte de periodo: uma empresa
+// cujo faturamento se concentra no fim do mes teria, no inicio de um mes
+// novo, um recorte "dia 1 ate hoje" do mes anterior vazio por coincidencia
+// de timing - isso NAO e a mesma coisa que "nunca teve nenhum lancamento
+// antes". Ver src/lib/insights/snapshot.ts.
+export async function hasFinancialEntriesBefore(businessId: string, date: Date): Promise<boolean> {
+  const first = await prisma.financialEntry.findFirst({
+    where: { businessId, occurredAt: { lt: date } },
+    select: { id: true },
+  });
+  return first !== null;
+}
+
 // Distribuicao por categoria de um unico tipo (custo ou despesa) no periodo -
 // alimenta os graficos 2/3 e o alerta de categoria concentrada (secao 20).
 export async function getCategoryBreakdown(

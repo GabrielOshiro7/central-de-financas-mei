@@ -119,6 +119,54 @@ enum SaleDiscountType {
   @@map("sale_discount_type")
 }
 
+// Categorias de Insight (Etapa 7) - agrupam os cards na UI, nunca calculam
+// nada por si so (ver InsightMetric abaixo pro conjunto fechado de metricas).
+enum InsightCategory {
+  PERFORMANCE
+  PROFITABILITY
+  CASH_FLOW
+  CLIENTS
+  SALES
+  RECEIVABLES
+
+  @@map("insight_category")
+}
+
+enum InsightPriority {
+  INFO
+  ATTENTION
+  CRITICAL
+
+  @@map("insight_priority")
+}
+
+// Conjunto FECHADO de metricas (Etapa 7) - src/lib/insights/rules.ts e um
+// switch exaustivo sobre este enum (mesmo estilo de deriveBillStatus): uma
+// metrica nova sem o case correspondente falha tsc, nunca fica inerte em
+// silencio.
+enum InsightMetric {
+  REVENUE_GROWTH
+  MARGIN_CHANGE
+  EXPENSE_GROWTH
+  TICKET_AVERAGE_CHANGE
+  RECEIVABLES_OVERDUE_CHANGE
+  CLIENT_CONCENTRATION
+  CLIENT_INACTIVITY
+
+  @@map("insight_metric")
+}
+
+// PERCENT: variacao relativa (ex.: receita cresceu 12%). POINTS: diferenca
+// direta entre dois percentuais (ex.: margem caiu 4 pontos) - nunca usado
+// para valores em moeda. Ver marginPointsDelta/calculateVariationPercent em
+// src/lib/finance/calculations.ts, reaproveitados sem duplicacao.
+enum VariationKind {
+  PERCENT
+  POINTS
+
+  @@map("variation_kind")
+}
+
 // "Atrasado" nao entra aqui de proposito - nunca e persistido, sempre
 // derivado em runtime (status PENDING + dueDate no passado). Ver
 // deriveBillStatus em src/lib/finance/bills/status.ts.
@@ -189,6 +237,7 @@ model Business {
   clients         Client[]
   products        Product[]
   sales           Sale[]
+  insights        Insight[]
 
   @@map("businesses")
 }
@@ -581,6 +630,70 @@ model SaleItem {
   @@index([saleId])
   @@index([productId])
   @@map("sale_items")
+}
+
+// Insight (Etapa 7) - uma linha por (empresa, periodo, metrica), upsert
+// idempotente via @@unique abaixo. Nunca guarda FK para Sale/Bill/
+// FinancialEntry: referencia numeros ja agregados (currentValue/
+// previousValue), nao linhas individuais - o modelo fica estavel mesmo que o
+// schema financeiro subjacente evolua. currentValue/previousValue sao
+// nullable porque nem toda metrica e um valor monetario simples (ex.:
+// CLIENT_INACTIVITY guarda a lista de clientes na propria description/
+// recommendation, ja formatada, em vez de um unico numero).
+model Insight {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  // "yyyy-mm" - granularidade mensal apenas na v1 (secao "Decisoes" da Etapa
+  // 7). Comparacoes trimestrais/anuais ficam para uma etapa futura.
+  periodKey String          @map("period_key")
+  category  InsightCategory
+  metric    InsightMetric
+  priority  InsightPriority
+
+  // Sempre texto completo e pronto para renderizar (title/description/
+  // recommendation), deterministico (rules.ts) ou validado pela IA
+  // (narrative.ts) - nunca montado no lado do cliente a partir de partes.
+  title          String
+  description    String
+  recommendation String?
+
+  periodStart           DateTime  @map("period_start")
+  periodEnd             DateTime  @map("period_end")
+  // Nulos quando hasPreviousPeriod for false (inicio frio) - nenhuma metrica
+  // comparativa e gerada nesse caso.
+  comparisonPeriodStart DateTime? @map("comparison_period_start")
+  comparisonPeriodEnd   DateTime? @map("comparison_period_end")
+
+  currentValue      Decimal?       @map("current_value") @db.Decimal(14, 2)
+  previousValue     Decimal?       @map("previous_value") @db.Decimal(14, 2)
+  variationAbsolute Decimal?       @map("variation_absolute") @db.Decimal(14, 2)
+  variationPercent  Decimal?       @map("variation_percent") @db.Decimal(7, 4)
+  variationKind     VariationKind? @map("variation_kind")
+
+  // Qual modulo forneceu os numeros subjacentes ("financeiro" | "vendas" |
+  // "contas_a_receber") - auditoria/depuracao, nunca lido por rules.ts.
+  source String
+  // "template" (rules.ts, sempre correto) ou "ai" (narrative.ts, so depois
+  // de passar na checagem de whitelist numerica) - qual caminho de fato
+  // produziu description/recommendation.
+  narrativeSource String @map("narrative_source")
+  // Fingerprint barato (count + max(updatedAt) de FinancialEntry no
+  // periodo) usado por getInsightsForBusiness para decidir se este cache
+  // esta desatualizado - ver src/lib/insights/mutations.ts.
+  dataFingerprint String @map("data_fingerprint")
+
+  generatedAt DateTime @default(now()) @map("generated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Upsert idempotente: regenerar um periodo nunca acumula linhas, sempre
+  // substitui a existente para aquela metrica.
+  @@unique([businessId, periodKey, metric])
+  @@index([businessId, periodKey])
+  @@index([businessId, priority])
+  @@map("insights")
 }
 
 model Session {

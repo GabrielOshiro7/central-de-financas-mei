@@ -222,6 +222,37 @@ export async function getBillSummary(
   };
 }
 
+// "Vencido referente ao mes X" (Etapa 7 - Insights) = bills PENDING cujo
+// dueDate cai dentro de dueRange E que continuam vencidas HOJE (dueDate <
+// hoje). Isto NAO e "o saldo vencido como estava no fim daquele mes" -
+// Bill.status e um campo vivo, sem historico versionado, entao esse numero
+// nao e reconstruivel; o que da para responder com precisao e "quanto do que
+// venceu naquele periodo ainda nao foi resolvido, visto de hoje". Por isso
+// este numero DIVERGE do totalOverdueAmount de getBillSummary (que reflete
+// todo vencido agora, independente do mes de vencimento) - nunca confundir
+// os dois na UI (ver InsightCard/evaluateReceivablesOverdue).
+export async function getOverdueAmountForDueRange(
+  businessId: string,
+  direction: BillDirection,
+  dueRange: { start: Date; end: Date },
+  now: Date = new Date()
+): Promise<Prisma.Decimal> {
+  const today = startOfDay(now);
+  const bills = await prisma.bill.findMany({
+    where: {
+      businessId,
+      status: "PENDING",
+      ...directionWhere(direction),
+      dueDate: { gte: dueRange.start, lt: dueRange.end },
+    },
+    select: { amount: true, dueDate: true },
+  });
+
+  return bills
+    .filter((b) => startOfDay(b.dueDate).getTime() < today.getTime())
+    .reduce((total, b) => total.plus(b.amount), new Decimal(0));
+}
+
 export type ForecastBalance = {
   upcomingReceivables: Prisma.Decimal;
   upcomingPayables: Prisma.Decimal;
