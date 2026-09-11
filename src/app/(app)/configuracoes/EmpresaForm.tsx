@@ -85,7 +85,12 @@ export function EmpresaForm({
     >
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Editar dados</h2>
 
-      <FormField id="name" label="Nome da empresa" value={name} onChange={(e) => setName(e.target.value)} />
+      {/* id="businessName" (nao "name") - Etapa 5.1: esta secao agora convive
+          na mesma pagina com ProfileForm, que ja usa id="name" pro nome do
+          usuario. Dois inputs com o mesmo id quebra a associacao label[for],
+          entao o id precisa ser unico na pagina mesmo com o texto do label
+          continuando "Nome da empresa". */}
+      <FormField id="businessName" label="Nome da empresa" value={name} onChange={(e) => setName(e.target.value)} />
 
       <div>
         <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">

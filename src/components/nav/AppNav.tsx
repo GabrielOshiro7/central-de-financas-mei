@@ -4,10 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
 
+// "Minha empresa" saiu do menu principal na Etapa 5.1 - o conteudo mudou
+// para dentro de Configuracoes (secao "Empresa"). Ordem fixada pelo prompt
+// da Etapa 5.1 (nao e decisao livre): Dashboard, Financeiro, Caixa,
+// Assistente, Configuracoes.
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  { href: "/empresa", label: "Minha empresa", icon: "🏢" },
   { href: "/financeiro", label: "Financeiro", icon: "💰" },
+  { href: "/caixa", label: "Caixa", icon: "🏦" },
   { href: "/assistente", label: "Assistente", icon: "🤖" },
   { href: "/configuracoes", label: "Configurações", icon: "⚙️" },
 ];

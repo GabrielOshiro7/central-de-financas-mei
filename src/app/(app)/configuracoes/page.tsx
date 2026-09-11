@@ -1,9 +1,10 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { ProfileForm } from "./ProfileForm";
 import { ChangePasswordForm } from "./ChangePasswordForm";
+import { EmpresaSection } from "./EmpresaSection";
 
 export default async function ConfiguracoesPage() {
-  const { user } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
 
   return (
     <div className="flex flex-col gap-8">
@@ -13,6 +14,9 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <ProfileForm user={user} />
+
+      <EmpresaSection business={business} />
+
       <ChangePasswordForm />
     </div>
   );

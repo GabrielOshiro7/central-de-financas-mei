@@ -71,7 +71,9 @@ export const step6Schema = z
 
 export const TOTAL_STEPS = 6;
 
-// Edicao a partir da pagina "Minha empresa". Nesta etapa nao permitimos
+// Edicao a partir da secao "Empresa" em Configuracoes (Etapa 5.1 moveu essa
+// edicao pra la - antes era a pagina de nivel principal "Minha empresa").
+// Nesta etapa nao permitimos
 // trocar o tipo de negocio nem o modelo de receita por ali (mudar o tipo
 // invalidaria as opcoes de receita ja escolhidas) - só os dados de perfil.
 export const businessEditSchema = z

@@ -133,13 +133,16 @@ test.describe("onboarding", () => {
   });
 
   // Cenario 5: usuario altera dados da empresa -> refletido no banco.
-  test("editar dados da empresa em Minha empresa reflete a mudanca", async ({ page }) => {
+  // Etapa 5.1: "Minha empresa" saiu do menu principal - o formulario agora
+  // mora na secao "Empresa" dentro de Configuracoes.
+  test("editar dados da empresa em Configurações reflete a mudanca", async ({ page }) => {
     const email = uniqueEmail();
     await register(page, "Usuario Edicao", email);
     await completeOnboarding(page, { name: "Nome Original Ltda" });
 
-    await page.getByRole("link", { name: "Minha empresa" }).click();
-    await expect(page).toHaveURL(/\/empresa/);
+    await page.getByRole("link", { name: "Configurações" }).click();
+    await expect(page).toHaveURL(/\/configuracoes/);
+    await expect(page.getByRole("heading", { name: "Empresa" })).toBeVisible();
 
     const nameInput = page.getByLabel("Nome da empresa");
     await expect(nameInput).toHaveValue("Nome Original Ltda");
@@ -189,7 +192,10 @@ test.describe("onboarding", () => {
     await expect(pageA.getByRole("main").getByText("Empresa A Isolada")).toBeVisible();
     await expect(pageA.getByText("Empresa Hackeada")).toHaveCount(0);
 
+    // A rota antiga /empresa continua funcionando como redirect (Etapa 5.1) -
+    // aproveitado aqui pra tambem confirmar isso, alem do isolamento.
     await pageB.goto("/empresa");
+    await expect(pageB).toHaveURL(/\/configuracoes/);
     await expect(pageB.getByLabel("Nome da empresa")).toHaveValue("Empresa Hackeada");
 
     await contextA.close();
@@ -206,8 +212,36 @@ test.describe("onboarding", () => {
       revenue: "500000",
     });
 
-    await page.getByRole("link", { name: "Minha empresa" }).click();
+    await page.getByRole("link", { name: "Configurações" }).click();
     await expect(page.getByText(/¥500,000\b/)).toBeVisible();
     await expect(page.getByText(/¥500,000\.00/)).toHaveCount(0);
+  });
+
+  // Etapa 5.1: rota antiga de "Minha empresa" removida do menu, mas mantida
+  // como redirect para nao quebrar favoritos/historico de navegacao.
+  test("rota antiga /empresa redireciona para Configurações", async ({ page }) => {
+    const email = uniqueEmail();
+    await register(page, "Usuario Redirect", email);
+    await completeOnboarding(page, { name: "Empresa Redirect" });
+
+    await expect(page.getByRole("link", { name: "Minha empresa" })).toHaveCount(0);
+
+    await page.goto("/empresa");
+    await expect(page).toHaveURL(/\/configuracoes/);
+    await expect(page.getByRole("heading", { name: "Empresa" })).toBeVisible();
+    await expect(page.getByLabel("Nome da empresa")).toHaveValue("Empresa Redirect");
+  });
+
+  // Etapa 5.1: novo item de menu "Caixa", entre Financeiro e Assistente.
+  test("item 'Caixa' aparece no menu principal e navega corretamente", async ({ page }) => {
+    const email = uniqueEmail();
+    await register(page, "Usuario Caixa", email);
+    await completeOnboarding(page, { name: "Empresa Caixa Nav" });
+
+    await expect(page.getByRole("link", { name: "Caixa", exact: true })).toBeVisible();
+
+    await page.getByRole("link", { name: "Caixa", exact: true }).click();
+    await expect(page).toHaveURL(/\/caixa/);
+    await expect(page.getByRole("heading", { name: "Caixa", exact: true })).toBeVisible();
   });
 });

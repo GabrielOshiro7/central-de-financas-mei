@@ -111,13 +111,25 @@ model Business {
   yearsInBusiness       YearsInBusiness? @map("years_in_business")
   employeeCount         Int?             @map("employee_count")
   // Nunca inferida por locale/navegador/header - sempre escolha explicita do
-  // usuario no onboarding (ou editada em /empresa). Default BRL so serve
+  // usuario no onboarding (ou editada na secao "Empresa" de Configuracoes,
+  // Etapa 5.1 - antes era a pagina /empresa). Default BRL so serve
   // para linhas que ja existiam antes desse campo virar obrigatorio (ver
   // migration) e para negocios que ainda nao terminaram o onboarding.
   // Trocar depois de a empresa ja ter lancamentos e bloqueado na API (secao
   // "Bug 1" da Etapa 3.1) - nesta etapa nao ha conversao/cambio retroativo.
   currency              Currency         @default(BRL)
   averageMonthlyRevenue Decimal?         @map("average_monthly_revenue") @db.Decimal(14, 2)
+
+  // Caixa (Etapa 5.1): posicao de caixa = openingBalance + soma do netProfit
+  // de todos os FinancialEntry com occurredAt ESTRITAMENTE POSTERIOR a
+  // openingBalanceDate (ver calculateAccumulatedBalance em
+  // src/lib/finance/cash/calculations.ts). Editado no mesmo formulario/lugar
+  // de currency (secao "Empresa" de Configuracoes), nao no onboarding.
+  // openingBalanceDate nulo = "nao configurado" - a UI usa a data do
+  // primeiro FinancialEntry como base implicita (saldo inicial = 0 nessa
+  // data) e sinaliza isso com um banner, nunca finge que foi configurado.
+  openingBalance     Decimal   @default(0) @map("opening_balance") @db.Decimal(14, 2)
+  openingBalanceDate DateTime? @map("opening_balance_date")
 
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
   onboardingStep      Int     @default(1) @map("onboarding_step")
