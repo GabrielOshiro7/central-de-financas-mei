@@ -71,11 +71,20 @@ test.describe("financeiro - lançamentos manuais", () => {
     await dialog.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Venda balcão E2E editada")).toBeVisible();
 
-    // Excluir com confirmacao.
+    // Excluir com confirmacao. Excluir lancamento e uma acao sensivel (Etapa
+    // sessao-expiracao-reauth) - a sessao recem-logada ainda nao esta
+    // elevada, entao o servidor recusa e a UI abre o modal de reauth antes
+    // de completar a exclusao.
     await page.getByRole("button", { name: "Excluir" }).click();
     const confirmDialog = page.getByRole("alertdialog");
     await expect(confirmDialog.getByText("Tem certeza que deseja excluir este lançamento?")).toBeVisible();
     await confirmDialog.getByRole("button", { name: "Excluir" }).click();
+
+    const reauthDialog = page.getByRole("alertdialog", { name: "Confirme sua senha" });
+    await expect(reauthDialog).toBeVisible();
+    await reauthDialog.getByLabel("Senha").fill(PASSWORD);
+    await reauthDialog.getByRole("button", { name: "Confirmar" }).click();
+
     await expect(page.getByText("Venda balcão E2E editada")).toHaveCount(0);
     await expect(page.getByText("Nenhum lançamento encontrado")).toBeVisible();
   });

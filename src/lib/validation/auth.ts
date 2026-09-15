@@ -17,6 +17,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const loginSchema = z.object({
   email: z.string().trim().min(1, "Digite seu e-mail.").email("Digite um e-mail valido."),
   password: z.string().min(1, "Digite sua senha."),
+  rememberMe: z.boolean().optional().default(false),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -56,6 +57,12 @@ export const changePasswordSchema = z
   });
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const reauthSchema = z.object({
+  password: z.string().min(1, "Digite sua senha."),
+});
+
+export type ReauthInput = z.infer<typeof reauthSchema>;
 
 export const profileSchema = z.object({
   name: z.string().trim().min(1, "Digite seu nome."),

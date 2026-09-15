@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth/cookies";
+import { getCurrentUser, getCurrentUserWithSession } from "@/lib/auth/cookies";
+import { requireElevatedSession } from "@/lib/auth/guards";
 import { transactionSchema } from "@/lib/finance/schema";
 import { updateTransaction, deleteTransaction } from "@/lib/finance/mutations";
 
@@ -42,12 +43,21 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
 }
 
 export async function DELETE(_request: Request, context: RouteContext<"/api/financeiro/transactions/[id]">) {
-  const user = await getCurrentUser();
-  if (!user) {
+  const current = await getCurrentUserWithSession();
+  if (!current) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
-  const business = await prisma.business.findUnique({ where: { userId: user.id } });
+  // Excluir um lancamento financeiro e irreversivel e apaga historico ja
+  // refletido nos calculos do sistema - exige reautenticacao recente
+  // (step-up), verificada aqui no servidor e nao so no frontend (Etapa
+  // sessao-expiracao-reauth, secao 2.4).
+  const reauthError = requireElevatedSession(current);
+  if (reauthError) {
+    return NextResponse.json({ error: reauthError }, { status: 403 });
+  }
+
+  const business = await prisma.business.findUnique({ where: { userId: current.user.id } });
   if (!business) {
     return NextResponse.json({ error: "Empresa não encontrada." }, { status: 404 });
   }

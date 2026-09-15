@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const email = normalizeEmail(parsed.data.email);
-  const { password } = parsed.data;
+  const { password, rememberMe } = parsed.data;
 
   const ip = getClientIp(request);
   const { allowed } = rateLimit(`login:${ip}:${email}`, RATE_LIMIT.max, RATE_LIMIT.windowMs);
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: GENERIC_ERROR }, { status: 401 });
   }
 
-  await createUserSession(user.id);
+  await createUserSession(user.id, rememberMe);
 
   return NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },

@@ -45,7 +45,10 @@ export async function POST(request: Request) {
     select: { id: true, name: true, email: true },
   });
 
-  await createUserSession(user.id);
+  // Sem opcao de "lembrar de mim" no cadastro - comeca com o teto absoluto
+  // padrao (mais curto); o usuario pode marcar "lembrar de mim" num login
+  // futuro se quiser sessao mais longa.
+  await createUserSession(user.id, false);
 
   return NextResponse.json({ user }, { status: 201 });
 }

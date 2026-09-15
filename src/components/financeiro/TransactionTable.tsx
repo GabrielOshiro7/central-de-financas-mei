@@ -7,6 +7,7 @@ import { ENTRY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/finance/options";
 import { formatMoney } from "@/lib/money";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { TransactionFormModal, type CategoryOption } from "@/components/financeiro/TransactionFormModal";
+import { ReauthModal } from "@/components/ReauthModal";
 
 export type TransactionRow = {
   id: string;
@@ -41,20 +42,52 @@ export function TransactionTable({
   const [deleting, setDeleting] = useState<TransactionRow | null>(null);
   const [deletePending, setDeletePending] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Fica true quando o servidor recusa a exclusao por falta de sessao
+  // elevada (403 REAUTH_REQUIRED) - abre o modal de reauth em vez de so
+  // mostrar um erro; ao confirmar a senha, a exclusao e refeita sozinha.
+  const [needsReauth, setNeedsReauth] = useState(false);
+
+  async function runDelete(id: string) {
+    const res = await fetch(`/api/financeiro/transactions/${id}`, { method: "DELETE" });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (res.status === 403 && result.error === "REAUTH_REQUIRED") {
+        setNeedsReauth(true);
+        return false;
+      }
+      setDeleteError(result.error ?? "Não foi possível excluir o lançamento.");
+      return false;
+    }
+    return true;
+  }
 
   async function handleConfirmDelete() {
     if (!deleting) return;
     setDeletePending(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/financeiro/transactions/${deleting.id}`, { method: "DELETE" });
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDeleteError(result.error ?? "Não foi possível excluir o lançamento.");
-        return;
+      const ok = await runDelete(deleting.id);
+      if (ok) {
+        setDeleting(null);
+        router.refresh();
       }
-      setDeleting(null);
-      router.refresh();
+    } catch {
+      setDeleteError("Erro de conexão. Tente novamente.");
+    } finally {
+      setDeletePending(false);
+    }
+  }
+
+  async function handleReauthConfirmed() {
+    setNeedsReauth(false);
+    if (!deleting) return;
+    setDeletePending(true);
+    try {
+      const ok = await runDelete(deleting.id);
+      if (ok) {
+        setDeleting(null);
+        router.refresh();
+      }
     } catch {
       setDeleteError("Erro de conexão. Tente novamente.");
     } finally {
@@ -153,13 +186,19 @@ export function TransactionTable({
       )}
 
       <ConfirmDialog
-        open={Boolean(deleting)}
+        open={Boolean(deleting) && !needsReauth}
         title="Excluir lançamento"
         message="Tem certeza que deseja excluir este lançamento?"
         confirmLabel="Excluir"
         pending={deletePending}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+      <ReauthModal
+        open={needsReauth}
+        actionLabel="excluir este lançamento"
+        onConfirmed={handleReauthConfirmed}
+        onCancel={() => setNeedsReauth(false)}
       />
       {deleteError && (
         <p role="alert" className="px-4 py-2 text-sm text-red-600 dark:text-red-400">

@@ -7,10 +7,11 @@ import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { loginSchema } from "@/lib/validation/auth";
 
-export function LoginForm() {
+export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -18,7 +19,7 @@ export function LoginForm() {
     event.preventDefault();
     setError(null);
 
-    const parsed = loginSchema.safeParse({ email, password });
+    const parsed = loginSchema.safeParse({ email, password, rememberMe });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Dados inválidos.");
       return;
@@ -49,6 +50,14 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      {sessionMessage && (
+        <p
+          role="status"
+          className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-neutral-800/60 dark:text-neutral-300"
+        >
+          {sessionMessage}
+        </p>
+      )}
       <FormField
         id="email"
         label="E-mail"
@@ -65,6 +74,16 @@ export function LoginForm() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+
+      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-neutral-300">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="h-4 w-4 rounded border-gray-300 dark:border-neutral-700"
+        />
+        Lembrar de mim
+      </label>
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

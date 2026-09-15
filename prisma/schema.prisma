@@ -699,8 +699,26 @@ model Insight {
 model Session {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
+  // Teto absoluto da sessao - calculado UMA VEZ na criacao
+  // (ABSOLUTE_SESSION_DAYS_DEFAULT ou _REMEMBERED, conforme "lembrar de
+  // mim" no login) e nunca estendido depois. Antes da Etapa
+  // sessao-expiracao-reauth este campo era renovado a cada uso (renovacao
+  // deslizante) - removido porque uma sessao em uso continuo nunca
+  // expirava de verdade, o que contradiz a garantia de teto absoluto.
   expiresAt DateTime @map("expires_at")
   createdAt DateTime @default(now()) @map("created_at")
+
+  // Expiracao por inatividade: atualizado a cada requisicao autenticada
+  // validada, mas no maximo 1x a cada ACTIVITY_UPDATE_THROTTLE_MINUTES
+  // (ver sessionPolicy.ts) para nao gravar no banco a toda chamada de API.
+  // Se (agora - lastActivityAt) > INACTIVITY_TIMEOUT_MINUTES, a sessao e
+  // tratada como expirada mesmo com expiresAt ainda no futuro.
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+
+  // Reautenticacao para acoes sensiveis (step-up/"sudo mode"): setado ao
+  // confirmar a senha em POST /api/auth/reauth, valido por
+  // STEP_UP_GRACE_MINUTES. Nulo ou no passado = sessao nao elevada.
+  elevatedUntil DateTime? @map("elevated_until")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
