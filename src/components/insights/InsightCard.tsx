@@ -12,9 +12,11 @@ export type InsightCardData = {
   recommendation: string | null;
 };
 
+// Musgo/Âmbar/Terracota: paleta de status do app. INFO fica fora do trio -
+// é informativo, não um alerta de atenção/crítico, então mantém o azul.
 const PRIORITY_BADGE_STYLE: Record<InsightPriority, string> = {
-  CRITICAL: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-  ATTENTION: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  CRITICAL: "bg-[#FBE4DE] text-[#a8402a] dark:bg-[#33201B] dark:text-[#F0917C]",
+  ATTENTION: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
   INFO: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
 };
 

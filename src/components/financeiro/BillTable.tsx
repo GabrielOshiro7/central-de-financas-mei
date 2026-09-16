@@ -28,10 +28,13 @@ export type BillRow = {
   notes: string;
 };
 
+// Musgo/Âmbar/Terracota: paleta de status do app (positivo/atenção/crítico).
+// Cancelado fica fora do trio - é um estado neutro/administrativo, não um
+// alerta, então mantém o cinza igual ao resto do app.
 const STATUS_BADGE_STYLE: Record<BillDisplayStatus, string> = {
-  PENDING: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  OVERDUE: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-  PAID: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  PENDING: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
+  OVERDUE: "bg-[#FBE4DE] text-[#a8402a] dark:bg-[#33201B] dark:text-[#F0917C]",
+  PAID: "bg-[#E3EEE6] text-[#3f6b4a] dark:bg-[#1C2E21] dark:text-[#8FD4A0]",
   CANCELLED: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 

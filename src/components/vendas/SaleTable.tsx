@@ -15,18 +15,21 @@ export type SaleRow = {
   paymentStatus: SalePaymentStatus;
 };
 
+// Musgo/Âmbar/Terracota: paleta de status do app (positivo/atenção/crítico).
+// Draft/Cancelado/Não paga ficam fora do trio - são estados neutros/
+// administrativos, não alertas, então mantêm o cinza igual ao resto do app.
 export const SALE_STATUS_BADGE_STYLE: Record<SaleStatus, string> = {
   DRAFT: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
-  CONFIRMED: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  CANCELLED: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-  COMPLETED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  CONFIRMED: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
+  CANCELLED: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
+  COMPLETED: "bg-[#E3EEE6] text-[#3f6b4a] dark:bg-[#1C2E21] dark:text-[#8FD4A0]",
 };
 
 export const PAYMENT_STATUS_BADGE_STYLE: Record<SalePaymentStatus, string> = {
   NAO_PAGA: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
-  PARCIAL: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  PAGA: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  ATRASADA: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
+  PARCIAL: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
+  PAGA: "bg-[#E3EEE6] text-[#3f6b4a] dark:bg-[#1C2E21] dark:text-[#8FD4A0]",
+  ATRASADA: "bg-[#FBE4DE] text-[#a8402a] dark:bg-[#33201B] dark:text-[#F0917C]",
 };
 
 // Este componente e um Server Component comum (sem "use client") - so
