@@ -15,7 +15,7 @@ const baseClasses =
 const variantClasses: Record<LandingButtonVariant, string> = {
   primary: "bg-landing-primary text-white shadow-sm hover:opacity-90 hover:shadow-md",
   outline:
-    "border border-landing-border bg-white text-landing-foreground hover:bg-landing-background hover:border-landing-foreground/20",
+    "border border-landing-border bg-landing-card text-landing-foreground hover:bg-landing-background hover:border-landing-foreground/20",
 };
 
 const sizeClasses: Record<LandingButtonSize, string> = {

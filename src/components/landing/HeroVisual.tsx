@@ -20,11 +20,14 @@ function ArrowUpIcon() {
 export function HeroVisual() {
   return (
     <div className="relative mx-auto aspect-4/3 w-full max-w-[480px]" aria-hidden="true">
-      <div className="absolute inset-4 rounded-[2rem] bg-landing-foreground/5" />
+      {/* backdrop e sombras usam preto fixo, não --color-landing-foreground:
+          esse token vira quase-branco no dark mode e o 5% de opacidade
+          passaria de "sombra sutil" pra "glow" claro em volta do card */}
+      <div className="absolute inset-4 rounded-[2rem] bg-black/5 dark:bg-black/20" />
 
       <div
         data-anim="hero-card"
-        className="absolute inset-x-6 inset-y-10 flex flex-col justify-between rounded-2xl border border-landing-border bg-landing-card p-6 shadow-xl shadow-landing-foreground/5"
+        className="absolute inset-x-6 inset-y-10 flex flex-col justify-between rounded-2xl border border-landing-border bg-landing-card p-6 shadow-xl shadow-black/5 dark:shadow-none"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-landing-muted">Receita mensal</span>
@@ -73,7 +76,7 @@ export function HeroVisual() {
 
       <div
         data-anim="hero-badge"
-        className="absolute -right-2 top-2 flex items-center gap-2 rounded-xl border border-landing-border bg-landing-card px-4 py-3 shadow-lg shadow-landing-foreground/5"
+        className="absolute -right-2 top-2 flex items-center gap-2 rounded-xl border border-landing-border bg-landing-card px-4 py-3 shadow-lg shadow-black/5 dark:shadow-none"
       >
         <span
           data-anim="hero-badge-icon"
@@ -89,7 +92,7 @@ export function HeroVisual() {
 
       <div
         data-anim="hero-mini"
-        className="absolute -left-6 -bottom-4 flex flex-col gap-2 rounded-xl border border-landing-border bg-landing-card px-4 py-3 shadow-lg shadow-landing-foreground/5"
+        className="absolute -left-6 -bottom-4 flex flex-col gap-2 rounded-xl border border-landing-border bg-landing-card px-4 py-3 shadow-lg shadow-black/5 dark:shadow-none"
       >
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-2">

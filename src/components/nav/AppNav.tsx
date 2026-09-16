@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // "Minha empresa" saiu do menu principal na Etapa 5.1 - o conteudo mudou
 // para dentro de Configuracoes (secao "Empresa"). Ordem base fixada pelo
@@ -51,7 +52,10 @@ export function AppNav({ businessName }: { businessName: string }) {
             })}
           </nav>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="text-gray-600 dark:text-neutral-400" />
+          <LogoutButton />
+        </div>
       </div>
     </header>
   );

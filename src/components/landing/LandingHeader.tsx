@@ -1,3 +1,4 @@
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { LandingButton } from "./LandingButton";
 import { LandingLogo } from "./LandingLogo";
 
@@ -10,6 +11,7 @@ export function LandingHeader() {
       <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
         <LandingLogo />
         <nav className="flex shrink-0 items-center gap-2 sm:gap-3" aria-label="Autenticação">
+          <ThemeToggle className="text-landing-foreground" />
           <LandingButton href="/login" variant="outline" size="sm">
             Entrar
           </LandingButton>

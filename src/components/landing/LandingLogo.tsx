@@ -8,7 +8,9 @@ import Link from "next/link";
 export function LandingLogo() {
   return (
     <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-2.5" aria-label="Página inicial">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-landing-foreground text-sm font-bold text-white sm:h-9 sm:w-9 sm:text-base">
+      {/* bg fixo (não usa --color-landing-foreground): esse token vira
+          quase-branco no dark mode, o que apagaria o "N" branco em cima */}
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#111827] text-sm font-bold text-white sm:h-9 sm:w-9 sm:text-base">
         N
       </span>
       <span className="truncate text-sm font-semibold whitespace-nowrap text-landing-foreground sm:text-base">

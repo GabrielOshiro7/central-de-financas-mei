@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/*
+ * Tema manual (light/dark) via next-themes, atributo `data-theme` na
+ * <html>. Isso substitui a resolução padrão do Tailwind (que usaria
+ * prefers-color-scheme) por uma baseada em atributo - assim toda classe
+ * `dark:` já existente no app (e as novas abaixo) passam a responder ao
+ * toggle manual em vez de só à preferência do SO.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,17 +21,29 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme="dark"] {
+  --background: #0b1120;
+  --foreground: #f1f5f9;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/*
+ * Transição suave ao trocar de tema (~0.2s) nas propriedades de cor -
+ * nunca `all`, pra não brigar com as transições próprias de hover/foco
+ * que os componentes já declaram (ex.: LandingButton's transition-all).
+ */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /*
@@ -42,4 +63,46 @@ body {
   --color-landing-success: #22c55e;
   --color-landing-error: #ef4444;
   --color-landing-border: #e2e8f0;
+}
+
+/*
+ * Variantes dark dos tokens "landing-*" acima. O laranja de marca
+ * (--color-landing-primary) e o verde de sucesso NÃO mudam - já passam em
+ * contraste AA (>=4.5:1) contra o novo fundo escuro, testado antes de
+ * decidir manter. O vermelho de erro precisou clarear (base #ef4444 fica
+ * em ~3.9:1, abaixo do mínimo); os demais são a mesma lógica "chumbo
+ * escuro, não preto puro" usada no fundo/cards do app autenticado
+ * (ver overrides de --color-neutral-* mais abaixo), pra manter as duas
+ * partes do produto visualmente consistentes no dark mode.
+ */
+[data-theme="dark"] {
+  --color-landing-background: #0b1120;
+  --color-landing-foreground: #f1f5f9;
+  --color-landing-secondary: #64748b;
+  --color-landing-muted: #94a3b8;
+  --color-landing-card: #1f2937;
+  --color-landing-error: #f87171;
+  --color-landing-border: #2a3441;
+}
+
+/*
+ * Reaproveita a escala neutral do Tailwind (já usada em ~90 arquivos via
+ * dark:bg-neutral-900 etc, só nunca antes ativada por um toggle manual)
+ * redirecionando cada tom pra a paleta "chumbo escuro" da marca, em vez
+ * de trocar cada classe individualmente. --color-neutral-* é registrado
+ * pelo próprio Tailwind em :root; redefinir aqui, dentro do seletor mais
+ * específico, é o suficiente pra sobrescrever via cascata normal de CSS -
+ * nenhum componente do app precisou ser tocado por causa disso.
+ */
+[data-theme="dark"] {
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #7c8ba1;
+  --color-neutral-600: #64748b;
+  --color-neutral-700: #475569;
+  --color-neutral-800: #2a3441;
+  --color-neutral-900: #1f2937;
+  --color-neutral-950: #0b1120;
 }
