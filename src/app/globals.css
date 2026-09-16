@@ -24,3 +24,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/*
+ * Tokens "landing-*": paleta "CFO IA — Orange & Charcoal", usada
+ * exclusivamente pela landing page pública (src/app/page.tsx e
+ * src/components/landing/**). O app autenticado (dashboard) usa um sistema
+ * de design proprio, definido separadamente - nao reutilizar estes tokens
+ * fora da landing nem tentar unificar os dois.
+ */
+@theme {
+  --color-landing-primary: #f97316;
+  --color-landing-background: #f8fafc;
+  --color-landing-foreground: #111827;
+  --color-landing-secondary: #1f2937;
+  --color-landing-muted: #64748b;
+  --color-landing-card: #ffffff;
+  --color-landing-success: #22c55e;
+  --color-landing-error: #ef4444;
+  --color-landing-border: #e2e8f0;
+}
