@@ -1,7 +1,22 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
+
+// Lido antes da hidratação (precisa ser `beforeInteractive`, que só é
+// permitido no root layout): reflete `sidebar-collapsed` (localStorage) no
+// atributo `data-sidebar-collapsed` da <html>, que é o que o CSS usa pra
+// resolver --sidebar-w (ver globals.css e src/components/nav/Sidebar.tsx) -
+// sem isso a sidebar nasceria sempre expandida por um instante e "pularia"
+// pra recolhida no primeiro client-render. Inofensivo fora do app
+// autenticado (landing/login/onboarding não têm sidebar, então o atributo
+// não afeta nada ali). Uma tag <script> "crua" via dangerouslySetInnerHTML
+// direto no JSX do layout dispara o aviso do React "Encountered a script
+// tag while rendering..." — next/script com beforeInteractive é o
+// mecanismo suportado para isso.
+const SIDEBAR_INIT_SCRIPT =
+  "try{if(localStorage.getItem('sidebar-collapsed')==='true'){document.documentElement.setAttribute('data-sidebar-collapsed','true')}}catch(e){}";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,6 +41,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <Script
+          id="sidebar-init-script"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }}
+        />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

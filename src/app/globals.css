@@ -106,3 +106,80 @@ body {
   --color-neutral-900: #1f2937;
   --color-neutral-950: #0b1120;
 }
+
+/*
+ * Sidebar do app autenticado (src/components/nav/Sidebar.tsx). A largura
+ * fica numa CSS variable lida do atributo `data-sidebar-collapsed` na
+ * <html> - setado ANTES da hidratação por um script inline em
+ * (app)/layout.tsx a partir do localStorage `sidebar-collapsed` - assim o
+ * CSS já resolve a largura certa no primeiro paint, sem esperar o React
+ * montar (evita o "flash" de layout errado no load). Abaixo de 768px força
+ * sempre recolhida, independente da preferência salva; esta regra vem
+ * depois no arquivo então, empatada em especificidade com a de cima,
+ * vence na cascata.
+ */
+:root {
+  --sidebar-w: 15.5rem; /* 248px expandida */
+}
+
+[data-sidebar-collapsed="true"] {
+  --sidebar-w: 4.5rem; /* 72px recolhida */
+}
+
+@media (max-width: 767px) {
+  :root {
+    --sidebar-w: 4.5rem;
+  }
+}
+
+/*
+ * Texto/labels que só existem na versão expandida (wordmark, nome do
+ * negócio, rótulo de cada item de navegação, rótulo do botão Sair) -
+ * escondidos por completo (não truncados) via CSS puro, nunca por um `if`
+ * de render condicional no React, pelo mesmo motivo do parágrafo acima:
+ * qualquer coisa que dependa de `collapsed` no primeiro render client-side
+ * causaria mismatch de hidratação ou um flash entre o HTML do servidor e o
+ * estado real salvo no localStorage.
+ */
+[data-sidebar-collapsed="true"] .sidebar-label {
+  display: none;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-header,
+[data-sidebar-collapsed="true"] .sidebar-nav-link {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/*
+ * Rodapé da sidebar (tema/Sair/recolher): em linha quando expandida, mas os
+ * três controles não cabem lado a lado nos ~72px do estado recolhido -
+ * empilha em coluna nesse caso. Também só via atributo, mesma lógica acima.
+ */
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-footer {
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/*
+ * Tooltip dos itens de navegação: só existe/aparece com a sidebar recolhida
+ * (senão o rótulo já está visível ao lado do ícone) e o item em hover/foco -
+ * pura CSS de novo, para não depender de estado React/hidratação.
+ */
+.sidebar-tooltip {
+  display: none;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-item:hover .sidebar-tooltip,
+[data-sidebar-collapsed="true"] .sidebar-item:focus-within .sidebar-tooltip {
+  display: block;
+}

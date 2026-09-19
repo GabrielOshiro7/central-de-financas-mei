@@ -29,7 +29,7 @@ export function MetricCard({
         : "text-gray-500 dark:text-neutral-400";
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-neutral-400">
         {icon && (
           <span aria-hidden="true">{icon}</span>

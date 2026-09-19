@@ -149,6 +149,15 @@ style route; `/empresa`, `/financeiro`, etc. are implicitly scoped to "my compan
 new authenticated route, follow the same rule: derive the owner from `getCurrentUser()`/
 `requireOnboardedUser()`, never trust an id from the request.
 
+### Icons
+
+`lucide-react` is the standard icon library for new UI (introduced with the app Sidebar,
+`src/components/nav/Sidebar.tsx`) — import icons from it directly (`import { Settings } from
+"lucide-react"`) rather than adding emoji or another hand-rolled `<svg>`. A few pre-existing
+components still use hand-rolled inline SVG (`ThemeToggle`'s sun/moon, `Logo`'s brand mark) or plain
+emoji (some badge/metric icons) from before this convention — leave those as-is unless you're
+already rewriting that component, but don't add a third icon style anywhere new.
+
 ## Testing notes
 
 - `tests/unit/` — pure functions, no DB.
