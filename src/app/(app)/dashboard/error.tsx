@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 
 // Tratamento de erro a nivel de ROTA (secao 30 da Etapa 4), nao por bloco
 // individual: toda a busca de dados da pagina acontece num unico
@@ -17,9 +18,7 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-rose-300 bg-white p-10 text-center dark:border-rose-900 dark:bg-neutral-900">
-      <span className="text-3xl" aria-hidden="true">
-        ⚠️
-      </span>
+      <AlertTriangle size={32} strokeWidth={1.75} aria-hidden="true" />
       <div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">
           Não foi possível carregar os dados financeiros.

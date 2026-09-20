@@ -1,7 +1,12 @@
+import { Bot } from "lucide-react";
+
 export function AssistantPanel() {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">🤖 Assistente de IA</h2>
+      <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
+        <Bot size={16} strokeWidth={1.75} aria-hidden="true" />
+        Assistente de IA
+      </h2>
       <p className="mt-2 text-sm text-gray-500 dark:text-neutral-400">
         Depois que você cadastrar seus dados financeiros, poderei ajudar a analisar sua empresa.
       </p>

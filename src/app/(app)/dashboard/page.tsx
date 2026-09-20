@@ -1,3 +1,4 @@
+import { Calculator, DollarSign, FileMinus, PiggyBank } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
@@ -158,28 +159,28 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <MetricCard
           label="Faturamento"
           value={revenueDisplay}
-          icon="💰"
+          icon={<DollarSign size={16} strokeWidth={1.75} aria-hidden="true" />}
           tooltip="Total recebido ou faturado pela empresa no período."
           variation={revenueVariation}
         />
         <MetricCard
           label="Custos"
           value={costsDisplay}
-          icon="📦"
+          icon={<Calculator size={16} strokeWidth={1.75} aria-hidden="true" />}
           tooltip="Gastos diretamente relacionados à produção ou operação do produto/serviço."
           variation={costsVariation}
         />
         <MetricCard
           label="Despesas"
           value={expensesDisplay}
-          icon="🧾"
+          icon={<FileMinus size={16} strokeWidth={1.75} aria-hidden="true" />}
           tooltip="Gastos necessários para manter a operação da empresa."
           variation={expensesVariation}
         />
         <MetricCard
           label="Lucro"
           value={profitDisplay}
-          icon="📈"
+          icon={<PiggyBank size={16} strokeWidth={1.75} aria-hidden="true" />}
           tooltip="Receita menos custos e despesas."
           variation={profitVariation}
         />

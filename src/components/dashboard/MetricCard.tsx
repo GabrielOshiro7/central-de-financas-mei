@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+import { Info } from "lucide-react";
+
 export type MetricVariation = {
   text: string;
   direction: "up" | "down" | "flat";
@@ -6,7 +9,8 @@ export type MetricVariation = {
 
 // Props novas (icon/tooltip/variation) sao todas opcionais - as chamadas
 // existentes em /financeiro/page.tsx (so label+value) continuam funcionando
-// sem alteracao.
+// sem alteracao. `icon` e ReactNode (icone lucide-react) desde a remocao dos
+// emojis - antes era uma string de emoji renderizada direto.
 export function MetricCard({
   label,
   value,
@@ -16,7 +20,7 @@ export function MetricCard({
 }: {
   label: string;
   value: string | null;
-  icon?: string;
+  icon?: ReactNode;
   tooltip?: string;
   variation?: MetricVariation | null;
 }) {
@@ -32,16 +36,18 @@ export function MetricCard({
     <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-neutral-400">
         {icon && (
-          <span aria-hidden="true">{icon}</span>
+          <span className="inline-flex shrink-0" aria-hidden="true">
+            {icon}
+          </span>
         )}
         <span>{label}</span>
         {tooltip && (
           <span
-            className="cursor-help text-gray-400 dark:text-neutral-600"
+            className="inline-flex cursor-help text-gray-400 dark:text-neutral-600"
             title={tooltip}
             aria-label={tooltip}
           >
-            ⓘ
+            <Info size={14} strokeWidth={1.75} aria-hidden="true" />
           </span>
         )}
       </div>

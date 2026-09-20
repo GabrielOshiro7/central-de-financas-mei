@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BarChart3 } from "lucide-react";
 
 // Estado vazio REAL (secao 27 da Etapa 4): a empresa nunca lancou nada, em
 // nenhum periodo - diferente de "este periodo especifico esta vazio", que os
@@ -6,9 +7,7 @@ import Link from "next/link";
 export function DashboardEmptyState() {
   return (
     <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center dark:border-neutral-700 dark:bg-neutral-900">
-      <span className="text-3xl" aria-hidden="true">
-        📊
-      </span>
+      <BarChart3 size={32} strokeWidth={1.75} aria-hidden="true" />
       <div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">
           Seu dashboard ainda não possui dados suficientes

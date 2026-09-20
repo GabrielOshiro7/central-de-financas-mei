@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType } from "@prisma/client";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText } from "lucide-react";
 import { normalizeCategoryName } from "@/lib/finance/categoryName";
 import { parseImportEntryType, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
 
@@ -229,17 +230,19 @@ export function ImportWizard({
               type="button"
               onClick={() => xlsxInputRef.current?.click()}
               disabled={uploading}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
-              📄 Importar Excel
+              <FileSpreadsheet size={18} strokeWidth={1.75} aria-hidden="true" />
+              Importar Excel
             </button>
             <button
               type="button"
               onClick={() => csvInputRef.current?.click()}
               disabled={uploading}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
-              📄 Importar CSV
+              <FileText size={18} strokeWidth={1.75} aria-hidden="true" />
+              Importar CSV
             </button>
           </div>
           <input
@@ -299,9 +302,15 @@ export function ImportWizard({
         <p className="text-sm text-gray-700 dark:text-neutral-300">
           Encontramos {rows.length} lançamento{rows.length === 1 ? "" : "s"}.
         </p>
-        <p className="mt-1 text-sm text-emerald-600 dark:text-emerald-400">✓ {validCount} registros válidos</p>
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+          <CheckCircle2 size={16} strokeWidth={1.75} aria-hidden="true" />
+          {validCount} registros válidos
+        </p>
         {invalidCount > 0 && (
-          <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">⚠ {invalidCount} registros com problemas</p>
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-amber-600 dark:text-amber-400">
+            <AlertTriangle size={16} strokeWidth={1.75} aria-hidden="true" />
+            {invalidCount} registros com problemas
+          </p>
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Lightbulb } from "lucide-react";
 import type { InsightCategory, InsightMetric, InsightPriority } from "@prisma/client";
 import { INSIGHT_CATEGORY_LABELS, INSIGHT_PRIORITY_LABELS } from "@/lib/insights/options";
 
@@ -60,8 +61,9 @@ export function InsightCard({ insight }: { insight: InsightCardData }) {
       <p className="text-sm text-gray-600 dark:text-neutral-400">{insight.description}</p>
 
       {insight.recommendation && (
-        <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-neutral-800/60 dark:text-neutral-400">
-          💡 {insight.recommendation}
+        <p className="flex items-start gap-1.5 rounded-lg bg-gray-50 p-3 text-xs text-gray-600 dark:bg-neutral-800/60 dark:text-neutral-400">
+          <Lightbulb size={14} strokeWidth={1.75} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{insight.recommendation}</span>
         </p>
       )}
 

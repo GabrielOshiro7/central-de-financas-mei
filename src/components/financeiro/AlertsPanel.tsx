@@ -1,3 +1,4 @@
+import { AlertTriangle } from "lucide-react";
 import type { FinancialAlert } from "@/lib/finance/insights";
 
 export function AlertsPanel({ alerts }: { alerts: FinancialAlert[] }) {
@@ -12,7 +13,7 @@ export function AlertsPanel({ alerts }: { alerts: FinancialAlert[] }) {
         <ul className="mt-3 flex flex-col gap-2">
           {alerts.map((alert) => (
             <li key={alert.id} className="flex items-start gap-2 text-sm text-gray-700 dark:text-neutral-300">
-              <span aria-hidden="true">⚠️</span>
+              <AlertTriangle size={14} strokeWidth={1.75} className="mt-0.5 shrink-0" aria-hidden="true" />
               <span>{alert.message}</span>
             </li>
           ))}

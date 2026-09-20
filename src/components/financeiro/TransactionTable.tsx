@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Repeat } from "lucide-react";
 import type { Currency, EntrySource, FinancialEntryType } from "@prisma/client";
 import { ENTRY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/finance/options";
 import { formatMoney } from "@/lib/money";
@@ -134,7 +135,7 @@ export function TransactionTable({
               <td className="px-4 py-3 text-gray-500 dark:text-neutral-400">
                 {row.source === "RECURRING" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    <span aria-hidden="true">🔁</span>
+                    <Repeat size={12} strokeWidth={1.75} aria-hidden="true" />
                     {SOURCE_LABELS.RECURRING}
                   </span>
                 ) : (

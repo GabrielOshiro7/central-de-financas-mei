@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Prisma, type Currency } from "@prisma/client";
+import { Info } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { describeSignedGrowth } from "@/lib/finance/calculations";
 import { formatSignedGrowthText } from "@/lib/finance/insights";
@@ -105,8 +106,12 @@ export function TrendMiniChart({
       <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
         <span>{title}</span>
         {tooltip && (
-          <span className="cursor-help text-xs text-gray-400 dark:text-neutral-600" title={tooltip} aria-label={tooltip}>
-            ⓘ
+          <span
+            className="inline-flex cursor-help text-gray-400 dark:text-neutral-600"
+            title={tooltip}
+            aria-label={tooltip}
+          >
+            <Info size={14} strokeWidth={1.75} aria-hidden="true" />
           </span>
         )}
       </div>

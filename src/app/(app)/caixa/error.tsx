@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 
 // Mesmo padrao de dashboard/error.tsx (Etapa 4) - tratamento de erro a nivel
 // de rota.
@@ -11,9 +12,7 @@ export default function CaixaError({ error, reset }: { error: Error & { digest?:
 
   return (
     <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-rose-300 bg-white p-10 text-center dark:border-rose-900 dark:bg-neutral-900">
-      <span className="text-3xl" aria-hidden="true">
-        ⚠️
-      </span>
+      <AlertTriangle size={32} strokeWidth={1.75} aria-hidden="true" />
       <div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">
           Não foi possível carregar os dados de caixa.

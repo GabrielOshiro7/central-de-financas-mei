@@ -118,11 +118,17 @@ export const HEALTH_LABELS: Record<FinancialHealth, string> = {
   NO_DATA: "Sem dados suficientes",
 };
 
-export const HEALTH_ICONS: Record<FinancialHealth, string> = {
-  GOOD: "🟢",
-  WARNING: "🟡",
-  CRITICAL: "🔴",
-  NO_DATA: "⚪",
+// Cor do "farolzinho" de saude financeira em HealthBadge (renderizado como
+// <Circle fill="currentColor">) - reaproveita exatamente os mesmos hexes
+// Musgo/Âmbar/Terracota ja usados nos selos de status de pagamento/prioridade
+// de insight (ver PRIORITY_BADGE_STYLE em InsightCard.tsx), em vez de uma
+// familia de cor nova, ja que este e conceitualmente o mesmo trio
+// positivo/atencao/critico.
+export const HEALTH_ICON_COLOR: Record<FinancialHealth, string> = {
+  GOOD: "text-[#3f6b4a] dark:text-[#8FD4A0]",
+  WARNING: "text-[#8a570c] dark:text-[#F0B24A]",
+  CRITICAL: "text-[#a8402a] dark:text-[#F0917C]",
+  NO_DATA: "text-gray-300 dark:text-neutral-700",
 };
 
 function shareText(part: Decimal, total: Decimal): string {

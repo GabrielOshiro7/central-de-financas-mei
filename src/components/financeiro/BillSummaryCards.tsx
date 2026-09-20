@@ -1,4 +1,5 @@
 import type { Currency } from "@prisma/client";
+import { AlertTriangle, Calendar, CheckCircle2, Clock, FileText } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import type { BillDirection } from "@/lib/finance/bills/status";
@@ -21,18 +22,30 @@ export function BillSummaryCards({
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-      <MetricCard label={totalLabel} value={formatMoney(summary.totalOpenAmount, currency ?? "BRL")} icon="📋" />
+      <MetricCard
+        label={totalLabel}
+        value={formatMoney(summary.totalOpenAmount, currency ?? "BRL")}
+        icon={<FileText size={16} strokeWidth={1.75} aria-hidden="true" />}
+      />
       <MetricCard
         label="Total vencido"
         value={formatMoney(summary.totalOverdueAmount, currency ?? "BRL")}
-        icon="⚠️"
+        icon={<AlertTriangle size={16} strokeWidth={1.75} aria-hidden="true" />}
       />
-      <MetricCard label="Total pendente" value={formatMoney(summary.totalPendingAmount, currency ?? "BRL")} icon="⏳" />
-      <MetricCard label={paidLabel} value={formatMoney(summary.totalPaidAmount, currency ?? "BRL")} icon="✅" />
+      <MetricCard
+        label="Total pendente"
+        value={formatMoney(summary.totalPendingAmount, currency ?? "BRL")}
+        icon={<Clock size={16} strokeWidth={1.75} aria-hidden="true" />}
+      />
+      <MetricCard
+        label={paidLabel}
+        value={formatMoney(summary.totalPaidAmount, currency ?? "BRL")}
+        icon={<CheckCircle2 size={16} strokeWidth={1.75} aria-hidden="true" />}
+      />
       <MetricCard
         label={dueTodayLabel}
         value={`${summary.dueTodayCount} · ${formatMoney(summary.dueTodayAmount, currency ?? "BRL")}`}
-        icon="📅"
+        icon={<Calendar size={16} strokeWidth={1.75} aria-hidden="true" />}
         tooltip={`${summary.dueNext7Count} nos próximos 7 dias · ${summary.dueNext30Count} nos próximos 30 dias`}
       />
     </div>

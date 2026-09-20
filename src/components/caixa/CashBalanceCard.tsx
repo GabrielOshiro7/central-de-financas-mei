@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Currency } from "@prisma/client";
+import { AlertTriangle } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import type { CashBalance } from "@/lib/finance/cash/queries";
 
@@ -19,9 +20,12 @@ export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currenc
       </p>
 
       {/* Aviso permanente - NUNCA chamar isso de "saldo bancário"/"saldo real" */}
-      <p className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-        ⚠️ Saldo baseado nos lançamentos registrados no sistema — pode divergir do extrato bancário real.
-        Aportes, retiradas de sócio e empréstimos não entram nesta conta.
+      <p className="mt-3 flex items-start gap-1.5 text-sm text-amber-700 dark:text-amber-400">
+        <AlertTriangle size={16} strokeWidth={1.75} className="mt-0.5 shrink-0" aria-hidden="true" />
+        <span>
+          Saldo baseado nos lançamentos registrados no sistema — pode divergir do extrato bancário real. Aportes,
+          retiradas de sócio e empréstimos não entram nesta conta.
+        </span>
       </p>
 
       {!cash.configured && (

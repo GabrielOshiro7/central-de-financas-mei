@@ -1,3 +1,4 @@
+import { Calculator, DollarSign, FileMinus, PiggyBank } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import {
@@ -128,10 +129,30 @@ export default async function FinanceiroVisaoGeralPage(props: PageProps<"/financ
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <MetricCard label="Faturamento" value={revenueDisplay} icon="💰" variation={revenueVariation} />
-        <MetricCard label="Custos" value={costsDisplay} icon="📦" variation={costsVariation} />
-        <MetricCard label="Despesas" value={expensesDisplay} icon="🧾" variation={expensesVariation} />
-        <MetricCard label="Lucro" value={profitDisplay} icon="📈" variation={profitVariation} />
+        <MetricCard
+          label="Faturamento"
+          value={revenueDisplay}
+          icon={<DollarSign size={16} strokeWidth={1.75} aria-hidden="true" />}
+          variation={revenueVariation}
+        />
+        <MetricCard
+          label="Custos"
+          value={costsDisplay}
+          icon={<Calculator size={16} strokeWidth={1.75} aria-hidden="true" />}
+          variation={costsVariation}
+        />
+        <MetricCard
+          label="Despesas"
+          value={expensesDisplay}
+          icon={<FileMinus size={16} strokeWidth={1.75} aria-hidden="true" />}
+          variation={expensesVariation}
+        />
+        <MetricCard
+          label="Lucro"
+          value={profitDisplay}
+          icon={<PiggyBank size={16} strokeWidth={1.75} aria-hidden="true" />}
+          variation={profitVariation}
+        />
         <MetricCard label="Margem bruta" value={summary.hasAnyEntries ? formatPercent(summary.grossMargin) : null} />
         <MetricCard label="Margem líquida" value={marginDisplay} />
       </div>

@@ -153,7 +153,7 @@ test.describe("financeiro - importação", () => {
     });
 
     await expect(page.getByText("Encontramos 2 lançamentos.")).toBeVisible();
-    await expect(page.getByText("✓ 2 registros válidos")).toBeVisible();
+    await expect(page.getByText("2 registros válidos")).toBeVisible();
 
     await page.getByRole("button", { name: /Importar 2 lançamentos/ }).click();
     await expect(page.getByText(/2 lançamentos importados com sucesso/)).toBeVisible();
@@ -188,8 +188,8 @@ test.describe("financeiro - importação", () => {
     });
 
     await expect(page.getByText("Encontramos 3 lançamentos.")).toBeVisible();
-    await expect(page.getByText("✓ 1 registros válidos")).toBeVisible();
-    await expect(page.getByText("⚠ 2 registros com problemas")).toBeVisible();
+    await expect(page.getByText("1 registros válidos")).toBeVisible();
+    await expect(page.getByText("2 registros com problemas")).toBeVisible();
     await expect(page.getByText("Data inválida.")).toBeVisible();
     await expect(page.getByText("Valor inválido.")).toBeVisible();
   });
@@ -216,7 +216,7 @@ test.describe("financeiro - importação", () => {
       buffer: Buffer.from(csvContent, "utf-8"),
     });
 
-    await expect(page.getByText("✓ 1 registros válidos")).toBeVisible();
+    await expect(page.getByText("1 registros válidos")).toBeVisible();
     await expect(page.getByText("1 nova categoria será criada ao confirmar:")).toBeVisible();
     await expect(page.getByText(novaCategoria)).toBeVisible();
 
