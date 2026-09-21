@@ -99,15 +99,101 @@ function sumInstallments(installments: SaleInstallmentInput[]): Prisma.Decimal {
 
 export type CreateSaleResult = { id: string; saleNumber: number };
 
+// Corpo transacional puro de createSale, extraido (Etapa 8) pra ser chamado
+// tanto pelo caminho normal (dentro do prisma.$transaction que createSale
+// abre) quanto pelo caminho com tx externo (ver createSale abaixo) - MESMA
+// logica nos dois casos, nunca uma copia. `tx` aqui e sempre uma transacao
+// ja aberta (interna ou externa), nunca o client global.
+async function runCreateSaleBody(
+  tx: Prisma.TransactionClient,
+  businessId: string,
+  userId: string,
+  input: CreateSaleInput,
+  totals: ReturnType<typeof calculateSaleTotals>
+) {
+  // Idempotencia (ADENDO item 4): duplo clique/retry de rede reencontra a
+  // venda ja criada em vez de duplicar. Camada 2 (rede de seguranca contra
+  // corrida real) e o catch do P2002 em createSale, mesmo principio de
+  // settleBill - so existe no caminho SEM tx externo (ver comentario la).
+  const existing = await tx.sale.findFirst({ where: { businessId, clientRequestId: input.clientRequestId } });
+  if (existing) return existing;
+
+  // Alocacao atomica do numero sequencial - UPDATE ... SET last_sale_number
+  // = last_sale_number + 1 RETURNING, serializa no lock da linha sob
+  // concorrencia real (nunca SELECT MAX()+1, que colidiria com a
+  // constraint unica e abortaria a transacao inteira no Postgres sem
+  // possibilidade de retry dentro da mesma transacao).
+  const { lastSaleNumber } = await tx.business.update({
+    where: { id: businessId },
+    data: { lastSaleNumber: { increment: 1 } },
+    select: { lastSaleNumber: true },
+  });
+
+  const created = await tx.sale.create({
+    data: {
+      businessId,
+      clientId: input.clientId,
+      categoryId: input.categoryId,
+      userId,
+      saleNumber: lastSaleNumber,
+      saleDate: input.saleDate,
+      status: input.status,
+      subtotal: totals.subtotal,
+      discountType: input.discount?.type ?? null,
+      discountValue: input.discount ? new Decimal(input.discount.value) : null,
+      discountAmount: totals.discountAmount,
+      total: totals.total,
+      paymentMethod: input.paymentMethod || null,
+      notes: input.notes || null,
+      clientRequestId: input.clientRequestId,
+      items: {
+        create: input.items.map((item, index) => ({
+          productId: item.productId || null,
+          description: item.description,
+          quantity: new Decimal(item.quantity),
+          unitPrice: new Decimal(item.unitPrice),
+          lineTotal: totals.itemTotals[index],
+        })),
+      },
+    },
+  });
+
+  if (input.status === "CONFIRMED" && input.installments) {
+    await generateSaleBills(
+      tx,
+      { id: created.id, businessId, categoryId: input.categoryId, userId, saleNumber: created.saleNumber },
+      input.installments,
+      true
+    );
+  }
+
+  return created;
+}
+
+// `tx` opcional (Etapa 8): quando fornecido, o chamador ja esta dentro de
+// uma transacao propria (ex.: completeAppointment) - createSale roda o
+// corpo DIRETO nesse tx, sem abrir uma segunda transacao por cima (Prisma
+// nao tem transacao aninhada real). Nesse caminho NAO ha catch de P2002:
+// um erro dentro de uma transacao interativa do Prisma aborta a transacao
+// inteira ate o rollback, entao nao da pra continuar fazendo queries nela
+// depois (o catch abaixo so faz sentido quando createSale e dono da propria
+// transacao). A checagem de idempotencia que ja roda ANTES do create
+// (tx.sale.findFirst, dentro de runCreateSaleBody) cobre o caso normal; a
+// corrida real de duas chamadas concorrentes pro MESMO recurso e
+// responsabilidade do chamador que forneceu o tx (ver updateMany condicional
+// de completeAppointment, que serializa isso uma camada acima).
 export async function createSale(
   businessId: string,
   userId: string,
-  input: CreateSaleInput
+  input: CreateSaleInput,
+  tx?: Prisma.TransactionClient
 ): Promise<MutationResult<CreateSaleResult>> {
-  const clientError = await assertClientBelongsToBusiness(businessId, input.clientId);
+  const db = tx ?? prisma;
+
+  const clientError = await assertClientBelongsToBusiness(businessId, input.clientId, db);
   if (clientError) return { ok: false, error: clientError };
 
-  const categoryError = await assertCategoryMatches(businessId, input.categoryId, "REVENUE");
+  const categoryError = await assertCategoryMatches(businessId, input.categoryId, "REVENUE", db);
   if (categoryError) return { ok: false, error: categoryError };
 
   const totals = calculateSaleTotals(input.items, input.discount);
@@ -124,66 +210,13 @@ export async function createSale(
     }
   }
 
+  if (tx) {
+    const sale = await runCreateSaleBody(tx, businessId, userId, input, totals);
+    return { ok: true, value: { id: sale.id, saleNumber: sale.saleNumber } };
+  }
+
   try {
-    const sale = await prisma.$transaction(async (tx) => {
-      // Idempotencia (ADENDO item 4): duplo clique/retry de rede reencontra a
-      // venda ja criada em vez de duplicar. Camada 2 (rede de seguranca contra
-      // corrida real) e o catch do P2002 abaixo, mesmo principio de settleBill.
-      const existing = await tx.sale.findFirst({ where: { businessId, clientRequestId: input.clientRequestId } });
-      if (existing) return existing;
-
-      // Alocacao atomica do numero sequencial - UPDATE ... SET last_sale_number
-      // = last_sale_number + 1 RETURNING, serializa no lock da linha sob
-      // concorrencia real (nunca SELECT MAX()+1, que colidiria com a
-      // constraint unica e abortaria a transacao inteira no Postgres sem
-      // possibilidade de retry dentro da mesma transacao).
-      const { lastSaleNumber } = await tx.business.update({
-        where: { id: businessId },
-        data: { lastSaleNumber: { increment: 1 } },
-        select: { lastSaleNumber: true },
-      });
-
-      const created = await tx.sale.create({
-        data: {
-          businessId,
-          clientId: input.clientId,
-          categoryId: input.categoryId,
-          userId,
-          saleNumber: lastSaleNumber,
-          saleDate: input.saleDate,
-          status: input.status,
-          subtotal: totals.subtotal,
-          discountType: input.discount?.type ?? null,
-          discountValue: input.discount ? new Decimal(input.discount.value) : null,
-          discountAmount: totals.discountAmount,
-          total: totals.total,
-          paymentMethod: input.paymentMethod || null,
-          notes: input.notes || null,
-          clientRequestId: input.clientRequestId,
-          items: {
-            create: input.items.map((item, index) => ({
-              productId: item.productId || null,
-              description: item.description,
-              quantity: new Decimal(item.quantity),
-              unitPrice: new Decimal(item.unitPrice),
-              lineTotal: totals.itemTotals[index],
-            })),
-          },
-        },
-      });
-
-      if (input.status === "CONFIRMED" && input.installments) {
-        await generateSaleBills(
-          tx,
-          { id: created.id, businessId, categoryId: input.categoryId, userId, saleNumber: created.saleNumber },
-          input.installments,
-          true
-        );
-      }
-
-      return created;
-    });
-
+    const sale = await prisma.$transaction((innerTx) => runCreateSaleBody(innerTx, businessId, userId, input, totals));
     return { ok: true, value: { id: sale.id, saleNumber: sale.saleNumber } };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {

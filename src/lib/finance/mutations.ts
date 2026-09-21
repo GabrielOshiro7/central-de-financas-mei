@@ -1,7 +1,13 @@
-import { Prisma, type EntrySource, type FinancialEntryType } from "@prisma/client";
+import { Prisma, type EntrySource, type FinancialEntryType, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 const { Decimal } = Prisma;
+
+// Aceita o client global (prisma) OU um tx de transacao interativa - usado
+// por completeAppointment (Etapa 8) pra rodar essa checagem DENTRO da mesma
+// transacao que cria a Sale. Default preserva o comportamento de todo
+// chamador existente.
+type Db = PrismaClient | Prisma.TransactionClient;
 
 export type TransactionInput = {
   type: FinancialEntryType;
@@ -23,9 +29,10 @@ export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: str
 export async function assertCategoryMatches(
   businessId: string,
   categoryId: string,
-  type: FinancialEntryType
+  type: FinancialEntryType,
+  db: Db = prisma
 ): Promise<string | null> {
-  const category = await prisma.category.findFirst({
+  const category = await db.category.findFirst({
     where: { id: categoryId, active: true, OR: [{ businessId: null }, { businessId }] },
   });
   if (!category) return "Categoria não encontrada.";

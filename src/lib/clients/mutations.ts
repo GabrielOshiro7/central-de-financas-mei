@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/db";
-import type { ClientType } from "@prisma/client";
+import type { ClientType, Prisma, PrismaClient } from "@prisma/client";
 
 export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: string };
+
+// Aceita o client global (prisma) OU um tx de transacao interativa - usado
+// por completeAppointment (Etapa 8) pra rodar essa checagem DENTRO da mesma
+// transacao que cria a Sale, sem abrir uma segunda conexao/consulta fora
+// dela. Default preserva o comportamento de todo chamador existente.
+type Db = PrismaClient | Prisma.TransactionClient;
 
 export type ClientInput = {
   name: string;
@@ -94,8 +100,8 @@ export async function setClientActive(
 // enviado numa venda pertence de fato a empresa da sessao - nunca confia so
 // no formulario (mesmo principio de assertCategoryMatches/
 // assertCategoryMatchesDirection).
-export async function assertClientBelongsToBusiness(businessId: string, clientId: string): Promise<string | null> {
-  const client = await prisma.client.findFirst({ where: { id: clientId, businessId } });
+export async function assertClientBelongsToBusiness(businessId: string, clientId: string, db: Db = prisma): Promise<string | null> {
+  const client = await db.client.findFirst({ where: { id: clientId, businessId } });
   if (!client) return "Cliente não encontrado.";
   return null;
 }
