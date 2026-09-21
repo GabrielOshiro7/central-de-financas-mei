@@ -229,15 +229,16 @@ model Business {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  entries         FinancialEntry[]
-  categories      Category[]
+  entries          FinancialEntry[]
+  categories       Category[]
   recurringEntries RecurringEntry[]
-  bills           Bill[]
-  recurringBills  RecurringBill[]
-  clients         Client[]
-  products        Product[]
-  sales           Sale[]
-  insights        Insight[]
+  bills            Bill[]
+  recurringBills   RecurringBill[]
+  clients          Client[]
+  products         Product[]
+  sales            Sale[]
+  insights         Insight[]
+  appointments     Appointment[]
 
   @@map("businesses")
 }
@@ -262,11 +263,11 @@ model Category {
   active         Boolean            @default(true)
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  entries         FinancialEntry[]
+  entries          FinancialEntry[]
   recurringEntries RecurringEntry[]
-  bills           Bill[]
-  recurringBills  RecurringBill[]
-  sales           Sale[]
+  bills            Bill[]
+  recurringBills   RecurringBill[]
+  sales            Sale[]
 
   // So evita duplicata dentro das categorias proprias de uma mesma empresa
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
@@ -312,15 +313,15 @@ model FinancialEntry {
   billId String? @unique @map("bill_id")
   bill   Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
 
-  @@index([businessId, occurredAt])
-  @@index([businessId, type])
-  @@index([categoryId])
   // Chave de idempotencia da materializacao (secao "MATERIALIZACAO" da Etapa
   // 4.1): NULL e tratado como distinto pelo Postgres, entao essa constraint
   // nunca restringe lancamentos manuais/importados entre si - so impede que
   // o MESMO molde gere duas linhas para a MESMA data de ocorrencia, mesmo
   // sob duas materializacoes concorrentes (ver materializeRecurringEntries).
   @@unique([recurringEntryId, occurredAt])
+  @@index([businessId, occurredAt])
+  @@index([businessId, type])
+  @@index([categoryId])
   @@map("financial_entries")
 }
 
@@ -392,7 +393,7 @@ model Bill {
   paidAt      DateTime?  @map("paid_at")
   status      BillStatus @default(PENDING)
 
-  documentNumber String? @map("document_number")
+  documentNumber   String? @map("document_number")
   // Fornecedor (contas a pagar) ou cliente (contas a receber) - texto livre
   // (decisao do adendo da Etapa 5): nao ha cadastro de Cliente/Fornecedor no
   // sistema hoje, e criar essas entidades e escopo maior que o pedido nesta
@@ -423,13 +424,13 @@ model Bill {
   saleId String? @map("sale_id")
   sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
 
+  // Chave de idempotencia da materializacao de recorrencia - mesmo padrao de
+  // FinancialEntry @@unique([recurringEntryId, occurredAt]).
+  @@unique([recurringBillId, dueDate])
   @@index([businessId, status])
   @@index([businessId, dueDate])
   @@index([categoryId])
   @@index([saleId])
-  // Chave de idempotencia da materializacao de recorrencia - mesmo padrao de
-  // FinancialEntry @@unique([recurringEntryId, occurredAt]).
-  @@unique([recurringBillId, dueDate])
   @@map("bills")
 }
 
@@ -494,28 +495,40 @@ model Client {
   businessId String   @map("business_id")
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  name       String
-  tradeName  String?    @map("trade_name")
-  clientType ClientType @default(PESSOA_FISICA) @map("client_type")
-  document   String?
-  phone      String?
-  whatsapp   String?
-  email      String?
-  addressLine String?   @map("address_line")
-  city       String?
-  state      String?
-  country    String?
-  notes      String?
-  active     Boolean    @default(true)
+  name        String
+  tradeName   String?    @map("trade_name")
+  clientType  ClientType @default(PESSOA_FISICA) @map("client_type")
+  document    String?
+  phone       String?
+  whatsapp    String?
+  email       String?
+  addressLine String?    @map("address_line")
+  city        String?
+  state       String?
+  country     String?
+  notes       String?
+  active      Boolean    @default(true)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  sales Sale[]
+  sales        Sale[]
+  appointments Appointment[]
 
   @@index([businessId, active])
   @@index([businessId, name])
   @@map("clients")
+}
+
+// PRODUTO (default, nao altera linhas existentes) vs SERVICO (Etapa 8 -
+// agenda). Servico exige durationMinutes (validado no Zod, nao aqui) porque
+// e usado para calcular o endAt de um AppointmentService no momento da
+// criacao do agendamento.
+enum ProductType {
+  PRODUTO
+  SERVICO
+
+  @@map("product_type")
 }
 
 // Catalogo minimo de produtos/servicos (Etapa 6) - sem estoque/inventario,
@@ -525,19 +538,26 @@ model Client {
 // momento da venda (nunca le o Product de volta depois), mesmo principio de
 // RecurringBill -> Bill.
 model Product {
-  id           String   @id @default(uuid())
-  businessId   String   @map("business_id")
-  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   name         String
   description  String?
   defaultPrice Decimal? @map("default_price") @db.Decimal(14, 2)
   active       Boolean  @default(true)
 
+  // Etapa 8: type/durationMinutes so tem sentido para SERVICO - durationMinutes
+  // fica null para PRODUTO (regra de obrigatoriedade e validada no Zod, ver
+  // src/lib/products/schema.ts, nao aqui).
+  type            ProductType @default(PRODUTO)
+  durationMinutes Int?        @map("duration_minutes")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  saleItems SaleItem[]
+  saleItems           SaleItem[]
+  appointmentServices AppointmentService[]
 
   @@index([businessId, active])
   @@map("products")
@@ -591,8 +611,9 @@ model Sale {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  items SaleItem[]
-  bills Bill[]
+  items       SaleItem[]
+  bills       Bill[]
+  appointment Appointment?
 
   @@unique([businessId, clientRequestId])
   @@unique([businessId, saleNumber])
@@ -621,9 +642,9 @@ model SaleItem {
   // src/lib/sales/schema.ts exige quantity inteira tambem, para que
   // quantity * unitPrice nunca produza um valor fracionario de iene mesmo
   // com unitPrice inteiro.
-  quantity  Decimal  @db.Decimal(14, 2)
-  unitPrice Decimal  @map("unit_price") @db.Decimal(14, 2)
-  lineTotal Decimal  @map("line_total") @db.Decimal(14, 2)
+  quantity    Decimal @db.Decimal(14, 2)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(14, 2)
+  lineTotal   Decimal @map("line_total") @db.Decimal(14, 2)
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -674,7 +695,7 @@ model Insight {
 
   // Qual modulo forneceu os numeros subjacentes ("financeiro" | "vendas" |
   // "contas_a_receber") - auditoria/depuracao, nunca lido por rules.ts.
-  source String
+  source          String
   // "template" (rules.ts, sempre correto) ou "ai" (narrative.ts, so depois
   // de passar na checagem de whitelist numerica) - qual caminho de fato
   // produziu description/recommendation.
@@ -738,4 +759,104 @@ model PasswordResetToken {
 
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// Estado do agendamento (Etapa 8). CONCLUIDO e sempre terminal - mesmo se a
+// Sale vinculada for cancelada depois (ver cancelSale em sales/mutations.ts),
+// o agendamento NUNCA volta a AGENDADO/CONFIRMADO por causa disso; a UI so
+// deriva e mostra "venda cancelada" a partir do status da Sale (mesmo
+// principio de derivar em vez de duplicar estado ja usado em
+// deriveSalePaymentStatus). CANCELADO/FALTOU podem reabrir para AGENDADO
+// (decisao aprovada da Etapa 8 - toque errado na lista de acoes rapidas e um
+// cenario realista); a tabela exaustiva de pares permitidos vive em
+// src/lib/agenda/calculations.ts (canTransition), nunca "solta" pela app.
+enum AppointmentStatus {
+  AGENDADO
+  CONFIRMADO
+  CONCLUIDO
+  CANCELADO
+  FALTOU
+
+  @@map("appointment_status")
+}
+
+// Agendamento (Etapa 8). startAt/endAt sao SEMPRE UTC - exibicao e limites de
+// dia/semana/mes sao resolvidos exclusivamente por src/lib/agenda/time.ts
+// (fuso Asia/Tokyo fixo, nunca o fuso local do host - ver limitacao ja
+// documentada em finance/period.ts, que esta etapa deliberadamente NAO
+// repete). endAt e sempre recalculado a partir dos AppointmentService no
+// momento da criacao/remarcacao (ver computeEndAt) - nunca editado
+// diretamente.
+//
+// saleId e preenchido so quando o atendimento e concluido (ver
+// completeAppointment) - a Sale e criada reaproveitando createSale (Etapa 6)
+// dentro da MESMA transacao (ver "Decisao aberta #4" do plano). onDelete:
+// Restrict tanto em clientId quanto em saleId (mesmo principio de
+// Sale.clientId): nenhum dos dois e apagado fisicamente por nenhum caminho
+// de app hoje (so em teardown de teste, que cascateia Client/Sale/Appointment
+// juntos a partir do Business - RESTRICT e NO ACTION se comportam identico
+// aqui, sem constraint DEFERRABLE em lugar nenhum do projeto), entao Restrict
+// so bloqueia mesmo uma exclusao direta no banco que deixaria o agendamento
+// com o link quebrado.
+model Appointment {
+  id         String   @id @default(uuid())
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String   @map("client_id")
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+
+  startAt DateTime          @map("start_at")
+  endAt   DateTime          @map("end_at")
+  status  AppointmentStatus @default(AGENDADO)
+  notes   String?
+
+  // Preenchidos so na transicao correspondente (ver changeAppointmentStatus/
+  // completeAppointment) - nunca os dois ao mesmo tempo, e cancelledAt e
+  // limpo de novo se o agendamento for reaberto (CANCELADO/FALTOU ->
+  // AGENDADO).
+  completedAt DateTime? @map("completed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  // @unique: um agendamento gera no maximo UMA Sale - segunda linha de defesa
+  // de idempotencia de completeAppointment (a primeira e o updateMany
+  // condicional no status de origem, ver mutations.ts).
+  saleId String? @unique @map("sale_id")
+  sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  services AppointmentService[]
+
+  @@index([businessId, startAt])
+  @@index([businessId, clientId, startAt])
+  @@index([businessId, status, startAt])
+  @@map("appointments")
+}
+
+// Servicos de um agendamento (Etapa 8). name/durationMinutes sao SEMPRE
+// copiados do Product no momento da criacao (nunca lidos de volta depois) -
+// mesmo principio de SaleItem.description/unitPrice e RecurringBill -> Bill:
+// editar um Product depois nao move agendamentos ja criados. productId e
+// opcional (onDelete: SetNull) porque nao ha exclusao fisica de Product hoje,
+// mas mantem o mesmo padrao de SaleItem.productId por consistencia.
+//
+// @@unique(appointmentId, position): ao editar servicos, o fluxo e sempre
+// deleteMany (tudo) seguido de createMany (tudo de novo) na mesma transacao -
+// nunca insere por cima do conjunto antigo - entao a constraint nunca ve dois
+// registros com o mesmo par ao mesmo tempo.
+model AppointmentService {
+  id            String      @id @default(uuid())
+  appointmentId String      @map("appointment_id")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  productId     String?     @map("product_id")
+  product       Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  nameSnapshot            String @map("name_snapshot")
+  durationMinutesSnapshot Int    @map("duration_minutes_snapshot")
+  position                Int
+
+  @@unique([appointmentId, position])
+  @@index([productId])
+  @@map("appointment_services")
 }
