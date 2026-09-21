@@ -40,7 +40,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* suppressHydrationWarning: extensões de navegador (ex.: ColorZilla)
+          injetam atributos no <body> (ex.: cz-shortcut-listen) antes da
+          hidratação - React acusaria mismatch nesse atributo específico
+          mesmo sem nenhum bug real de hydration no app. Só suprime o aviso
+          NESTE elemento, não propaga pra árvore abaixo. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <Script
           id="sidebar-init-script"
           strategy="beforeInteractive"
