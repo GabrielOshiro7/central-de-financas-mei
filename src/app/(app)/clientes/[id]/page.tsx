@@ -7,6 +7,9 @@ import { formatMoney } from "@/lib/money";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SALE_STATUS_LABELS } from "@/lib/sales/options";
 import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bills/status";
+import { getClientAppointmentHistory } from "@/lib/agenda/queries";
+import { formatTokyoDate, formatTokyoTime } from "@/lib/agenda/time";
+import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
@@ -15,10 +18,11 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
   const client = await getClientById(business.id, id);
   if (!client) notFound();
 
-  const [commercial, financial, history] = await Promise.all([
+  const [commercial, financial, history, appointmentHistory] = await Promise.all([
     getClientCommercialSummary(business.id, id),
     getClientFinancialSummary(business.id, id),
     getClientHistory(business.id, id),
+    getClientAppointmentHistory(business.id, id),
   ]);
 
   const currency = business.currency;
@@ -163,6 +167,42 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
               </tbody>
             </table>
           </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Histórico de agendamentos</h2>
+        {appointmentHistory.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+            <p>Nenhum agendamento registrado para este cliente ainda.</p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {appointmentHistory.map((appointment) => (
+              <li
+                key={appointment.id}
+                className="flex flex-col gap-1 border border-gray-200 p-4 text-sm dark:border-neutral-800 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-gray-900 dark:text-neutral-100">
+                      {formatTokyoDate(appointment.startAt)} às {formatTokyoTime(appointment.startAt)}
+                    </span>
+                    <AppointmentStatusBadge status={appointment.status} />
+                  </div>
+                  <span className="text-gray-500 dark:text-neutral-400">
+                    {appointment.services.map((s) => s.nameSnapshot).join(", ")}
+                  </span>
+                </div>
+                {appointment.sale && (
+                  <Link href={`/vendas/${appointment.sale.id}`} className="text-gray-600 hover:underline dark:text-neutral-400">
+                    Ver venda #{appointment.sale.saleNumber}
+                    {appointment.sale.status === "CANCELLED" ? " (cancelada)" : ""}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Banknote,
   Bot,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -64,6 +65,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
   { href: "/clientes", label: "Clientes", Icon: Users },
+  { href: "/agenda", label: "Agenda", Icon: CalendarDays },
   { href: "/vendas", label: "Vendas", Icon: ShoppingCart },
   { href: "/insights", label: "Insights", Icon: Lightbulb },
   { href: "/caixa", label: "Caixa", Icon: Banknote },

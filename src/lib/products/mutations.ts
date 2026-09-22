@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, type ProductType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 const { Decimal } = Prisma;
@@ -9,6 +9,8 @@ export type ProductInput = {
   name: string;
   description?: string | null;
   defaultPrice?: number | string | null;
+  type?: ProductType;
+  durationMinutes?: number | null;
 };
 
 export async function createProduct(businessId: string, input: ProductInput): Promise<MutationResult<{ id: string }>> {
@@ -18,6 +20,8 @@ export async function createProduct(businessId: string, input: ProductInput): Pr
       name: input.name,
       description: input.description || null,
       defaultPrice: input.defaultPrice !== null && input.defaultPrice !== undefined ? new Decimal(input.defaultPrice) : null,
+      type: input.type ?? "PRODUTO",
+      durationMinutes: input.durationMinutes ?? null,
     },
     select: { id: true },
   });

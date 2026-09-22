@@ -1,11 +1,24 @@
 import { prisma } from "@/lib/db";
 
+// Inclui o Product atual de cada servico (so defaultPrice) - usado pra
+// pre-preencher o preco no dialogo de "concluir atendimento" com o preco
+// ATUAL do servico (nao o snapshot da criacao do agendamento, que so serve
+// pra congelar nome/duracao - ver AppointmentService no schema.prisma).
+const APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE = {
+  orderBy: { position: "asc" as const },
+  include: { product: { select: { defaultPrice: true } } },
+};
+
 // Sempre escopado por businessId - nunca confia so no id do agendamento (ver
 // regra de isolamento cross-empresa da Etapa 8).
 export async function listAppointmentsForRange(businessId: string, start: Date, end: Date) {
   return prisma.appointment.findMany({
     where: { businessId, startAt: { gte: start, lt: end } },
-    include: { client: true, services: { orderBy: { position: "asc" } } },
+    include: {
+      client: true,
+      services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
+      sale: { select: { id: true, saleNumber: true, status: true } },
+    },
     orderBy: { startAt: "asc" },
   });
 }
@@ -13,7 +26,7 @@ export async function listAppointmentsForRange(businessId: string, start: Date, 
 export async function getAppointmentById(businessId: string, id: string) {
   return prisma.appointment.findFirst({
     where: { id, businessId },
-    include: { client: true, services: { orderBy: { position: "asc" } }, sale: true },
+    include: { client: true, services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE, sale: true },
   });
 }
 
