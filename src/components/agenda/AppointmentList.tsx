@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
 import { formatTokyoDate, formatTokyoDateKey, formatTokyoTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
@@ -48,6 +49,11 @@ function AppointmentRow({
         </div>
         <p className="text-sm text-gray-700 dark:text-neutral-300">{item.clientName}</p>
         <p className="text-sm text-gray-500 dark:text-neutral-400">{item.serviceNames.join(", ")}</p>
+        {(item.status === "AGENDADO" || item.status === "CONFIRMADO") && (
+          <Link href={`/agenda/${item.id}/editar`} className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
+            Editar / remarcar
+          </Link>
+        )}
       </div>
 
       <AppointmentActions
