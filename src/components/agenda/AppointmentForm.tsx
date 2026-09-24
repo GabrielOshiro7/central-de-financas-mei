@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { Currency } from "@prisma/client";
+import { MoneyInput } from "@/components/MoneyInput";
 import { computeEndAt } from "@/lib/agenda/calculations";
 import { formatTokyoTime } from "@/lib/agenda/time";
 
@@ -23,6 +25,7 @@ export function AppointmentForm({
   appointmentId,
   clients,
   services,
+  currency,
   initialClientId,
   initialServiceIds,
   initialStartAt,
@@ -32,6 +35,8 @@ export function AppointmentForm({
   appointmentId?: string;
   clients: ClientOption[];
   services: ServiceOption[];
+  // Moeda da empresa: define simbolo e casas decimais do preco do servico.
+  currency: Currency | null;
   initialClientId?: string;
   initialServiceIds?: string[];
   // "YYYY-MM-DDTHH:mm" já no fuso de Tóquio (ver formatTokyoDateKey +
@@ -343,13 +348,11 @@ export function AppointmentForm({
                 <label htmlFor="newServicePrice" className={labelClass}>
                   Preço (opcional)
                 </label>
-                <input
+                <MoneyInput
                   id="newServicePrice"
-                  type="number"
-                  min={0}
+                  currency={currency}
                   value={newServicePrice}
-                  onChange={(e) => setNewServicePrice(e.target.value)}
-                  className={inputClass}
+                  onChange={setNewServicePrice}
                 />
               </div>
             </div>

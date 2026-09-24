@@ -46,6 +46,7 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
             durationMinutes: s.durationMinutes ?? 0,
             defaultPrice: s.defaultPrice?.toString() ?? "",
           }))}
+          currency={business.currency}
           initialClientId={appointment.clientId}
           initialServiceIds={appointment.services.map((s) => s.productId).filter((sid): sid is string => Boolean(sid))}
           initialStartAt={initialStartAt}

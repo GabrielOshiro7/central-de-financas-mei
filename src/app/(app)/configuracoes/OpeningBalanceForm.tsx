@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 
 export type OpeningBalanceData = {
@@ -66,13 +67,13 @@ export function OpeningBalanceForm({ data, currency }: { data: OpeningBalanceDat
         </p>
       </div>
 
-      <FormField
+      <MoneyField
         id="openingBalance"
         label="Saldo inicial"
-        type="number"
-        step={currency === "JPY" ? 1 : 0.01}
+        currency={currency}
+        allowNegative
         value={openingBalance}
-        onChange={(e) => setOpeningBalance(e.target.value)}
+        onChange={setOpeningBalance}
       />
 
       <FormField

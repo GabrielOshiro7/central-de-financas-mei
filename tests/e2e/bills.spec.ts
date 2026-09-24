@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -31,7 +32,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -56,7 +57,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descrição").fill("Aluguel do escritório E2E");
     await dialog.getByLabel("Categoria").selectOption({ label: "Aluguel" });
-    await dialog.getByLabel("Valor").fill("1500");
+    await fillMoney(dialog.getByLabel("Valor"), "1500");
     await dialog.getByLabel("Fornecedor (opcional)").fill("Imobiliária E2E");
     await dialog.getByLabel("Data de vencimento").fill(todayIso());
     await dialog.getByRole("button", { name: "Salvar" }).click();
@@ -107,7 +108,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descrição").fill("Venda a prazo E2E");
     await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });
-    await dialog.getByLabel("Valor").fill("800");
+    await fillMoney(dialog.getByLabel("Valor"), "800");
     await dialog.getByLabel("Cliente (opcional)").fill("Cliente E2E");
     await dialog.getByLabel("Data de vencimento").fill(todayIso());
     await dialog.getByRole("button", { name: "Salvar" }).click();

@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, RecurringBillFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { BillDirection } from "@/lib/finance/bills/status";
 import {
@@ -227,15 +228,7 @@ export function BillFormModal({
             </select>
           </div>
 
-          <FormField
-            id="amount"
-            label="Valor"
-            type="number"
-            min={0}
-            step={currency === "JPY" ? 1 : 0.01}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+          <MoneyField id="amount" label="Valor" currency={currency} value={amount} onChange={setAmount} />
 
           <FormField
             id="counterpartyName"

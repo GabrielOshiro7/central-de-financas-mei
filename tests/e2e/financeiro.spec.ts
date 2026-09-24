@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -34,7 +35,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -57,7 +58,7 @@ test.describe("financeiro - lançamentos manuais", () => {
     await dialog.getByLabel("Data").fill(todayIso());
     await dialog.getByLabel("Descrição").fill("Venda balcão E2E");
     await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });
-    await dialog.getByLabel("Valor").fill("500");
+    await fillMoney(dialog.getByLabel("Valor"), "500");
     await dialog.getByRole("button", { name: "Salvar" }).click();
 
     await page.getByRole("link", { name: "Receitas" }).click();
@@ -104,7 +105,7 @@ test.describe("financeiro - lançamentos manuais", () => {
       await dialog.getByLabel("Data").fill(date);
       await dialog.getByLabel("Descrição").fill(description);
       await dialog.getByLabel("Categoria").selectOption({ label: "Aluguel" });
-      await dialog.getByLabel("Valor").fill("100");
+      await fillMoney(dialog.getByLabel("Valor"), "100");
       await dialog.getByRole("button", { name: "Salvar" }).click();
       // O modal fecha ao salvar - isso confirma sucesso mesmo quando a data
       // cai fora do filtro "Este mês" (a lista continua sem mostrar a linha

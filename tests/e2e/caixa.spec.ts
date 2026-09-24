@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -27,7 +28,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -55,7 +56,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
       await dialog.getByLabel("Data").fill(date);
       await dialog.getByLabel("Descrição").fill(description);
       await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });
-      await dialog.getByLabel("Valor").fill(amount);
+      await fillMoney(dialog.getByLabel("Valor"), amount);
       await dialog.getByRole("button", { name: "Salvar" }).click();
       await expect(dialog).toHaveCount(0);
     }
@@ -80,7 +81,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     // Configura o saldo inicial a partir do atalho da propria aba Caixa.
     await page.getByRole("link", { name: "Configurar saldo inicial" }).click();
     await expect(page).toHaveURL(/\/configuracoes/);
-    await page.getByLabel("Saldo inicial", { exact: true }).fill("2000");
+    await fillMoney(page.getByLabel("Saldo inicial", { exact: true }), "2000");
     await page.getByLabel("Data do saldo inicial").fill("2026-01-01");
     await page.getByRole("button", { name: "Salvar saldo inicial" }).click();
     await expect(page.getByText("Saldo inicial atualizado com sucesso.")).toBeVisible();

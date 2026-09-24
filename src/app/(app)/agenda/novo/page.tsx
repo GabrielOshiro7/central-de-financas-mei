@@ -38,6 +38,7 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
           durationMinutes: s.durationMinutes ?? 0,
           defaultPrice: s.defaultPrice?.toString() ?? "",
         }))}
+        currency={business.currency}
         initialClientId={clientIdParam}
         initialServiceIds={initialServiceIds}
       />

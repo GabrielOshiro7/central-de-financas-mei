@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BusinessType, Currency, YearsInBusiness } from "@prisma/client";
 import { AuthCard } from "@/components/AuthCard";
 import { FormField } from "@/components/FormField";
+import { MoneyField } from "@/components/MoneyInput";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ChoiceButton } from "@/components/onboarding/ChoiceButton";
 import { ProgressIndicator } from "@/components/onboarding/ProgressIndicator";
@@ -306,14 +307,12 @@ export function OnboardingWizard({
                 </div>
               ))}
             </div>
-            <FormField
+            <MoneyField
               id="averageMonthlyRevenue"
               label="Valor médio mensal"
-              type="number"
-              min={0}
-              step={data.currency === "JPY" ? 1 : 0.01}
+              currency={data.currency}
               value={data.averageMonthlyRevenue}
-              onChange={(e) => update("averageMonthlyRevenue", e.target.value)}
+              onChange={(value) => update("averageMonthlyRevenue", value)}
             />
           </div>
         );

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -27,7 +28,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();

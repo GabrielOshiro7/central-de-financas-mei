@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
@@ -278,15 +279,7 @@ export function TransactionFormModal({
             )}
           </div>
 
-          <FormField
-            id="amount"
-            label="Valor"
-            type="number"
-            min={0}
-            step={currency === "JPY" ? 1 : 0.01}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
+          <MoneyField id="amount" label="Valor" currency={currency} value={amount} onChange={setAmount} />
 
           {!isEditing && (
             <div className="rounded-lg border border-gray-200 p-3 dark:border-neutral-700">

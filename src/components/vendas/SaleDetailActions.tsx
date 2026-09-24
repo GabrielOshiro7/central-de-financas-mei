@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Currency, SaleStatus } from "@prisma/client";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
+import { MoneyInput } from "@/components/MoneyInput";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { isIntegerCurrency } from "@/lib/money";
 
@@ -302,14 +303,11 @@ export function SaleDetailActions({
                   <label htmlFor={`confirm-amount-${index}`} className="sr-only">
                     Valor da parcela {index + 1}
                   </label>
-                  <input
+                  <MoneyInput
                     id={`confirm-amount-${index}`}
-                    type="number"
-                    min={0}
-                    step={decimals === 0 ? 1 : 0.01}
+                    currency={currency}
                     value={installment.amount}
-                    onChange={(e) => setInstallments((prev) => prev.map((i, idx) => (idx === index ? { ...i, amount: e.target.value } : i)))}
-                    className={inputClass}
+                    onChange={(value) => setInstallments((prev) => prev.map((i, idx) => (idx === index ? { ...i, amount: value } : i)))}
                   />
                 </div>
               ))}

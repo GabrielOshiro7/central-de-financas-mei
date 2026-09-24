@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -31,7 +32,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -44,7 +45,7 @@ async function addRevenue(page: Page, description: string) {
   await dialog.getByLabel("Data").fill(todayIso());
   await dialog.getByLabel("Descrição").fill(description);
   await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });
-  await dialog.getByLabel("Valor").fill("100");
+  await fillMoney(dialog.getByLabel("Valor"), "100");
   await dialog.getByRole("button", { name: "Salvar" }).click();
   await expect(dialog).toHaveCount(0);
 }

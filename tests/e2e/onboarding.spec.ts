@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -56,7 +57,7 @@ async function completeOnboarding(page: Page, opts: OnboardingAnswers) {
   await page.getByRole("button", { name: "Continuar" }).click();
 
   await page.getByRole("button", { name: new RegExp(currency) }).click();
-  await page.getByLabel("Valor médio mensal").fill(revenue);
+  await fillMoney(page.getByLabel("Valor médio mensal"), revenue, { currency: currency as "BRL" | "USD" | "JPY" });
   await page.getByRole("button", { name: "Continuar" }).click();
 
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();

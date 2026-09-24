@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, YearsInBusiness } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ChoiceButton } from "@/components/onboarding/ChoiceButton";
 import { CURRENCY_OPTIONS, YEARS_IN_BUSINESS_OPTIONS } from "@/lib/onboarding/options";
@@ -144,14 +145,12 @@ export function EmpresaForm({
         )}
       </div>
 
-      <FormField
+      <MoneyField
         id="averageMonthlyRevenue"
         label="Faturamento médio mensal"
-        type="number"
-        min={0}
-        step={currency === "JPY" ? 1 : 0.01}
+        currency={currency}
         value={averageMonthlyRevenue}
-        onChange={(e) => setAverageMonthlyRevenue(e.target.value)}
+        onChange={setAverageMonthlyRevenue}
       />
 
       {error && (

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -31,7 +32,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -71,7 +72,7 @@ test.describe("Etapa 6 - vendas", () => {
     await page.getByLabel("Data da venda").fill(todayIso());
     await page.getByLabel("Descrição").fill("Serviço A E2E");
     await page.getByLabel("Quantidade").fill("1");
-    await page.getByLabel("Preço unitário").fill("500");
+    await fillMoney(page.getByLabel("Preço unitário"), "500");
     await page.getByLabel("Forma de pagamento (opcional)").selectOption({ label: "Transferência" });
     // "À vista" já é o padrão selecionado.
 
@@ -107,7 +108,7 @@ test.describe("Etapa 6 - vendas", () => {
     await page.getByLabel("Data da venda").fill(todayIso());
     await page.getByLabel("Descrição").fill("Produto B E2E");
     await page.getByLabel("Quantidade").fill("1");
-    await page.getByLabel("Preço unitário").fill("1200");
+    await fillMoney(page.getByLabel("Preço unitário"), "1200");
 
     await page.getByRole("button", { name: "A prazo" }).click();
     await page.getByLabel("Nº de parcelas").fill("3");
@@ -164,7 +165,7 @@ test.describe("Etapa 6 - vendas", () => {
     await page.getByLabel("Data da venda").fill(todayIso());
     await page.getByLabel("Descrição").fill("Produto Cancelável E2E");
     await page.getByLabel("Quantidade").fill("1");
-    await page.getByLabel("Preço unitário").fill("1000");
+    await fillMoney(page.getByLabel("Preço unitário"), "1000");
     await page.getByRole("button", { name: "A prazo" }).click();
     await page.getByLabel("Nº de parcelas").fill("2");
     await page.getByRole("button", { name: "Dividir igualmente" }).click();

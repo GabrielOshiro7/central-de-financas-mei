@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { MoneyField, MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS, SALE_DISCOUNT_TYPE_OPTIONS } from "@/lib/sales/options";
@@ -394,8 +395,8 @@ export function SaleForm({
 
         <div className="flex flex-col gap-3">
           {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-12 sm:items-end dark:border-neutral-700">
-              <div className="sm:col-span-3">
+            <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 lg:grid-cols-12 lg:items-end dark:border-neutral-700">
+              <div className="lg:col-span-3">
                 <label htmlFor={`product-${index}`} className={labelClass}>
                   Produto/serviço (opcional)
                 </label>
@@ -423,7 +424,7 @@ export function SaleForm({
                   </button>
                 )}
               </div>
-              <div className="sm:col-span-4">
+              <div className="lg:col-span-3">
                 <label htmlFor={`description-${index}`} className={labelClass}>
                   Descrição
                 </label>
@@ -434,7 +435,7 @@ export function SaleForm({
                   className={inputClass}
                 />
               </div>
-              <div className="sm:col-span-2">
+              <div className="lg:col-span-2">
                 <label htmlFor={`quantity-${index}`} className={labelClass}>
                   Quantidade
                 </label>
@@ -448,21 +449,18 @@ export function SaleForm({
                   className={inputClass}
                 />
               </div>
-              <div className="sm:col-span-2">
+              <div className="lg:col-span-3">
                 <label htmlFor={`unitPrice-${index}`} className={labelClass}>
                   Preço unitário
                 </label>
-                <input
+                <MoneyInput
                   id={`unitPrice-${index}`}
-                  type="number"
-                  min={0}
-                  step={decimals === 0 ? 1 : 0.01}
+                  currency={currency}
                   value={item.unitPrice}
-                  onChange={(e) => updateItem(index, { unitPrice: e.target.value })}
-                  className={inputClass}
+                  onChange={(value) => updateItem(index, { unitPrice: value })}
                 />
               </div>
-              <div className="sm:col-span-1">
+              <div className="lg:col-span-1">
                 <button
                   type="button"
                   onClick={() => removeItem(index)}
@@ -484,7 +482,15 @@ export function SaleForm({
             <select
               id="discountType"
               value={discountType}
-              onChange={(e) => setDiscountType(e.target.value as "" | "FIXED" | "PERCENTAGE")}
+              onChange={(e) => {
+                const next = e.target.value as "" | "FIXED" | "PERCENTAGE";
+                // O mesmo estado guarda "10" (%) ou "10.00" (valor): trocar de
+                // tipo com algo digitado reinterpretaria o numero (10% viraria
+                // R$ 10,00, ou 12.5% em JPY nem seria um valor valido), entao
+                // limpa. So limpa em troca real de tipo com valor ja digitado.
+                if (next !== discountType && discountType !== "" && next !== "") setDiscountValue("");
+                setDiscountType(next);
+              }}
               className={inputClass}
             >
               <option value="">Sem desconto</option>
@@ -495,15 +501,24 @@ export function SaleForm({
               ))}
             </select>
           </div>
-          {discountType && (
+          {discountType === "PERCENTAGE" && (
             <FormField
               id="discountValue"
-              label={discountType === "PERCENTAGE" ? "Percentual (%)" : "Valor do desconto"}
+              label="Percentual (%)"
               type="number"
               min={0}
               step={decimals === 0 ? 1 : 0.01}
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
+            />
+          )}
+          {discountType === "FIXED" && (
+            <MoneyField
+              id="discountValue"
+              label="Valor do desconto"
+              currency={currency}
+              value={discountValue}
+              onChange={setDiscountValue}
             />
           )}
         </div>
@@ -636,14 +651,11 @@ export function SaleForm({
                       <label htmlFor={`amount-${index}`} className={labelClass}>
                         Valor
                       </label>
-                      <input
+                      <MoneyInput
                         id={`amount-${index}`}
-                        type="number"
-                        min={0}
-                        step={decimals === 0 ? 1 : 0.01}
+                        currency={currency}
                         value={installment.amount}
-                        onChange={(e) => updateInstallment(index, { amount: e.target.value })}
-                        className={inputClass}
+                        onChange={(value) => updateInstallment(index, { amount: value })}
                       />
                     </div>
                     <div className="sm:col-span-2">

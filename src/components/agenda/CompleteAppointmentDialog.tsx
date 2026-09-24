@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
+import { MoneyInput } from "@/components/MoneyInput";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 
@@ -177,7 +178,7 @@ export function CompleteAppointmentDialog({
 
         <div className="mt-4 flex flex-col gap-3">
           {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-[1fr_5rem_6rem] items-end gap-2">
+            <div key={index} className="grid grid-cols-[1fr_5rem_9rem] items-end gap-2">
               <div>
                 <span className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">{item.description}</span>
               </div>
@@ -199,14 +200,11 @@ export function CompleteAppointmentDialog({
                 <label htmlFor={`complete-price-${index}`} className="sr-only">
                   Preço de {item.description}
                 </label>
-                <input
+                <MoneyInput
                   id={`complete-price-${index}`}
-                  type="number"
-                  min={0}
-                  step={decimals === 0 ? 1 : 0.01}
+                  currency={currency}
                   value={item.unitPriceInput}
-                  onChange={(e) => updateItem(index, { unitPriceInput: e.target.value })}
-                  className={inputClass}
+                  onChange={(value) => updateItem(index, { unitPriceInput: value })}
                 />
               </div>
             </div>
@@ -289,16 +287,13 @@ export function CompleteAppointmentDialog({
                   <label htmlFor={`complete-amount-${index}`} className="sr-only">
                     Valor da parcela {index + 1}
                   </label>
-                  <input
+                  <MoneyInput
                     id={`complete-amount-${index}`}
-                    type="number"
-                    min={0}
-                    step={decimals === 0 ? 1 : 0.01}
+                    currency={currency}
                     value={installment.amount}
-                    onChange={(e) =>
-                      setInstallments((prev) => prev.map((i, idx) => (idx === index ? { ...i, amount: e.target.value } : i)))
+                    onChange={(value) =>
+                      setInstallments((prev) => prev.map((i, idx) => (idx === index ? { ...i, amount: value } : i)))
                     }
-                    className={inputClass}
                   />
                 </div>
               ))}

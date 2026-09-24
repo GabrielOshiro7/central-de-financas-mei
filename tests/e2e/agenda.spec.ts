@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
 
@@ -27,7 +28,7 @@ async function completeOnboarding(page: Page, name: string) {
   await page.getByLabel("Número de pessoas").fill("5");
   await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByRole("button", { name: /BRL/ }).click();
-  await page.getByLabel("Valor médio mensal").fill("10000");
+  await fillMoney(page.getByLabel("Valor médio mensal"), "10000");
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "Tudo pronto!" })).toBeVisible();
   await page.getByRole("button", { name: "Ir para o dashboard" }).click();
@@ -81,7 +82,7 @@ test.describe("Etapa 8 - agenda", () => {
     await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
     await page.getByLabel("Nome do serviço").fill("Corte Agenda E2E");
     await page.getByLabel("Duração (min)").fill("30");
-    await page.getByLabel("Preço (opcional)").fill("80");
+    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
     await page.getByRole("button", { name: "Criar serviço" }).click();
     await expect(page.getByText("Corte Agenda E2E (30 min)")).toBeVisible();
 
