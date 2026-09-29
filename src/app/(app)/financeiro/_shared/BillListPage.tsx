@@ -12,6 +12,7 @@ import { BillTable, type BillRow } from "@/components/financeiro/BillTable";
 import { BillSummaryCards } from "@/components/financeiro/BillSummaryCards";
 import { RecurringBillTable, type RecurringBillRow } from "@/components/financeiro/RecurringBillTable";
 import { NewBillButton } from "@/components/financeiro/NewBillButton";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 const VALID_STATUSES = new Set<string>(["PENDING", "OVERDUE", "PAID", "CANCELLED"]);
 const VALID_DUE = new Set<string>(DUE_SOON_OPTIONS.map((o) => o.value));
@@ -46,10 +47,12 @@ function paramString(searchParams: SearchParams, key: string): string | undefine
 export async function BillListPage({
   direction,
   title,
+  helpText,
   searchParams,
 }: {
   direction: BillDirection;
   title: string;
+  helpText: string;
   searchParams: SearchParams;
 }) {
   const { business } = await requireOnboardedUser();
@@ -141,7 +144,10 @@ export async function BillListPage({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
+          <InfoTooltip text={helpText} />
+        </div>
         {hasAnyEver && <NewBillButton direction={direction} categories={categories} currency={business.currency} />}
       </div>
 

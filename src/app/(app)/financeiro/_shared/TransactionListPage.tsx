@@ -12,6 +12,7 @@ import {
 } from "@/lib/finance/period";
 import { TransactionFilters } from "@/components/financeiro/TransactionFilters";
 import { TransactionTable, type TransactionRow } from "@/components/financeiro/TransactionTable";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_SOURCES = new Set<string>(["MANUAL", "IMPORT"]);
@@ -40,10 +41,12 @@ function paramString(searchParams: SearchParams, key: string): string | undefine
 export async function TransactionListPage({
   type,
   title,
+  helpText,
   searchParams,
 }: {
   type: FinancialEntryType;
   title: string;
+  helpText: string;
   searchParams: SearchParams;
 }) {
   const { user, business } = await requireOnboardedUser();
@@ -85,7 +88,10 @@ export async function TransactionListPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
+        <InfoTooltip text={helpText} />
+      </div>
       <TransactionFilters categories={categories.map((c) => ({ id: c.id, name: c.name }))} />
       <TransactionTable
         rows={rows}

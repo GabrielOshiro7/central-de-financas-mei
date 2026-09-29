@@ -3,6 +3,7 @@ import { listRecurringEntries } from "@/lib/finance/recurring/mutations";
 import { formatFrequencyLabel } from "@/lib/finance/recurring/format";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { RecurringEntryTable, type RecurringEntryRow } from "@/components/financeiro/RecurringEntryTable";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 function formatDateDisplay(d: Date): string {
   return d.toLocaleDateString("pt-BR");
@@ -53,7 +54,10 @@ export default async function RecurringEntriesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Lançamentos recorrentes</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Lançamentos recorrentes</h1>
+          <InfoTooltip text="Lançamentos que se repetem automaticamente a cada período (ex.: todo mês), sem você precisar cadastrar de novo toda vez." />
+        </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
           Moldes que geram lançamentos automaticamente. Para criar um novo, marque &quot;Recorrente&quot; ao
           adicionar um lançamento em Receitas, Custos ou Despesas.
