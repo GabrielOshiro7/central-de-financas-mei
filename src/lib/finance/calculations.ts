@@ -99,12 +99,26 @@ export function summarizeByCategory(
     .sort((a, b) => b.amount.comparedTo(a.amount));
 }
 
+// Acima disso, uma variacao percentual deixa de ser interpretavel para um
+// dono de pequeno negocio (ex.: "+490.000%" nao comunica nada util) - o
+// motivo de existir e legibilidade, nao armazenamento. Como efeito colateral
+// conveniente, tambem evita o overflow de Insight.variationPercent
+// (Decimal(7,4) no schema, que só cabe ate ±999.9999) - mas isso é
+// consequência, não a razão do limite.
+const MAX_READABLE_VARIATION_PERCENT = 999.99;
+
 // Variacao percentual entre o valor atual e o anterior. Retorna null (N/A)
 // quando o valor anterior e zero - nao da pra calcular uma variacao percentual
-// significativa a partir de uma base zero (secao 16).
+// significativa a partir de uma base zero (secao 16). Tambem retorna null
+// quando o valor anterior e tao pequeno (perto de zero, mas nao exatamente)
+// que a variacao resultante ultrapassa MAX_READABLE_VARIATION_PERCENT -
+// mesmo raciocinio do "sem base de comparacao" de describeSignedGrowth logo
+// abaixo, so que para uma base degenerada em vez de zero.
 export function calculateVariationPercent(current: Decimal, previous: Decimal): Decimal | null {
   if (previous.isZero()) return null;
-  return current.minus(previous).dividedBy(previous.abs()).times(100);
+  const variation = current.minus(previous).dividedBy(previous.abs()).times(100);
+  if (variation.abs().greaterThan(MAX_READABLE_VARIATION_PERCENT)) return null;
+  return variation;
 }
 
 // Diferenca em pontos percentuais entre duas margens (nao e variacao

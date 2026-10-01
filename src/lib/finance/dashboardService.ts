@@ -168,8 +168,16 @@ export async function getDashboardData(
     // pagina /insights, nunca chama IA (withAI so acontece atras do botao
     // manual de regenerar) - o dashboard nunca bloqueia por causa disso.
     // Independente de `range`/`comparison` (sempre reflete o mes corrente,
-    // como o resto do modulo de insights).
-    getInsightsForBusiness(businessId, now),
+    // como o resto do modulo de insights). O .catch aqui e o que de fato
+    // cumpre essa promessa: sem ele, qualquer falha ao gerar/ler insights
+    // (ex.: um calculo inesperado) derrubava o Promise.all inteiro e levava
+    // junto resumo/grafico/contas/vendas, que ja tinham carregado com
+    // sucesso - um problema isolado dos insights nunca deveria custar o
+    // resto do dashboard.
+    getInsightsForBusiness(businessId, now).catch((err) => {
+      console.error("[dashboard] falha ao gerar/carregar insights, seguindo sem eles:", err);
+      return [];
+    }),
   ]);
 
   // So comparamos contra o periodo de comparacao se ele de fato teve dado -

@@ -83,6 +83,15 @@ describe("calculateVariationPercent", () => {
     const variation = calculateVariationPercent(new Decimal(80), new Decimal(100));
     expect(variation?.toNumber()).toBe(-20);
   });
+
+  it("retorna null quando a base é tão pequena que a variação passa de 999,99% (ilegível, e estouraria Insight.variationPercent)", () => {
+    expect(calculateVariationPercent(new Decimal(1000), new Decimal(0.01))).toBeNull();
+  });
+
+  it("calcula normalmente uma variação logo abaixo do limite de legibilidade", () => {
+    const variation = calculateVariationPercent(new Decimal(1099.9), new Decimal(100));
+    expect(variation?.toNumber()).toBeCloseTo(999.9);
+  });
 });
 
 describe("marginPointsDelta", () => {

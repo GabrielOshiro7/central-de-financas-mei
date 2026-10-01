@@ -78,6 +78,12 @@ describe("evaluateRevenueGrowth", () => {
     const snapshot = baseSnapshot({ revenue: { current: new Decimal(1050), previous: new Decimal(1000) } }); // +5%
     expect(draftFor(snapshot, "REVENUE_GROWTH")).toBeNull();
   });
+
+  it("fica silencioso (em vez de lançar) quando a base anterior é perto de zero e a variação seria ilegível", () => {
+    const snapshot = baseSnapshot({ revenue: { current: new Decimal(1000), previous: new Decimal(0.01) } });
+    expect(() => evaluateSnapshot(snapshot)).not.toThrow();
+    expect(draftFor(snapshot, "REVENUE_GROWTH")).toBeNull();
+  });
 });
 
 describe("evaluateMarginChange", () => {

@@ -118,6 +118,31 @@ describe("Insights (Etapa 7) - integração", () => {
     }
   });
 
+  // Reproduz o bug real encontrado em producao local: um periodo anterior
+  // com base perto de zero (mas nao exatamente zero) gerava uma variacao
+  // percentual gigantesca que estourava a coluna Insight.variationPercent
+  // (Decimal(7,4), so cabe ate ±999.9999) - a transacao inteira do Postgres
+  // abortava e a excecao subia ate o Dashboard. calculateVariationPercent
+  // agora retorna null acima do limite de legibilidade, entao nenhum insight
+  // de REVENUE_GROWTH deveria ser gerado aqui, sem lancar.
+  it("não lança (nem estoura a coluna no Postgres) quando o período anterior tem uma base perto de zero", async () => {
+    const { userId, businessId, revenueCategoryId } = await setupBusiness("Insights BaseDegenerada");
+    try {
+      const now = new Date(2026, 8, 15);
+      await prisma.financialEntry.createMany({
+        data: [
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago (quase nada)", amount: "0.01", occurredAt: new Date(2026, 7, 10) },
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set", amount: "5000", occurredAt: new Date(2026, 8, 5) },
+        ],
+      });
+
+      const insights = await getInsightsForBusiness(businessId, now);
+      expect(insights.find((i) => i.metric === "REVENUE_GROWTH")).toBeUndefined();
+    } finally {
+      await cleanupBusiness(businessId, userId);
+    }
+  });
+
   it("regenerar (withAI: true) não quebra a detecção de desatualização - dado novo sempre volta para template no próximo GET", async () => {
     const { userId, businessId, revenueCategoryId } = await setupBusiness("Insights Regenerate");
     try {
