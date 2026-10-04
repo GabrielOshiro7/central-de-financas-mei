@@ -2,6 +2,44 @@ import { z } from "zod";
 import type { Currency } from "@prisma/client";
 import { isIntegerCurrency } from "@/lib/money";
 
+// Validação dos parâmetros de URL do redesign do calendário (?month=,
+// ?day=) - ano aceito 2000-2100 (requisito explícito), formato estrito
+// "YYYY-MM"/"YYYY-MM-DD". Um parâmetro ausente ou inválido devolve `null` -
+// quem chama cai para "hoje" nesse caso, nunca quebra a página.
+const monthParamSchema = z
+  .string()
+  .regex(/^(\d{4})-(0[1-9]|1[0-2])$/)
+  .refine((v) => {
+    const year = Number(v.slice(0, 4));
+    return year >= 2000 && year <= 2100;
+  });
+
+const dayParamSchema = z
+  .string()
+  .regex(/^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
+  .refine((v) => {
+    const year = Number(v.slice(0, 4));
+    return year >= 2000 && year <= 2100;
+  });
+
+export function parseMonthParam(value: unknown): { year: number; month: number } | null {
+  if (typeof value !== "string") return null;
+  const result = monthParamSchema.safeParse(value);
+  if (!result.success) return null;
+  const [year, month] = result.data.split("-").map(Number);
+  return { year, month };
+}
+
+// Devolve a própria string "YYYY-MM-DD" (já é o formato usado como chave em
+// toda a Agenda - tokyoDateKey/formatTokyoDateKey) em vez de um Date, para
+// quem chama nunca precisar reconstruir o instante a partir de um fuso
+// errado.
+export function parseDayParam(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const result = dayParamSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
 // Um servico por linha - `position` NUNCA vem do cliente (evita gaps/
 // duplicatas mandados pelo frontend); e sempre atribuido pelo backend como o
 // indice do item no array (ver createAppointment/updateAppointment em

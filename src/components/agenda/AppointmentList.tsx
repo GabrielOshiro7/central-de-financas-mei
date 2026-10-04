@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
-import { formatTokyoDate, formatTokyoDateKey, formatTokyoTime } from "@/lib/agenda/time";
+import { formatTokyoDateLong, formatTokyoTime } from "@/lib/agenda/time";
+import { groupAppointmentsByDay } from "@/lib/agenda/calendar";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/agenda/AppointmentActions";
 import type { CompleteDialogItem } from "@/components/agenda/CompleteAppointmentDialog";
@@ -27,7 +28,10 @@ function nextAppointmentHref(item: AppointmentListItem): string {
   return `/agenda/novo?${params.toString()}`;
 }
 
-function AppointmentRow({
+// Exportado (redesign do Calendario) - reaproveitado tanto pelo painel do
+// dia no Calendario quanto pela lista por dia da aba Mes, sem duplicar
+// nenhuma logica de status/acoes (AppointmentActions ja cuida disso).
+export function AppointmentRow({
   item,
   currency,
   revenueCategories,
@@ -80,20 +84,25 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-// Vista "Hoje" - lista cronologica simples, sem agrupamento.
-export function AppointmentListToday({
+// Lista cronologica simples, sem agrupamento - usada pela aba Dia e pelo
+// painel do dia selecionado no Calendario (redesign). `emptyMessage` e
+// configuravel porque o mesmo componente mostra "hoje" (aba Dia na data
+// atual) ou um dia qualquer navegado/selecionado.
+export function AppointmentSimpleList({
   items,
+  emptyMessage,
   currency,
   revenueCategories,
   defaultCategoryId,
 }: {
   items: AppointmentListItem[];
+  emptyMessage: string;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
 }) {
   if (items.length === 0) {
-    return <EmptyState message="Nenhum agendamento para hoje." />;
+    return <EmptyState message={emptyMessage} />;
   }
 
   return (
@@ -105,38 +114,34 @@ export function AppointmentListToday({
   );
 }
 
-// Vista "Semana" - lista agrupada por dia (sem grade, sem arrastar e
-// soltar), agrupamento pelo dia calendario de Toquio de cada agendamento.
-export function AppointmentListWeek({
+// Lista agrupada por dia (sem grade, sem arrastar e soltar) - usada pela aba
+// Mes (redesign). Agrupamento pelo dia calendario de Toquio de cada
+// agendamento (groupAppointmentsByDay, calendar.ts).
+export function AppointmentGroupedList({
   items,
+  emptyMessage,
   currency,
   revenueCategories,
   defaultCategoryId,
 }: {
   items: AppointmentListItem[];
+  emptyMessage: string;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
 }) {
   if (items.length === 0) {
-    return <EmptyState message="Nenhum agendamento nesta semana." />;
+    return <EmptyState message={emptyMessage} />;
   }
 
-  const groups = new Map<string, AppointmentListItem[]>();
-  for (const item of items) {
-    const key = formatTokyoDateKey(item.startAt);
-    const group = groups.get(key) ?? [];
-    group.push(item);
-    groups.set(key, group);
-  }
-
+  const groups = groupAppointmentsByDay(items);
   const orderedKeys = [...groups.keys()].sort();
 
   return (
     <div className="flex flex-col gap-6">
       {orderedKeys.map((key) => (
         <div key={key} className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold uppercase text-gray-500 dark:text-neutral-400">{formatTokyoDate(groups.get(key)![0].startAt)}</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{formatTokyoDateLong(groups.get(key)![0].startAt)}</h3>
           <ul className="flex flex-col gap-2">
             {groups.get(key)!.map((item) => (
               <AppointmentRow

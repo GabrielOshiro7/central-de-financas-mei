@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { tokyoMonthRange } from "@/lib/agenda/calendar";
 
 // Inclui o Product atual de cada servico (so defaultPrice) - usado pra
 // pre-preencher o preco no dialogo de "concluir atendimento" com o preco
@@ -21,6 +22,14 @@ export async function listAppointmentsForRange(businessId: string, start: Date, 
     },
     orderBy: { startAt: "asc" },
   });
+}
+
+// Agendamentos do mes inteiro (grade do Calendario e aba Mes) - mesmo range
+// explicito em Toquio de tokyoMonthRange (calendar.ts), nunca mais que um
+// mes. `month` e 1-indexado (janeiro=1).
+export async function listAppointmentsForMonth(businessId: string, year: number, month: number) {
+  const { start, end } = tokyoMonthRange(year, month);
+  return listAppointmentsForRange(businessId, start, end);
 }
 
 export async function getAppointmentById(businessId: string, id: string) {

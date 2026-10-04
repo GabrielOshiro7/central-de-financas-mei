@@ -55,8 +55,10 @@ function toTokyoParts(date: Date): TokyoParts {
 }
 
 // Constroi o instante UTC correspondente a uma data/hora de Toquio.
-// `month` e 1-indexado (janeiro=1).
-function fromTokyoParts(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
+// `month` e 1-indexado (janeiro=1). Exportada (Etapa Agenda-calendario) para
+// calendar.ts construir datas a partir de ano/mes/dia explicitos (grade do
+// mes, range do mes) sem duplicar a conta de offset aqui de novo.
+export function fromTokyoParts(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
   const utcMillis = Date.UTC(year, month - 1, day, hour, minute, second, 0) - TOKYO_OFFSET_MINUTES * MS_PER_MINUTE;
   return new Date(utcMillis);
 }
@@ -65,7 +67,9 @@ function addDaysTokyo(date: Date, days: number): Date {
   return new Date(date.getTime() + days * MS_PER_DAY);
 }
 
-function tokyoWeekdayIndex(date: Date): number {
+// Exportada (Etapa Agenda-calendario) - calendar.ts usa pra saber em que
+// coluna (domingo=0) comeca a grade do mes, sem reimplementar a conversao.
+export function tokyoWeekdayIndex(date: Date): number {
   const weekday = new Intl.DateTimeFormat("en-US", { timeZone: AGENDA_TIMEZONE, weekday: "short" }).format(date);
   const idx = WEEKDAY_INDEX[weekday];
   if (idx === undefined) throw new Error(`Dia da semana inesperado retornado pelo Intl: ${weekday}`);
@@ -143,4 +147,21 @@ export function formatTokyoDate(date: Date): string {
 
 export function formatTokyoTime(date: Date): string {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: AGENDA_TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+}
+
+// "2 de outubro de 2026" - usado pelos cabecalhos por extenso do redesign do
+// calendario (grade mensal, painel do dia, agrupamento da aba Mes).
+export function formatTokyoDateLong(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: AGENDA_TIMEZONE,
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+// "outubro de 2026" (minusculo - quem exibe no cabecalho do calendario
+// capitaliza a primeira letra na hora de montar o texto, nao aqui).
+export function formatTokyoMonthYear(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: AGENDA_TIMEZONE, month: "long", year: "numeric" }).format(date);
 }

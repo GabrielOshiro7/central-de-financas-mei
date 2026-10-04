@@ -2,7 +2,14 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
+import { parseDayParam } from "@/lib/agenda/schema";
 import { AppointmentForm } from "@/components/agenda/AppointmentForm";
+
+// Horario padrao usado ao pre-preencher uma data vinda do atalho "Novo
+// agendamento" do painel do dia no Calendario (redesign) - so um ponto de
+// partida razoavel (horario comercial), o usuario troca livremente no
+// formulario.
+const DEFAULT_PREFILL_TIME = "09:00";
 
 export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo">) {
   const searchParams = await props.searchParams;
@@ -19,6 +26,12 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
   const clientIdParam = typeof searchParams.clientId === "string" ? searchParams.clientId : undefined;
   const serviceIdParam = searchParams.serviceId;
   const initialServiceIds = Array.isArray(serviceIdParam) ? serviceIdParam : serviceIdParam ? [serviceIdParam] : undefined;
+
+  // Prefill de data vindo do atalho "+ Novo agendamento nesta data" do
+  // painel do dia no Calendario (redesign) - so a data; hora default
+  // DEFAULT_PREFILL_TIME, o usuario escolhe o horario de verdade.
+  const dateParam = parseDayParam(searchParams.date);
+  const initialStartAt = dateParam ? `${dateParam}T${DEFAULT_PREFILL_TIME}` : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,6 +54,7 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
         currency={business.currency}
         initialClientId={clientIdParam}
         initialServiceIds={initialServiceIds}
+        initialStartAt={initialStartAt}
       />
     </div>
   );

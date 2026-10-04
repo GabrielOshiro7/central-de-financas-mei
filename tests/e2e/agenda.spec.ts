@@ -69,7 +69,11 @@ test.describe("Etapa 8 - agenda", () => {
     // POST /api/produtos).
     await page.goto("/agenda");
     await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
-    await expect(page.getByText("Nenhum agendamento para hoje.")).toBeVisible();
+    // Aba padrao agora e "Calendario" (redesign) - hoje vem pre-selecionado
+    // (secao 4), o painel do dia mostra o mesmo vazio que "Hoje" mostrava
+    // antes.
+    await expect(page.getByRole("link", { name: "Calendário" })).toHaveClass(/bg-gray-900/);
+    await expect(page.getByText("Nenhum agendamento neste dia.")).toBeVisible();
 
     await page.getByRole("link", { name: "+ Novo agendamento" }).click();
     await expect(page).toHaveURL(/\/agenda\/novo/);
@@ -133,5 +137,108 @@ test.describe("Etapa 8 - agenda", () => {
     await expect(billRow.getByText("Pendente")).toBeVisible();
 
     expect(consoleErrors, `Erros de console encontrados: ${consoleErrors.join("; ")}`).toEqual([]);
+  });
+
+  // Mesmo calculo que formatTokyoMonthYear (src/lib/agenda/time.ts) faz no
+  // servidor - usado aqui so pra montar um seletor estavel pro botao de
+  // titulo do mes, sem depender de qual mes "hoje" realmente e quando o
+  // teste roda.
+  function currentTokyoMonthLabel(): string {
+    const label = new Intl.DateTimeFormat("pt-BR", { timeZone: "Asia/Tokyo", month: "long", year: "numeric" }).format(new Date());
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  test("Calendário: navega entre meses, troca de ano pelo seletor, e clica num dia com ponto", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const email = uniqueEmail("agenda-cal");
+    await register(page, "Dono Calendario E2E", email);
+    await completeOnboarding(page, "Empresa Calendario E2E");
+
+    // Cria um agendamento hoje (mesmo fluxo da criacao do teste principal),
+    // so pra garantir que o dia de hoje tenha o "pontinho" no calendario.
+    await page.goto("/agenda/novo");
+    await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
+    await page.getByLabel("Nome do novo cliente").fill("Cliente Calendario E2E");
+    await page.getByRole("button", { name: "Criar cliente" }).click();
+    await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
+    await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
+    await page.getByLabel("Nome do serviço").fill("Corte Calendario E2E");
+    await page.getByLabel("Duração (min)").fill("30");
+    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
+    await page.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(page.getByText("Corte Calendario E2E (30 min)")).toBeVisible();
+    await page.locator("#startAt").fill(pastDateTimeInputValue());
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page).toHaveURL(/\/agenda(\?|$)/);
+
+    const monthTitle = page.getByRole("button", { name: currentTokyoMonthLabel() });
+    await expect(monthTitle).toBeVisible();
+
+    // Navega mes anterior e depois mes seguinte com as setas - volta pro mes
+    // original.
+    await page.getByRole("button", { name: "Mês anterior" }).click();
+    await expect(monthTitle).not.toBeVisible();
+    await page.getByRole("button", { name: "Próximo mês" }).click();
+    await expect(monthTitle).toBeVisible();
+
+    // Troca de ano pelo seletor de mes/ano.
+    await monthTitle.click();
+    const yearText = page.getByText(new RegExp(`^\\d{4}$`)).first();
+    const initialYear = Number(await yearText.textContent());
+    await page.getByRole("button", { name: "Próximo ano" }).click();
+    await expect(page.getByText(String(initialYear + 1))).toBeVisible();
+    await page.getByRole("button", { name: "Ano anterior" }).click();
+    await expect(page.getByText(String(initialYear))).toBeVisible();
+    // Escolhe o mes de Janeiro - navega e fecha o seletor.
+    await page.getByRole("button", { name: "Jan", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Jan", exact: true })).not.toBeVisible();
+
+    // Volta pro mes/dia de hoje.
+    await page.getByRole("button", { name: "Hoje" }).click();
+    await expect(monthTitle).toBeVisible();
+
+    // O dia de hoje tem o "pontinho" (aria-current="date") - clica em outro
+    // dia primeiro (painel some o agendamento), depois volta pra hoje (painel
+    // mostra o agendamento de novo).
+    const todayCell = page.locator('button[aria-current="date"]');
+    await expect(todayCell).toBeVisible();
+    await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
+
+    const otherDay = page.locator("button[data-date-key]:not([aria-current='date'])").first();
+    await otherDay.click();
+    await expect(page.getByText("Nenhum agendamento neste dia.")).toBeVisible();
+
+    await todayCell.click();
+    await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
+  });
+
+  test("aba Mês mostra as contagens por status", async ({ page }) => {
+    test.setTimeout(60_000);
+
+    const email = uniqueEmail("agenda-month");
+    await register(page, "Dono Mes E2E", email);
+    await completeOnboarding(page, "Empresa Mes E2E");
+
+    await page.goto("/agenda/novo");
+    await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
+    await page.getByLabel("Nome do novo cliente").fill("Cliente Mes E2E");
+    await page.getByRole("button", { name: "Criar cliente" }).click();
+    await expect(page.getByText("Cliente Mes E2E")).toBeVisible();
+    await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
+    await page.getByLabel("Nome do serviço").fill("Corte Mes E2E");
+    await page.getByLabel("Duração (min)").fill("30");
+    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
+    await page.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(page.getByText("Corte Mes E2E (30 min)")).toBeVisible();
+    await page.locator("#startAt").fill(pastDateTimeInputValue());
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page).toHaveURL(/\/agenda(\?|$)/);
+
+    await page.getByRole("link", { name: "Mês" }).click();
+    await expect(page).toHaveURL(/view=month/);
+    await expect(page.getByText("Total")).toBeVisible();
+    await expect(page.getByText("Agendados")).toBeVisible();
+    await expect(page.getByText("Cliente Mes E2E")).toBeVisible();
   });
 });
