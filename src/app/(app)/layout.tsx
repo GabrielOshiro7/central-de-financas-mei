@@ -20,7 +20,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`${inter.className} min-h-screen bg-[#FAF9F6] dark:bg-neutral-950`}>
       <Sidebar businessName={business.name ?? "Minha empresa"} />
-      <main className="min-h-screen pl-(--sidebar-w) transition-[padding-left,background-color,border-color,color] duration-250 ease-in-out">
+      {/* overflow-x-clip: recorta nas bordas do main o fundo full-bleed da
+          barra do Financeiro (.subnav-backdrop). "clip" (e não "hidden") não
+          cria container de rolagem, então o sticky da barra continua preso à
+          rolagem da página. */}
+      <main className="min-h-screen overflow-x-clip pl-(--sidebar-w) transition-[padding-left,background-color,border-color,color] duration-250 ease-in-out">
         <div className="mx-auto max-w-5xl px-6 py-10">{children}</div>
       </main>
     </div>

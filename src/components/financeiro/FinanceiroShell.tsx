@@ -1,21 +1,9 @@
 "use client";
 
 import { type ReactNode, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { Currency } from "@prisma/client";
+import { FinanceiroTabBar } from "@/components/financeiro/FinanceiroTabBar";
 import { TransactionFormModal, type CategoryOption } from "@/components/financeiro/TransactionFormModal";
-
-const TABS = [
-  { href: "/financeiro", label: "Visão geral" },
-  { href: "/financeiro/receitas", label: "Receitas" },
-  { href: "/financeiro/custos", label: "Custos" },
-  { href: "/financeiro/despesas", label: "Despesas" },
-  { href: "/financeiro/pagar", label: "Contas a pagar" },
-  { href: "/financeiro/receber", label: "Contas a receber" },
-  { href: "/financeiro/recorrentes", label: "Recorrentes" },
-  { href: "/financeiro/importar", label: "Importação" },
-];
 
 export function FinanceiroShell({
   categories,
@@ -26,39 +14,23 @@ export function FinanceiroShell({
   currency: Currency | null;
   children: ReactNode;
 }) {
-  const pathname = usePathname();
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <nav className="flex flex-wrap gap-1 rounded-lg border border-gray-200 bg-white p-1 dark:border-neutral-800 dark:bg-neutral-900">
-          {TABS.map((tab) => {
-            const active = pathname === tab.href;
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                  active
-                    ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
-                }`}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <button
-          type="button"
-          onClick={() => setModalOpen(true)}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
-        >
-          + Novo lançamento
-        </button>
-      </div>
+      <FinanceiroTabBar
+        action={
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="shrink-0 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+          >
+            {/* Em tela estreita só o "+" fica visível, pra sobrar espaço
+                pras abas; o nome acessível continua "+ Novo lançamento". */}
+            +<span className="sr-only sm:not-sr-only"> Novo lançamento</span>
+          </button>
+        }
+      />
 
       {children}
 
