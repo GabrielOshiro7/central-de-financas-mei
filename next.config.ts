@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "bottom-right",
   },
+  // A aba "Visao geral" do Financeiro foi removida (o Dashboard ja mostra o
+  // mesmo conteudo) - a raiz do modulo cai na primeira aba. Temporario (307)
+  // de proposito: o destino pode mudar, e um 308 ficaria em cache no
+  // navegador/CDN. A query string (ex.: ?period=LAST_MONTH) e repassada.
+  async redirects() {
+    return [{ source: "/financeiro", destination: "/financeiro/receitas", permanent: false }];
+  },
 };
 
 export default nextConfig;

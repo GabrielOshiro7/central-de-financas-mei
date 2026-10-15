@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -12,7 +13,7 @@ function todayIso() {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -58,7 +59,7 @@ test.describe("reautenticação para excluir lançamento (step-up)", () => {
     await register(page, "Dono Reauth", email);
     await completeOnboarding(page, "Empresa Reauth E2E");
 
-    await page.goto("/financeiro/receitas");
+    await gotoHydrated(page, "/financeiro/receitas");
     await addRevenue(page, "Lançamento A E2E");
     await addRevenue(page, "Lançamento B E2E");
 

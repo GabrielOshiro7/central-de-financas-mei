@@ -6,7 +6,6 @@ import {
   OUTROS_VALUE,
   type RevenueBusinessType,
 } from "@/lib/onboarding/options";
-import { formatMoney } from "@/lib/money";
 import { EmpresaForm } from "./EmpresaForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
 
@@ -53,19 +52,6 @@ export async function EmpresaSection({ business }: { business: Business }) {
             <dd className="mt-1 text-sm text-gray-900 dark:text-neutral-100">
               {revenueLabels.length > 0 ? revenueLabels.join(", ") : "—"}
             </dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase text-gray-500 dark:text-neutral-400">
-              Faturamento médio informado no cadastro
-            </dt>
-            <dd className="mt-1 text-sm text-gray-900 dark:text-neutral-100">
-              {business.averageMonthlyRevenue && business.currency
-                ? formatMoney(business.averageMonthlyRevenue, business.currency)
-                : "—"}
-            </dd>
-            <p className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
-              Esse valor é só informação de perfil — não entra nos cálculos do dashboard.
-            </p>
           </div>
         </dl>
       </section>

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -8,7 +9,7 @@ function uniqueEmail(prefix = "clientes") {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -46,7 +47,7 @@ test.describe("Etapa 6 - clientes", () => {
     await register(page, "Dono Clientes", email);
     await completeOnboarding(page, "Empresa Clientes E2E");
 
-    await page.goto("/clientes");
+    await gotoHydrated(page, "/clientes");
     await expect(page.getByRole("heading", { name: "Clientes" })).toBeVisible();
     await expect(page.getByText("Nenhum cliente cadastrado.")).toBeVisible();
 
@@ -104,7 +105,7 @@ test.describe("Etapa 6 - clientes", () => {
     const emailA = uniqueEmail("clientes-a");
     await register(page, "Dono A", emailA);
     await completeOnboarding(page, "Empresa A E2E");
-    await page.goto("/clientes");
+    await gotoHydrated(page, "/clientes");
     await page.getByRole("button", { name: "+ Novo cliente" }).click();
     await page.getByRole("dialog").getByLabel("Nome", { exact: true }).fill("Cliente Duplicado E2E");
     await page.getByRole("dialog").getByRole("button", { name: "Salvar" }).click();
@@ -116,7 +117,7 @@ test.describe("Etapa 6 - clientes", () => {
     const emailB = uniqueEmail("clientes-b");
     await register(page, "Dono B", emailB);
     await completeOnboarding(page, "Empresa B E2E");
-    await page.goto("/clientes");
+    await gotoHydrated(page, "/clientes");
     // Empresa nova - a lista não deve conter o cliente da empresa A.
     await expect(page.getByText("Nenhum cliente cadastrado.")).toBeVisible();
   });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { HydrationMarker } from "@/components/HydrationMarker";
 import "./globals.css";
 
 // Lido antes da hidratação (precisa ser `beforeInteractive`, que só é
@@ -69,6 +70,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }}
         />
         <ThemeProvider>{children}</ThemeProvider>
+        <HydrationMarker />
       </body>
     </html>
   );

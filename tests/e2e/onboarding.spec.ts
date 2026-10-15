@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -8,7 +9,7 @@ function uniqueEmail(prefix = "onb") {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -108,7 +109,7 @@ test.describe("onboarding", () => {
 
     // simula fechar e reabrir o navegador: nova aba, mesmo contexto (mesmo cookie de sessao)
     const newPage = await context.newPage();
-    await newPage.goto("/onboarding");
+    await gotoHydrated(newPage, "/onboarding");
 
     // deve continuar no passo 3 (nome), nao voltar para o passo 1
     await expect(newPage.getByRole("heading", { name: "Qual é o nome da sua empresa?" })).toBeVisible();
@@ -195,7 +196,7 @@ test.describe("onboarding", () => {
 
     // A rota antiga /empresa continua funcionando como redirect (Etapa 5.1) -
     // aproveitado aqui pra tambem confirmar isso, alem do isolamento.
-    await pageB.goto("/empresa");
+    await gotoHydrated(pageB, "/empresa");
     await expect(pageB).toHaveURL(/\/configuracoes/);
     await expect(pageB.getByLabel("Nome da empresa")).toHaveValue("Empresa Hackeada");
 
@@ -214,8 +215,10 @@ test.describe("onboarding", () => {
     });
 
     await page.getByRole("link", { name: "Configurações" }).click();
-    await expect(page.getByText(/¥500,000\b/)).toBeVisible();
-    await expect(page.getByText(/¥500,000\.00/)).toHaveCount(0);
+    // O valor aparece so no campo de edicao (a exibicao de leitura duplicada
+    // foi removida) - MoneyInput agrupa milhares com ponto e, pra JPY, nao
+    // mostra parte decimal.
+    await expect(page.getByLabel("Faturamento médio mensal")).toHaveValue("500.000");
   });
 
   // Etapa 5.1: rota antiga de "Minha empresa" removida do menu, mas mantida
@@ -227,7 +230,7 @@ test.describe("onboarding", () => {
 
     await expect(page.getByRole("link", { name: "Minha empresa" })).toHaveCount(0);
 
-    await page.goto("/empresa");
+    await gotoHydrated(page, "/empresa");
     await expect(page).toHaveURL(/\/configuracoes/);
     await expect(page.getByRole("heading", { name: "Empresa" })).toBeVisible();
     await expect(page.getByLabel("Nome da empresa")).toHaveValue("Empresa Redirect");

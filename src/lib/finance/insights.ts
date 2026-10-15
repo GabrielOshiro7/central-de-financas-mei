@@ -1,10 +1,8 @@
-import { Prisma, type Currency } from "@prisma/client";
+import type { Currency } from "@prisma/client";
 import type { FinancialSummary, CategoryBreakdownEntry, SignedGrowth } from "@/lib/finance/calculations";
 import { calculateVariationPercent, marginPointsDelta } from "@/lib/finance/calculations";
 import { formatMoney } from "@/lib/money";
 import { formatPercent, formatVariation } from "@/lib/finance/format";
-
-type Decimal = Prisma.Decimal;
 
 // Limiares nomeados (secao 20/21 do prompt da Etapa 3) - ajustaveis aqui, sem
 // numeros soltos espalhados pela logica de alertas/saude financeira.
@@ -131,20 +129,18 @@ export const HEALTH_ICON_COLOR: Record<FinancialHealth, string> = {
   NO_DATA: "text-gray-300 dark:text-neutral-700",
 };
 
-function shareText(part: Decimal, total: Decimal): string {
-  if (total.isZero()) return "N/A";
-  return formatPercent(part.dividedBy(total).times(100));
-}
-
 // Texto gerado por regras do sistema (nao IA - ver secao 22/29). A camada
 // futura de IA podera ler os mesmos FinancialSummary/alertas e substituir ou
-// expandir este texto.
+// expandir este texto. E uma leitura QUALITATIVA do periodo (fechou no lucro
+// ou no prejuizo, o que pesou mais) - de proposito nao repete nenhum valor:
+// faturamento, custos, despesas, lucro e margens ja estao nos cards da mesma
+// tela.
 export function generateSummaryText(params: {
   periodLabel: string;
   currency: Currency;
   summary: FinancialSummary;
 }): string {
-  const { periodLabel, currency, summary } = params;
+  const { periodLabel, summary } = params;
 
   if (!summary.hasAnyEntries) {
     return `Nenhum lançamento registrado em "${periodLabel}" ainda.`;
@@ -152,30 +148,39 @@ export function generateSummaryText(params: {
 
   const sentences: string[] = [];
 
-  if (summary.hasRevenueEntries) {
-    sentences.push(`Em "${periodLabel}" sua empresa faturou ${formatMoney(summary.revenue, currency)}.`);
+  if (!summary.hasRevenueEntries) {
+    sentences.push(`Em "${periodLabel}" sua empresa não registrou faturamento, só gastos.`);
+  } else if (summary.netProfit.isZero()) {
+    sentences.push(
+      `Em "${periodLabel}" sua empresa fechou no zero a zero: o faturamento foi igual à soma de custos e despesas.`
+    );
+  } else if (summary.netProfit.isPositive()) {
+    sentences.push(`Em "${periodLabel}" sua empresa fechou no lucro: o faturamento cobriu todos os custos e despesas.`);
   } else {
-    sentences.push(`Em "${periodLabel}" sua empresa não registrou faturamento.`);
-  }
-
-  if (summary.hasCostEntries) {
     sentences.push(
-      `Os custos somaram ${formatMoney(summary.costs, currency)}${
-        summary.hasRevenueEntries ? ` (${shareText(summary.costs, summary.revenue)} do faturamento)` : ""
-      }.`
+      `Em "${periodLabel}" sua empresa fechou no prejuízo: custos e despesas somados passaram do faturamento.`
     );
   }
 
-  if (summary.hasExpenseEntries) {
-    sentences.push(
-      `As despesas somaram ${formatMoney(summary.expenses, currency)}${
-        summary.hasRevenueEntries ? ` (${shareText(summary.expenses, summary.revenue)} do faturamento)` : ""
-      }.`
-    );
+  if (summary.hasRevenueEntries && summary.costs.greaterThan(summary.revenue)) {
+    sentences.push("Só os custos já passaram do faturamento, antes mesmo das despesas.");
   }
 
-  sentences.push(`O lucro líquido foi de ${formatMoney(summary.netProfit, currency)}.`);
-  sentences.push(`A margem líquida foi de ${formatPercent(summary.netMargin)}.`);
+  if (summary.hasCostEntries && summary.hasExpenseEntries) {
+    if (summary.costs.greaterThan(summary.expenses)) {
+      sentences.push("Os custos pesaram mais que as despesas.");
+    } else if (summary.expenses.greaterThan(summary.costs)) {
+      sentences.push("As despesas pesaram mais que os custos.");
+    } else {
+      sentences.push("Custos e despesas pesaram igual.");
+    }
+  } else if (summary.hasCostEntries) {
+    sentences.push("Todo o gasto veio de custos; não há despesas lançadas.");
+  } else if (summary.hasExpenseEntries) {
+    sentences.push("Todo o gasto veio de despesas; não há custos lançados.");
+  } else {
+    sentences.push("Não há custos nem despesas lançados.");
+  }
 
   return sentences.join(" ");
 }

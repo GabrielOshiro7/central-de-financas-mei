@@ -3,8 +3,8 @@ import { prisma } from "@/lib/db";
 import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
 
 // Materializacao preguicosa (secao "MATERIALIZACAO" da Etapa 4.1): chamada a
-// cada leitura de dados financeiros (financeiro/page, Receitas/Custos/
-// Despesas, dashboard), nunca por cron/job em background. Gera FinancialEntry
+// cada leitura de dados financeiros (Receitas/Custos/Despesas, Caixa,
+// dashboard), nunca por cron/job em background. Gera FinancialEntry
 // REAIS pras ocorrencias entre a primeira ocorrencia valida de cada molde
 // ativo e `uptoDate` (nunca alem de "agora" - o chamador nunca deve passar
 // uma data futura).

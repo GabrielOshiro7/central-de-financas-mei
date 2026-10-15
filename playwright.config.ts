@@ -10,7 +10,11 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev",
+    // `next dev` direto, nao `npm run dev`: o script do package.json usa
+    // `-H 0.0.0.0` (teste manual pelo celular na rede local), e com essa flag
+    // a hidratacao chega bem depois do `load` - os specs clicavam antes dela
+    // (ver tests/e2e/helpers/hydration.ts). Os testes so precisam de localhost.
+    command: "npx next dev",
     url: "http://localhost:3000",
     // Sempre sobe um processo novo: reaproveitar um servidor ja rodando
     // herdaria o estado em memoria do rate limiter (contagem de tentativas

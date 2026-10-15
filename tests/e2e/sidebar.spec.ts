@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 
 const PASSWORD = "SenhaValida123";
 
@@ -31,7 +32,7 @@ async function loginOnboardedUser(context: BrowserContext, label: string) {
 // handler nao recolhe a sidebar e o teste passaria a ver o estado errado.
 async function openCollapsedSidebar(page: Page) {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/dashboard");
+  await gotoHydrated(page, "/dashboard");
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Recolher menu" }).click();
   await expect(page.getByRole("button", { name: "Expandir menu" })).toBeVisible();
@@ -87,7 +88,7 @@ test.describe("sidebar - tooltip dos itens recolhidos", () => {
   test("expandida, o tooltip nunca aparece", async ({ page, context }) => {
     await loginOnboardedUser(context, "expanded");
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("/dashboard");
+    await gotoHydrated(page, "/dashboard");
     await navItem(page, "Financeiro").hover();
     expect(await tooltipShown(page, "Financeiro")).toBe(false);
   });

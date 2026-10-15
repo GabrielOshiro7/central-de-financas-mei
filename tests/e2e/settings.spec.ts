@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -9,7 +10,7 @@ function uniqueEmail() {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -85,7 +86,7 @@ test.describe("configuracoes - alterar senha", () => {
     // segunda sessao logada com a mesma conta, em outro contexto de navegador
     const otherContext = await browser.newContext();
     const otherPage = await otherContext.newPage();
-    await otherPage.goto("/login");
+    await gotoHydrated(otherPage, "/login");
     await otherPage.getByLabel("E-mail").fill(email);
     await otherPage.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await otherPage.getByRole("button", { name: "Entrar" }).click();

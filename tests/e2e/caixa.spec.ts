@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -8,7 +9,7 @@ function uniqueEmail(prefix = "caixa") {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -49,7 +50,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     await expect(page.getByRole("heading", { name: "Seu caixa ainda não tem dados suficientes" })).toBeVisible();
 
     // Registra dois lancamentos manuais (Etapa 3, ja testado - so preparando dado pro Caixa).
-    await page.goto("/financeiro/receitas");
+    await gotoHydrated(page, "/financeiro/receitas");
     async function addRevenue(date: string, description: string, amount: string) {
       await page.getByRole("button", { name: "+ Novo lançamento" }).click();
       const dialog = page.getByRole("dialog");
@@ -76,7 +77,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     ).toBeVisible();
 
     // Distincao clara do Saldo previsto (Contas a Pagar/Receber).
-    await expect(page.getByText("Previsão (contas a pagar/receber) — diferente do Caixa acima")).toBeVisible();
+    await expect(page.getByText("Previsão de contas a pagar e a receber")).toBeVisible();
 
     // Configura o saldo inicial a partir do atalho da propria aba Caixa.
     await page.getByRole("link", { name: "Configurar saldo inicial" }).click();

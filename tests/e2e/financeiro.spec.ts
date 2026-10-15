@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -15,7 +16,7 @@ function todayIso() {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -96,7 +97,7 @@ test.describe("financeiro - lançamentos manuais", () => {
     await register(page, "Dono Filtro", email);
     await completeOnboarding(page, "Empresa Financeiro Filtro");
 
-    await page.goto("/financeiro/despesas");
+    await gotoHydrated(page, "/financeiro/despesas");
 
     async function addExpense(date: string, description: string) {
       await page.getByRole("button", { name: "+ Novo lançamento" }).click();
@@ -138,7 +139,7 @@ test.describe("financeiro - importação", () => {
     await register(page, "Dono Importacao", email);
     await completeOnboarding(page, "Empresa Importacao E2E");
 
-    await page.goto("/financeiro/importar");
+    await gotoHydrated(page, "/financeiro/importar");
 
     const today = todayIso();
     const csvContent =
@@ -159,10 +160,10 @@ test.describe("financeiro - importação", () => {
     await page.getByRole("button", { name: /Importar 2 lançamentos/ }).click();
     await expect(page.getByText(/2 lançamentos importados com sucesso/)).toBeVisible();
 
-    await page.goto("/financeiro/receitas");
+    await gotoHydrated(page, "/financeiro/receitas");
     await expect(page.getByText("Venda importada E2E")).toBeVisible();
 
-    await page.goto("/financeiro/despesas");
+    await gotoHydrated(page, "/financeiro/despesas");
     await expect(page.getByText("Aluguel importado E2E")).toBeVisible();
   });
 
@@ -171,7 +172,7 @@ test.describe("financeiro - importação", () => {
     await register(page, "Dono Importacao Erro", email);
     await completeOnboarding(page, "Empresa Importacao Erro E2E");
 
-    await page.goto("/financeiro/importar");
+    await gotoHydrated(page, "/financeiro/importar");
 
     // Categoria desconhecida NAO e mais um erro bloqueante (Etapa 3.1) - so
     // data invalida e valor invalido continuam bloqueando a linha aqui.
@@ -202,7 +203,7 @@ test.describe("financeiro - importação", () => {
     await register(page, "Dono Categoria Nova", email);
     await completeOnboarding(page, "Empresa Categoria Nova E2E");
 
-    await page.goto("/financeiro/importar");
+    await gotoHydrated(page, "/financeiro/importar");
 
     const today = todayIso();
     const novaCategoria = `Categoria Nova E2E ${Date.now()}`;
@@ -225,7 +226,7 @@ test.describe("financeiro - importação", () => {
     await expect(page.getByText(/1 lançamento importado com sucesso/)).toBeVisible();
     await expect(page.getByText(/1 categoria\(s\) nova\(s\) criada\(s\)/)).toBeVisible();
 
-    await page.goto("/financeiro/custos");
+    await gotoHydrated(page, "/financeiro/custos");
     const newRow = page.getByRole("row", { name: /Compra com categoria nova/ });
     await expect(newRow).toBeVisible();
     await expect(newRow.getByText(novaCategoria)).toBeVisible();
@@ -238,7 +239,7 @@ test.describe("financeiro - importação", () => {
     await register(page, "Dono Mapear Categoria", email);
     await completeOnboarding(page, "Empresa Mapear Categoria E2E");
 
-    await page.goto("/financeiro/importar");
+    await gotoHydrated(page, "/financeiro/importar");
 
     const today = todayIso();
     const csvContent =
@@ -262,7 +263,7 @@ test.describe("financeiro - importação", () => {
     // 0 categorias novas criadas - foi mapeada para "Salários", que ja existe.
     await expect(page.getByText(/categoria\(s\) nova\(s\) criada\(s\)/)).toHaveCount(0);
 
-    await page.goto("/financeiro/despesas");
+    await gotoHydrated(page, "/financeiro/despesas");
     await expect(page.getByText("Pagamento equipe")).toBeVisible();
     const row = page.getByRole("row", { name: /Pagamento equipe/ });
     await expect(row.getByText("Salários", { exact: true })).toBeVisible();

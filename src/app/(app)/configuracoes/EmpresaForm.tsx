@@ -145,13 +145,18 @@ export function EmpresaForm({
         )}
       </div>
 
-      <MoneyField
-        id="averageMonthlyRevenue"
-        label="Faturamento médio mensal"
-        currency={currency}
-        value={averageMonthlyRevenue}
-        onChange={setAverageMonthlyRevenue}
-      />
+      <div>
+        <MoneyField
+          id="averageMonthlyRevenue"
+          label="Faturamento médio mensal"
+          currency={currency}
+          value={averageMonthlyRevenue}
+          onChange={setAverageMonthlyRevenue}
+        />
+        <p className="mt-2 text-xs text-gray-400 dark:text-neutral-500">
+          Esse valor é só informação de perfil — não entra nos cálculos do dashboard.
+        </p>
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

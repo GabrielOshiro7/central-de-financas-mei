@@ -59,8 +59,7 @@ export default async function RecurringEntriesPage() {
           <InfoTooltip text="Lançamentos que se repetem automaticamente a cada período (ex.: todo mês), sem você precisar cadastrar de novo toda vez." />
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-          Moldes que geram lançamentos automaticamente. Para criar um novo, marque &quot;Recorrente&quot; ao
-          adicionar um lançamento em Receitas, Custos ou Despesas.
+          Para criar um, marque &quot;Recorrente&quot; ao adicionar um lançamento em Receitas, Custos ou Despesas.
         </p>
       </div>
       <RecurringEntryTable rows={rows} categories={categories} currency={business.currency} />

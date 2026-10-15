@@ -177,7 +177,7 @@ function evaluateReceivablesOverdue(snapshot: IndicatorSnapshot): RawInsightDraf
     priority: severityFromMagnitude(variation!.abs(), OVERDUE_INCREASE_RELEVANT_PCT, worsened),
     title: worsened ? "Mais contas a receber vencidas" : "Menos contas a receber vencidas",
     // Frase deliberadamente qualificada ("com vencimento em") - este numero
-    // NAO e o mesmo total exibido em /financeiro (Contas a Receber), que soma
+    // NAO e o mesmo total exibido em /financeiro/receber (Contas a Receber), que soma
     // todo vencido hoje independente do mes de vencimento. Ver
     // getOverdueAmountForDueRange em finance/bills/queries.ts.
     description: `Das contas a receber com vencimento em ${snapshot.periodLabel}, ${currentFmt} continuam vencidas até hoje - uma variação de ${variationFmt} em relação ao valor equivalente do período anterior (${previousFmt}).`,

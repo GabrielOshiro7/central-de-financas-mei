@@ -6,12 +6,10 @@ import type { MonthlyPoint, DailyPoint } from "@/lib/finance/queries";
 // introduziu periodos por dia (TODAY, LAST_7/30/90_DAYS, CUSTOM) que nao
 // devem ser agrupados por mes inteiro (ver getDailySeriesForRange/
 // getMonthlySeriesForRange em queries.ts e o comentario de alignment em
-// period.ts) - vale tanto pro grafico principal de /dashboard quanto pro de
-// /financeiro, que compartilham FinancialChart.
+// period.ts) - usada pelo grafico principal de /dashboard (FinancialChart).
 //
 // Deliberadamente em um arquivo SEM "use client": toEvolutionPoints e
-// chamada tanto de dashboardService.ts (server) quanto de financeiro/page.tsx
-// (server component) - se ficasse dentro de FinancialChart.tsx (que precisa
+// chamada de dashboardService.ts (server) - se ficasse dentro de FinancialChart.tsx (que precisa
 // de "use client" pelo hover/tooltip), o Next trata todo export desse
 // arquivo como client-only e a chamada do lado servidor quebra em runtime
 // (bug real encontrado e corrigido nesta etapa - so pega em runtime, nao no

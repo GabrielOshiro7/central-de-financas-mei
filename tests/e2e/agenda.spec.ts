@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -8,7 +9,7 @@ function uniqueEmail(prefix = "agenda") {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -67,7 +68,7 @@ test.describe("Etapa 8 - agenda", () => {
     // Criar agendamento - cliente e servico criados na hora, reaproveitando
     // as mesmas mutations de Client/Product (POST /api/clientes,
     // POST /api/produtos).
-    await page.goto("/agenda");
+    await gotoHydrated(page, "/agenda");
     await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
     // Aba padrao agora e "Calendario" (redesign) - hoje vem pre-selecionado
     // (secao 4), o painel do dia mostra o mesmo vazio que "Hoje" mostrava
@@ -75,7 +76,8 @@ test.describe("Etapa 8 - agenda", () => {
     await expect(page.getByRole("link", { name: "Calendário" })).toHaveClass(/bg-gray-900/);
     await expect(page.getByText("Nenhum agendamento neste dia.")).toBeVisible();
 
-    await page.getByRole("link", { name: "+ Novo agendamento" }).click();
+    // exact: o painel do dia vazio tem tambem "+ Novo agendamento nesta data".
+    await page.getByRole("link", { name: "+ Novo agendamento", exact: true }).click();
     await expect(page).toHaveURL(/\/agenda\/novo/);
 
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
@@ -120,7 +122,7 @@ test.describe("Etapa 8 - agenda", () => {
     const saleNumber = saleNumberMatch![1];
 
     // Aparece em Vendas.
-    await page.goto("/vendas");
+    await gotoHydrated(page, "/vendas");
     const salesRow = page.getByRole("row", { name: new RegExp(`Cliente Agenda E2E`) });
     await expect(salesRow).toBeVisible();
     await expect(salesRow.getByText(`#${saleNumber}`)).toBeVisible();
@@ -130,7 +132,7 @@ test.describe("Etapa 8 - agenda", () => {
     // Aparece em Contas a Receber, como pendente (Bill gerada pela
     // conclusão do atendimento, descrição "Venda #<numero>" - mesmo padrao
     // ja usado por generateSaleBills na Etapa 6).
-    await page.goto("/financeiro/receber");
+    await gotoHydrated(page, "/financeiro/receber");
     await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
     const billRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) }).first();
     await expect(billRow).toBeVisible();
@@ -157,7 +159,7 @@ test.describe("Etapa 8 - agenda", () => {
 
     // Cria um agendamento hoje (mesmo fluxo da criacao do teste principal),
     // so pra garantir que o dia de hoje tenha o "pontinho" no calendario.
-    await page.goto("/agenda/novo");
+    await gotoHydrated(page, "/agenda/novo");
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
     await page.getByLabel("Nome do novo cliente").fill("Cliente Calendario E2E");
     await page.getByRole("button", { name: "Criar cliente" }).click();
@@ -172,7 +174,9 @@ test.describe("Etapa 8 - agenda", () => {
     await page.getByRole("button", { name: "Agendar" }).click();
     await expect(page).toHaveURL(/\/agenda(\?|$)/);
 
-    const monthTitle = page.getByRole("button", { name: currentTokyoMonthLabel() });
+    // exact: cada dia da grade e um botao cujo nome contem o mes/ano
+    // ("1 de outubro de 2026, sem compromissos").
+    const monthTitle = page.getByRole("button", { name: currentTokyoMonthLabel(), exact: true });
     await expect(monthTitle).toBeVisible();
 
     // Navega mes anterior e depois mes seguinte com as setas - volta pro mes
@@ -187,9 +191,10 @@ test.describe("Etapa 8 - agenda", () => {
     const yearText = page.getByText(new RegExp(`^\\d{4}$`)).first();
     const initialYear = Number(await yearText.textContent());
     await page.getByRole("button", { name: "Próximo ano" }).click();
-    await expect(page.getByText(String(initialYear + 1))).toBeVisible();
+    // exact: o titulo ("Outubro de 2026") e o cabecalho do dia tambem contem o ano.
+    await expect(page.getByText(String(initialYear + 1), { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Ano anterior" }).click();
-    await expect(page.getByText(String(initialYear))).toBeVisible();
+    await expect(page.getByText(String(initialYear), { exact: true })).toBeVisible();
     // Escolhe o mes de Janeiro - navega e fecha o seletor.
     await page.getByRole("button", { name: "Jan", exact: true }).click();
     await expect(page.getByRole("button", { name: "Jan", exact: true })).not.toBeVisible();
@@ -220,7 +225,7 @@ test.describe("Etapa 8 - agenda", () => {
     await register(page, "Dono Mes E2E", email);
     await completeOnboarding(page, "Empresa Mes E2E");
 
-    await page.goto("/agenda/novo");
+    await gotoHydrated(page, "/agenda/novo");
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
     await page.getByLabel("Nome do novo cliente").fill("Cliente Mes E2E");
     await page.getByRole("button", { name: "Criar cliente" }).click();

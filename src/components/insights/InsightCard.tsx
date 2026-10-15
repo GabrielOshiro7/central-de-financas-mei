@@ -26,9 +26,13 @@ const PRIORITY_BADGE_STYLE: Record<InsightPriority, string> = {
 function actionLinkFor(metric: InsightMetric): { href: string; label: string } | null {
   switch (metric) {
     case "REVENUE_GROWTH":
-    case "MARGIN_CHANGE":
+      return { href: "/financeiro/receitas", label: "Ver receitas" };
     case "EXPENSE_GROWTH":
-      return { href: "/financeiro", label: "Ver financeiro" };
+      return { href: "/financeiro/despesas", label: "Ver despesas" };
+    // Margem nao aparece em nenhuma aba do Financeiro - so nos cards do
+    // Dashboard.
+    case "MARGIN_CHANGE":
+      return { href: "/dashboard", label: "Ver margens no dashboard" };
     case "TICKET_AVERAGE_CHANGE":
       return { href: "/vendas", label: "Ver vendas" };
     case "RECEIVABLES_OVERDUE_CHANGE":

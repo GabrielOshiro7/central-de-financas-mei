@@ -4,7 +4,7 @@
 // convencao que a Etapa 3 ja usava para "mes anterior" etc.; nao ha TZ
 // explicito em docker-compose.yml/.env.example, entao o comportamento em
 // producao depende do fuso do host onde o processo roda. Mantido de
-// proposito identico entre /financeiro e /dashboard (Etapa 4) - ver teste
+// proposito identico em todas as telas com filtro de periodo (Etapa 4) - ver teste
 // "lancamento perto da meia-noite" em period.test.ts. Essa dependencia do
 // fuso do host e uma limitacao de escopo conhecida, nao resolvida nesta
 // etapa (ver relatorio final).

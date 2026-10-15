@@ -99,7 +99,7 @@ export function RecurringEntryTable({
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-        Nenhum lançamento recorrente cadastrado. Marque &quot;Recorrente&quot; ao criar um novo lançamento para começar.
+        Nenhum lançamento recorrente cadastrado.
       </div>
     );
   }

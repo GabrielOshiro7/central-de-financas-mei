@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 // Os demais specs usam fillMoney (um unico evento `input`). Este exercita o
@@ -12,7 +13,7 @@ function uniqueEmail(prefix = "money") {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -50,7 +51,7 @@ test.describe("MoneyInput - digitação real no navegador", () => {
     await register(page, "Dono Money", uniqueEmail());
     await completeOnboarding(page, "Empresa Money E2E");
 
-    await page.goto("/financeiro/receitas");
+    await gotoHydrated(page, "/financeiro/receitas");
     await page.getByRole("button", { name: "+ Novo lançamento" }).click();
     const dialog = page.getByRole("dialog");
     const valor = dialog.getByLabel("Valor");
@@ -118,7 +119,7 @@ test.describe("MoneyInput - digitação real no navegador", () => {
     await register(page, "Dono Saldo", uniqueEmail("saldo"));
     await completeOnboarding(page, "Empresa Saldo Negativo E2E");
 
-    await page.goto("/configuracoes");
+    await gotoHydrated(page, "/configuracoes");
     const saldo = page.getByLabel("Saldo inicial", { exact: true });
     const toggle = page.getByRole("button", { name: /alternar sinal/i });
 

@@ -24,7 +24,7 @@ export function DashboardFilters() {
   const comparison = (searchParams.get("comparison") as ComparisonMode | null) ?? DEFAULT_COMPARISON;
 
   // Estado local para o par De/Ate: evita perder o primeiro valor numa
-  // digitacao rapida dos dois campos (mesmo padrao de FinanceiroPeriodSelector
+  // digitacao rapida dos dois campos (mesmo padrao de TransactionFilters
   // e TransactionFilters).
   const [start, setStart] = useState(searchParams.get("start") ?? "");
   const [end, setEnd] = useState(searchParams.get("end") ?? "");

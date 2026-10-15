@@ -89,10 +89,10 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                 </div>
               </td>
               <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">
-                {row.phone || row.whatsapp || row.email || "-"}
+                {row.phone || row.whatsapp || row.email || "—"}
               </td>
               <td className="px-4 py-3 text-right text-gray-900 dark:text-neutral-100">{row.salesCount}</td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.lastPurchaseDisplay ?? "-"}</td>
+              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.lastPurchaseDisplay ?? "—"}</td>
               <td className="px-4 py-3">
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${

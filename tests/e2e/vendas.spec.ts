@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -12,7 +13,7 @@ function todayIso() {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -40,7 +41,7 @@ async function completeOnboarding(page: Page, name: string) {
 }
 
 async function createClient(page: Page, name: string) {
-  await page.goto("/clientes");
+  await gotoHydrated(page, "/clientes");
   await page.getByRole("button", { name: /Novo cliente/ }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Nome", { exact: true }).fill(name);
@@ -60,7 +61,7 @@ test.describe("Etapa 6 - vendas", () => {
     await completeOnboarding(page, "Empresa Vendas E2E");
     await createClient(page, "João Cliente E2E");
 
-    await page.goto("/vendas");
+    await gotoHydrated(page, "/vendas");
     await expect(page.getByRole("heading", { name: "Vendas" })).toBeVisible();
     await expect(page.getByText("Nenhuma venda encontrada.")).toBeVisible();
 
@@ -83,7 +84,7 @@ test.describe("Etapa 6 - vendas", () => {
     await expect(page.getByText("Paga", { exact: true })).toBeVisible();
     await expect(page.getByText("Serviço A E2E")).toBeVisible();
 
-    await page.goto("/vendas");
+    await gotoHydrated(page, "/vendas");
     const row = page.getByRole("row", { name: /João Cliente E2E/ });
     await expect(row).toBeVisible();
     await expect(row.getByText("Paga", { exact: true })).toBeVisible();
@@ -102,7 +103,7 @@ test.describe("Etapa 6 - vendas", () => {
     await completeOnboarding(page, "Empresa Vendas A Prazo E2E");
     await createClient(page, "Maria Cliente E2E");
 
-    await page.goto("/vendas/nova");
+    await gotoHydrated(page, "/vendas/nova");
     await page.getByLabel("Cliente").selectOption({ label: "Maria Cliente E2E" });
     await page.getByLabel("Categoria (receita)").selectOption({ label: "Venda de produtos" });
     await page.getByLabel("Data da venda").fill(todayIso());
@@ -159,7 +160,7 @@ test.describe("Etapa 6 - vendas", () => {
     await completeOnboarding(page, "Empresa Vendas Cancelar E2E");
     await createClient(page, "Pedro Cliente E2E");
 
-    await page.goto("/vendas/nova");
+    await gotoHydrated(page, "/vendas/nova");
     await page.getByLabel("Cliente").selectOption({ label: "Pedro Cliente E2E" });
     await page.getByLabel("Categoria (receita)").selectOption({ label: "Venda de produtos" });
     await page.getByLabel("Data da venda").fill(todayIso());

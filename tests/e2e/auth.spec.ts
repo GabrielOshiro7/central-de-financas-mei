@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 
 const PASSWORD = "SenhaValida123";
 
@@ -7,7 +8,7 @@ function uniqueEmail() {
 }
 
 async function register(page: import("@playwright/test").Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -23,11 +24,18 @@ function formError(page: import("@playwright/test").Page) {
 }
 
 test.describe("tela inicial", () => {
+  // A landing repete "Entrar"/"Criar conta" no cabecalho e no hero - o teste
+  // olha o menu do cabecalho. A recuperacao de senha nao fica na landing: e o
+  // link "Esqueci minha senha" da tela de login.
   test("mostra entrar, criar conta e recuperar senha", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByRole("link", { name: "Entrar" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Criar conta" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Recuperar senha" })).toBeVisible();
+    await gotoHydrated(page, "/");
+    const authNav = page.getByRole("navigation", { name: "Autenticação" });
+    await expect(authNav.getByRole("link", { name: "Entrar" })).toBeVisible();
+    await expect(authNav.getByRole("link", { name: "Criar conta" })).toBeVisible();
+
+    await authNav.getByRole("link", { name: "Entrar" }).click();
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByRole("link", { name: "Esqueci minha senha" })).toBeVisible();
   });
 });
 
@@ -96,7 +104,7 @@ test.describe("login e logout", () => {
 
   // Cenario 6: acesso a /dashboard sem autenticacao -> redireciona para /login.
   test("acesso ao dashboard sem sessao redireciona para o login", async ({ page }) => {
-    await page.goto("/dashboard");
+    await gotoHydrated(page, "/dashboard");
     await expect(page).toHaveURL(/\/login/);
   });
 
@@ -107,7 +115,7 @@ test.describe("login e logout", () => {
     await expect(page).toHaveURL(/\/onboarding/);
 
     const newPage = await context.newPage();
-    await newPage.goto("/onboarding");
+    await gotoHydrated(newPage, "/onboarding");
     await expect(newPage).toHaveURL(/\/onboarding/);
     await expect(
       newPage.getByRole("heading", { name: "Qual é o tipo do seu negócio?" })

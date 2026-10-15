@@ -137,13 +137,11 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const breakEvenDisplay =
     data.breakEven.status === "ok" ? formatMoney(data.breakEven.breakEvenRevenue, currency) : data.breakEven.reason;
   const averageTicketDisplay =
-    data.averageTicket.status === "ok" ? formatMoney(data.averageTicket.amount, currency) : "N/D";
+    data.averageTicket.status === "ok" ? formatMoney(data.averageTicket.amount, currency) : "—";
 
+  // So o que os MetricCards do topo NAO mostram - crescimento de faturamento/
+  // lucro e as duas margens ja estao la, com o mesmo valor.
   const indicators: IndicatorItem[] = [
-    { label: "Crescimento do faturamento", value: comparisonActive ? formatVariation(data.revenueGrowth) : "N/A" },
-    { label: "Crescimento do lucro", value: comparisonActive ? formatSignedGrowthText(data.profitGrowth, currency) : "N/A" },
-    { label: "Margem bruta", value: formatPercent(summary.grossMargin) },
-    { label: "Margem líquida", value: formatPercent(summary.netMargin) },
     { label: "Participação dos custos", value: formatPercent(data.costShare) },
     { label: "Participação das despesas", value: formatPercent(data.expenseShare) },
     { label: "Ticket médio", value: averageTicketDisplay },
@@ -243,7 +241,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <CategoryBreakdownChart title="Distribuição de despesas" entries={data.expenseBreakdown} currency={currency} />
       </div>
 
-      <AssistantPanel />
+      <AssistantPanel hasFinancialData />
     </div>
   );
 }

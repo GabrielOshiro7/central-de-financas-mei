@@ -34,7 +34,7 @@ export function CommercialPanel({ commercial, currency }: { commercial: Commerci
         <div>
           <dt className="text-xs text-gray-500 dark:text-neutral-400">Ticket médio</dt>
           <dd className="text-lg font-semibold text-gray-900 dark:text-neutral-100">
-            {commercial.averageTicket ? formatMoney(commercial.averageTicket, currency) : "N/D"}
+            {commercial.averageTicket ? formatMoney(commercial.averageTicket, currency) : "—"}
           </dd>
         </div>
         <div>

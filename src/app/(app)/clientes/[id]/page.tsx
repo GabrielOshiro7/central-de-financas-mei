@@ -59,24 +59,24 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
           </div>
           <div>
             <dt className="text-gray-500 dark:text-neutral-400">Documento</dt>
-            <dd className="text-gray-900 dark:text-neutral-100">{client.document || "-"}</dd>
+            <dd className="text-gray-900 dark:text-neutral-100">{client.document || "—"}</dd>
           </div>
           <div>
             <dt className="text-gray-500 dark:text-neutral-400">Telefone</dt>
-            <dd className="text-gray-900 dark:text-neutral-100">{client.phone || "-"}</dd>
+            <dd className="text-gray-900 dark:text-neutral-100">{client.phone || "—"}</dd>
           </div>
           <div>
             <dt className="text-gray-500 dark:text-neutral-400">WhatsApp</dt>
-            <dd className="text-gray-900 dark:text-neutral-100">{client.whatsapp || "-"}</dd>
+            <dd className="text-gray-900 dark:text-neutral-100">{client.whatsapp || "—"}</dd>
           </div>
           <div>
             <dt className="text-gray-500 dark:text-neutral-400">E-mail</dt>
-            <dd className="text-gray-900 dark:text-neutral-100">{client.email || "-"}</dd>
+            <dd className="text-gray-900 dark:text-neutral-100">{client.email || "—"}</dd>
           </div>
           <div>
             <dt className="text-gray-500 dark:text-neutral-400">Endereço</dt>
             <dd className="text-gray-900 dark:text-neutral-100">
-              {[client.addressLine, client.city, client.state, client.country].filter(Boolean).join(", ") || "-"}
+              {[client.addressLine, client.city, client.state, client.country].filter(Boolean).join(", ") || "—"}
             </dd>
           </div>
           {client.notes && (

@@ -4,7 +4,7 @@ import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/re
 import "@testing-library/jest-dom/vitest";
 import { FINANCEIRO_TABS, FinanceiroTabBar, SCROLLED_THRESHOLD_PX } from "@/components/financeiro/FinanceiroTabBar";
 
-const navigation = vi.hoisted(() => ({ pathname: "/financeiro" }));
+const navigation = vi.hoisted(() => ({ pathname: "/financeiro/receitas" }));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
@@ -26,7 +26,7 @@ function getBar() {
 
 afterEach(() => {
   cleanup();
-  navigation.pathname = "/financeiro";
+  navigation.pathname = "/financeiro/receitas";
   Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
 });
 
@@ -57,6 +57,15 @@ describe("FinanceiroTabBar - aba ativa", () => {
       }
     }
   );
+
+  it("a raiz /financeiro nao e mais uma aba (vira redirect em next.config.ts)", () => {
+    expect(FINANCEIRO_TABS.map((t) => t.href)).not.toContain("/financeiro");
+    navigation.pathname = "/financeiro";
+    render(<FinanceiroTabBar />);
+    for (const link of screen.getAllByRole("link")) {
+      expect(link).not.toHaveAttribute("aria-current");
+    }
+  });
 
   it("fora das rotas das abas (ex.: subrota desconhecida) nenhuma fica ativa", () => {
     navigation.pathname = "/financeiro/receitas/123";

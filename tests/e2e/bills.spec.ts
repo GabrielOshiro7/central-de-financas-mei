@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 
 const PASSWORD = "SenhaValida123";
@@ -12,7 +13,7 @@ function todayIso() {
 }
 
 async function register(page: Page, name: string, email: string) {
-  await page.goto("/register");
+  await gotoHydrated(page, "/register");
   await page.getByLabel("Nome").fill(name);
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
@@ -50,7 +51,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await register(page, "Dono Contas", email);
     await completeOnboarding(page, "Empresa Contas E2E");
 
-    await page.goto("/financeiro/pagar");
+    await gotoHydrated(page, "/financeiro/pagar");
     await expect(page.getByRole("heading", { name: "Contas a pagar" })).toBeVisible();
 
     await page.getByRole("button", { name: "+ Nova conta a pagar" }).click();
@@ -101,7 +102,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await register(page, "Dono Contas Receber", email);
     await completeOnboarding(page, "Empresa Contas Receber E2E");
 
-    await page.goto("/financeiro/receber");
+    await gotoHydrated(page, "/financeiro/receber");
     await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
 
     await page.getByRole("button", { name: "+ Nova conta a receber" }).click();
@@ -126,7 +127,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await expect(row.getByText("Recebido", { exact: true })).toBeVisible();
 
     // Dashboard: painel novo integrado, rotulado como Previsão.
-    await page.goto("/dashboard");
+    await gotoHydrated(page, "/dashboard");
     await expect(page.getByRole("heading", { name: "Contas a pagar e a receber" })).toBeVisible();
     await expect(page.getByText("Previsão", { exact: true })).toBeVisible();
 

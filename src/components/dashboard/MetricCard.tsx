@@ -7,9 +7,8 @@ export type MetricVariation = {
   description?: string;
 };
 
-// Props novas (icon/tooltip/variation) sao todas opcionais - as chamadas
-// existentes em /financeiro/page.tsx (so label+value) continuam funcionando
-// sem alteracao. `icon` e ReactNode (icone lucide-react) desde a remocao dos
+// Props novas (icon/tooltip/variation) sao todas opcionais - chamadas so
+// com label+value (ex.: cards de Vendas e Contas) continuam funcionando. `icon` e ReactNode (icone lucide-react) desde a remocao dos
 // emojis - antes era uma string de emoji renderizada direto.
 export function MetricCard({
   label,

@@ -1,6 +1,9 @@
 import { Bot } from "lucide-react";
 
-export function AssistantPanel() {
+// `hasFinancialData`: o dashboard passa quando a empresa ja tem lancamentos
+// (mesma condicao hasAnyEntriesEver que decide o estado vazio da pagina) -
+// ai o convite "depois que voce cadastrar" deixa de ser verdade.
+export function AssistantPanel({ hasFinancialData = false }: { hasFinancialData?: boolean }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
@@ -8,7 +11,9 @@ export function AssistantPanel() {
         Assistente de IA
       </h2>
       <p className="mt-2 text-sm text-gray-500 dark:text-neutral-400">
-        Depois que você cadastrar seus dados financeiros, poderei ajudar a analisar sua empresa.
+        {hasFinancialData
+          ? "O assistente ainda não está disponível."
+          : "Depois que você cadastrar seus dados financeiros, poderei ajudar a analisar sua empresa."}
       </p>
       <button
         type="button"

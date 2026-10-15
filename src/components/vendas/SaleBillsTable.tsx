@@ -138,7 +138,7 @@ export function SaleBillsTable({ bills, currency }: { bills: SaleBillRow[]; curr
                   {billStatusLabel("RECEIVABLE", bill.displayStatus)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{bill.paidAtDisplay ?? "-"}</td>
+              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{bill.paidAtDisplay ?? "—"}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-3">
                   {(bill.displayStatus === "PENDING" || bill.displayStatus === "OVERDUE") && (

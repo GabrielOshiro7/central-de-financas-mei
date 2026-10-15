@@ -163,7 +163,7 @@ export function BillTable({
           {rows.map((row) => (
             <tr key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
               <td className="px-4 py-3 text-gray-900 dark:text-neutral-100">{row.description}</td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.counterpartyName || "-"}</td>
+              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.counterpartyName || "—"}</td>
               <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.categoryName}</td>
               <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.dueDateDisplay}</td>
               <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100">
@@ -174,7 +174,7 @@ export function BillTable({
                   {billStatusLabel(direction, row.displayStatus)}
                 </span>
               </td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.paidAtDisplay ?? "-"}</td>
+              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.paidAtDisplay ?? "—"}</td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-3">
                   {(row.displayStatus === "PENDING" || row.displayStatus === "OVERDUE") && (
