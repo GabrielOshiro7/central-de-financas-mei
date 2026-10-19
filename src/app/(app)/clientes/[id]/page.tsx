@@ -120,33 +120,33 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
             <p>Nenhuma venda registrada para este cliente ainda.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
-                  <th className="px-4 py-3 font-medium">Venda</th>
-                  <th className="px-4 py-3 font-medium">Data</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 text-right font-medium">Total</th>
-                  <th className="px-4 py-3 font-medium">Parcelas</th>
+          <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+            <table role="table" className="rtable w-full min-w-[640px] text-sm">
+              <thead role="rowgroup">
+                <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
+                  <th role="columnheader" className="px-4 py-3 font-medium">Venda</th>
+                  <th role="columnheader" className="px-4 py-3 font-medium">Data</th>
+                  <th role="columnheader" className="px-4 py-3 font-medium">Status</th>
+                  <th role="columnheader" className="px-4 py-3 text-right font-medium">Total</th>
+                  <th role="columnheader" className="px-4 py-3 font-medium">Parcelas</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {history.map((sale) => (
-                  <tr key={sale.saleId} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
-                    <td className="px-4 py-3 text-gray-900 dark:text-neutral-100">
-                      <Link href={`/vendas/${sale.saleId}`} className="font-medium hover:underline">
+                  <tr role="row" key={sale.saleId} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
+                    <td role="cell" className="px-4 py-3 text-gray-900 dark:text-neutral-100 rt-title">
+                      <Link href={`/vendas/${sale.saleId}`} className="rt-stretch font-medium hover:underline">
                         Venda #{sale.saleNumber}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">
+                    <td role="cell" data-label="Data" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Data: </span>
                       {sale.saleDate.toLocaleDateString("pt-BR")}
                     </td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{SALE_STATUS_LABELS[sale.status]}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100">
+                    <td role="cell" data-label="Status" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Status: </span>{SALE_STATUS_LABELS[sale.status]}</td>
+                    <td role="cell" data-label="Total" className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100 rt-key"><span className="rt-sr">Total: </span>
                       {formatMoney(sale.total, currency)}
                     </td>
-                    <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">
+                    <td role="cell" data-label="Parcelas" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-wide rt-sub"><span className="rt-sr">Parcelas: </span>
                       <ul className="flex flex-col gap-1">
                         {sale.bills.map((bill) => {
                           const displayStatus = deriveBillStatus(bill);

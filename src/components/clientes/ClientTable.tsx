@@ -67,33 +67,33 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-      <table className="w-full min-w-[860px] text-sm">
-        <thead>
-          <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
-            <th className="px-4 py-3 font-medium">Cliente</th>
-            <th className="px-4 py-3 font-medium">Contato</th>
-            <th className="px-4 py-3 text-right font-medium">Total de vendas</th>
-            <th className="px-4 py-3 font-medium">Última venda</th>
-            <th className="px-4 py-3 font-medium">Status</th>
-            <th className="px-4 py-3 font-medium">Ações</th>
+    <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <table role="table" className="rtable w-full min-w-[860px] text-sm">
+        <thead role="rowgroup">
+          <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
+            <th role="columnheader" className="px-4 py-3 font-medium">Cliente</th>
+            <th role="columnheader" className="px-4 py-3 font-medium">Contato</th>
+            <th role="columnheader" className="px-4 py-3 text-right font-medium">Total de vendas</th>
+            <th role="columnheader" className="px-4 py-3 font-medium">Última venda</th>
+            <th role="columnheader" className="px-4 py-3 font-medium">Status</th>
+            <th role="columnheader" className="px-4 py-3 font-medium">Ações</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {rows.map((row) => (
-            <tr key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
-              <td className="px-4 py-3 text-gray-900 dark:text-neutral-100">
+            <tr role="row" key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
+              <td role="cell" className="px-4 py-3 text-gray-900 dark:text-neutral-100 rt-title"><span className="rt-sr">Cliente: </span>
                 <div className="font-medium">{row.name}</div>
                 <div className="text-xs text-gray-500 dark:text-neutral-400">
                   {row.tradeName || CLIENT_TYPE_LABELS[row.clientType]}
                 </div>
               </td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">
+              <td role="cell" data-label="Contato" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-key"><span className="rt-sr">Contato: </span>
                 {row.phone || row.whatsapp || row.email || "—"}
               </td>
-              <td className="px-4 py-3 text-right text-gray-900 dark:text-neutral-100">{row.salesCount}</td>
-              <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.lastPurchaseDisplay ?? "—"}</td>
-              <td className="px-4 py-3">
+              <td role="cell" data-label="Total de vendas" className="px-4 py-3 text-right text-gray-900 dark:text-neutral-100 rt-sub"><span className="rt-sr">Total de vendas: </span>{row.salesCount}</td>
+              <td role="cell" data-label="Última venda" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Última venda: </span>{row.lastPurchaseDisplay ?? "—"}</td>
+              <td role="cell" data-label="Status" className="px-4 py-3 rt-key"><span className="rt-sr">Status: </span>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                     row.active
@@ -104,7 +104,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                   {row.active ? "Ativo" : "Inativo"}
                 </span>
               </td>
-              <td className="px-4 py-3">
+              <td role="cell" className="px-4 py-3 rt-actions">
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href={`/clientes/${row.id}`}

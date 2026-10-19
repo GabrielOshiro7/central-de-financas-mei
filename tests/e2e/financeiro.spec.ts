@@ -266,6 +266,9 @@ test.describe("financeiro - importação", () => {
     await gotoHydrated(page, "/financeiro/despesas");
     await expect(page.getByText("Pagamento equipe")).toBeVisible();
     const row = page.getByRole("row", { name: /Pagamento equipe/ });
-    await expect(row.getByText("Salários", { exact: true })).toBeVisible();
+    // Por papel (nome acessivel da celula) e nao por texto: a celula tambem
+    // carrega o rotulo "Categoria: " pra leitor de tela no layout mobile
+    // (.rt-sr, oculto no desktop), e o getByText conta esse texto oculto.
+    await expect(row.getByRole("cell", { name: "Salários", exact: true })).toBeVisible();
   });
 });

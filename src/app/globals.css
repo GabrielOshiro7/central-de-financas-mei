@@ -203,6 +203,40 @@ body {
 }
 
 /*
+ * Abaixo de 768px a largura já é forçada para a recolhida (--sidebar-w lá em
+ * cima), mas todas as regras de aparência do modo recolhido dependiam só do
+ * atributo [data-sidebar-collapsed="true"] - que reflete a PREFERÊNCIA salva,
+ * não a tela. Com a preferência "expandida" (o padrão), o celular recebia a
+ * largura de 72px com os rótulos ainda visíveis: "OrganizAI", o nome da
+ * empresa e "Sair" vazavam por cima do conteúdo. Aqui a tela estreita aplica
+ * o mesmo visual recolhido, independente do atributo. Desktop não muda: nada
+ * fora deste @media foi tocado.
+ */
+@media (max-width: 767px) {
+  .sidebar-label {
+    display: none;
+  }
+
+  .sidebar-header,
+  .sidebar-nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .sidebar-footer {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .sidebar-item:hover .sidebar-tooltip,
+  .sidebar-item:has(.sidebar-nav-link:focus-visible) .sidebar-tooltip {
+    display: block;
+  }
+}
+
+/*
  * Barra de navegação horizontal de módulo (FinanceiroTabBar). As regras
  * abaixo ficam aqui, e não em classes utilitárias, porque a transição global
  * de tema (`*` lá em cima, fora de @layer) vence qualquer `transition-*` do
@@ -275,4 +309,158 @@ body {
   overflow: hidden;
   visibility: hidden;
   font-weight: 600;
+}
+
+/*
+ * Tabelas responsivas (.rtable): abaixo de 768px - o mesmo breakpoint da
+ * Sidebar - cada linha vira um card empilhado. CSS puro sobre o MESMO DOM
+ * (<table>/<tr>/<td> intactos), sem JS nem matchMedia, para não haver troca
+ * de layout na hidratação nem duplicar conteúdo. Desktop não muda: nada fora
+ * do @media abaixo altera a tabela.
+ *
+ * Acessibilidade (o display:block/grid tira a semântica implícita de tabela
+ * em alguns leitores de tela, VoiceOver em particular):
+ * - cada tabela declara role="table"/"rowgroup"/"row"/"columnheader"/"cell"
+ *   explicitamente nos próprios elementos;
+ * - o rótulo visível de cada célula vem de data-label via ::before, com texto
+ *   alternativo vazio (`content: attr(...) / ""`) pra não ser lido duas vezes; quem usa leitor
+ *   de tela ouve o rótulo pelo <span class="rt-sr"> dentro da célula, que só
+ *   existe (visualmente oculto) nesse breakpoint - no desktop ele some
+ *   (display:none) porque o cabeçalho da tabela já dá esse contexto;
+ * - não há `order`: a ordem visual é sempre a do DOM (leitura e Tab). A
+ *   hierarquia vem de ênfase - .rt-title (linha inteira, destaque),
+ *   .rt-key (essencial), .rt-sub (secundário, menor), .rt-wide (linha
+ *   inteira sem destaque) - e as ações ficam por
+ *   último porque já são a última coluna.
+ *
+ * Cores em variáveis próprias, com o par escuro abaixo (mesmos valores das
+ * classes gray e neutral que as tabelas usam).
+ */
+:root {
+  --rt-card-bg: #ffffff;
+  --rt-card-border: #e5e7eb;
+  --rt-label: #6b7280;
+}
+
+[data-theme="dark"] {
+  --rt-card-bg: #1f2937;
+  --rt-card-border: #2a3441;
+  --rt-label: #94a3b8;
+}
+
+.rt-sr {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .rtable-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .rtable {
+    display: block;
+    min-width: 0;
+  }
+
+  .rtable > thead {
+    display: none;
+  }
+
+  .rtable > tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .rtable > tbody > tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--rt-card-border);
+    border-radius: 0.75rem;
+    background: var(--rt-card-bg);
+  }
+
+  .rtable > tbody > tr > td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .rtable td[data-label]::before {
+    content: attr(data-label);
+    content: attr(data-label) / "";
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--rt-label);
+  }
+
+  .rtable td.rt-title {
+    grid-column: 1 / -1;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .rtable td.rt-wide {
+    grid-column: 1 / -1;
+  }
+
+  .rtable td.rt-key {
+    font-weight: 600;
+  }
+
+  .rtable td.rt-sub {
+    font-size: 0.75rem;
+  }
+
+  .rtable td.rt-actions {
+    grid-column: 1 / -1;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--rt-card-border);
+  }
+
+  /* Área de toque maior para as ações (eram links de texto de ~20px). */
+  .rtable td.rt-actions :is(a, button) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+  }
+
+  .rtable .rt-hide-sm {
+    display: none;
+  }
+
+  /* Quando o card tem uma única ação de navegação, o card inteiro vira o
+     alvo do clique (o link continua sendo o único elemento focável). */
+  .rtable .rt-stretch::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+  }
+
+  .rt-sr {
+    display: inline;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }

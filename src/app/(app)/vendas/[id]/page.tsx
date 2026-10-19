@@ -92,23 +92,23 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
 
       <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Itens</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px] text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
-                <th className="py-2 font-medium">Descrição</th>
-                <th className="py-2 text-right font-medium">Quantidade</th>
-                <th className="py-2 text-right font-medium">Preço unitário</th>
-                <th className="py-2 text-right font-medium">Subtotal</th>
+        <div className="rtable-wrap overflow-x-auto">
+          <table role="table" className="rtable w-full min-w-[480px] text-sm">
+            <thead role="rowgroup">
+              <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
+                <th role="columnheader" className="py-2 font-medium">Descrição</th>
+                <th role="columnheader" className="py-2 text-right font-medium">Quantidade</th>
+                <th role="columnheader" className="py-2 text-right font-medium">Preço unitário</th>
+                <th role="columnheader" className="py-2 text-right font-medium">Subtotal</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody role="rowgroup">
               {sale.items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
-                  <td className="py-2 text-gray-900 dark:text-neutral-100">{item.description}</td>
-                  <td className="py-2 text-right text-gray-700 dark:text-neutral-300">{item.quantity.toString()}</td>
-                  <td className="py-2 text-right text-gray-700 dark:text-neutral-300">{formatMoney(item.unitPrice, currency)}</td>
-                  <td className="py-2 text-right font-medium text-gray-900 dark:text-neutral-100">
+                <tr role="row" key={item.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
+                  <td role="cell" className="py-2 text-gray-900 dark:text-neutral-100 rt-title"><span className="rt-sr">Descrição: </span>{item.description}</td>
+                  <td role="cell" data-label="Quantidade" className="py-2 text-right text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Quantidade: </span>{item.quantity.toString()}</td>
+                  <td role="cell" data-label="Preço unitário" className="py-2 text-right text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Preço unitário: </span>{formatMoney(item.unitPrice, currency)}</td>
+                  <td role="cell" data-label="Subtotal" className="py-2 text-right font-medium text-gray-900 dark:text-neutral-100 rt-key"><span className="rt-sr">Subtotal: </span>
                     {formatMoney(item.lineTotal, currency)}
                   </td>
                 </tr>

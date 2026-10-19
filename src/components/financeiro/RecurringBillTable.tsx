@@ -102,33 +102,33 @@ export function RecurringBillTable({
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Contas recorrentes</h2>
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-        <table className="w-full min-w-[820px] text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
-              <th className="px-4 py-3 font-medium">Descrição</th>
-              <th className="px-4 py-3 font-medium">Categoria</th>
-              <th className="px-4 py-3 text-right font-medium">Valor</th>
-              <th className="px-4 py-3 font-medium">Frequência</th>
-              <th className="px-4 py-3 font-medium">Início</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Ações</th>
+      <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+        <table role="table" className="rtable w-full min-w-[820px] text-sm">
+          <thead role="rowgroup">
+            <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
+              <th role="columnheader" className="px-4 py-3 font-medium">Descrição</th>
+              <th role="columnheader" className="px-4 py-3 font-medium">Categoria</th>
+              <th role="columnheader" className="px-4 py-3 text-right font-medium">Valor</th>
+              <th role="columnheader" className="px-4 py-3 font-medium">Frequência</th>
+              <th role="columnheader" className="px-4 py-3 font-medium">Início</th>
+              <th role="columnheader" className="px-4 py-3 font-medium">Status</th>
+              <th role="columnheader" className="px-4 py-3 font-medium">Ações</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody role="rowgroup">
             {rows.map((row) => (
-              <tr key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
-                <td className="px-4 py-3 text-gray-900 dark:text-neutral-100">{row.description}</td>
-                <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.categoryName}</td>
-                <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100">
+              <tr role="row" key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
+                <td role="cell" className="px-4 py-3 text-gray-900 dark:text-neutral-100 rt-title"><span className="rt-sr">Descrição: </span>{row.description}</td>
+                <td role="cell" data-label="Categoria" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Categoria: </span>{row.categoryName}</td>
+                <td role="cell" data-label="Valor" className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100 rt-key"><span className="rt-sr">Valor: </span>
                   {currency ? formatMoney(row.amount, currency) : row.amount}
                 </td>
-                <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">{row.frequencyLabel}</td>
-                <td className="px-4 py-3 text-gray-700 dark:text-neutral-300">
+                <td role="cell" data-label="Frequência" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-key"><span className="rt-sr">Frequência: </span>{row.frequencyLabel}</td>
+                <td role="cell" data-label="Início" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Início: </span>
                   {row.startDateDisplay}
                   {row.endDateDisplay && ` até ${row.endDateDisplay}`}
                 </td>
-                <td className="px-4 py-3">
+                <td role="cell" data-label="Status" className="px-4 py-3 rt-sub"><span className="rt-sr">Status: </span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       row.isActive
@@ -139,7 +139,7 @@ export function RecurringBillTable({
                     {row.isActive ? "Ativa" : "Pausada"}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td role="cell" className="px-4 py-3 rt-actions">
                   <div className="flex flex-wrap gap-3">
                     <button
                       type="button"
