@@ -5,11 +5,16 @@ export type MetricVariation = {
   text: string;
   direction: "up" | "down" | "flat";
   description?: string;
+  // Para qual lado o movimento e bom pro negocio - decide a cor, nao a seta
+  // (a seta segue sempre o numero). Default "up" (Faturamento, Lucro,
+  // Margem); Custos e Despesas passam "down": subir ali e ruim.
+  favorableDirection?: "up" | "down";
 };
 
 // Props novas (icon/tooltip/variation) sao todas opcionais - chamadas so
-// com label+value (ex.: cards de Vendas e Contas) continuam funcionando. `icon` e ReactNode (icone lucide-react) desde a remocao dos
-// emojis - antes era uma string de emoji renderizada direto.
+// com label+value (ex.: cards de Vendas e Contas) continuam funcionando.
+// `icon` e ReactNode (icone lucide-react) desde a remocao dos emojis - antes
+// era uma string de emoji renderizada direto.
 export function MetricCard({
   label,
   value,
@@ -24,12 +29,13 @@ export function MetricCard({
   variation?: MetricVariation | null;
 }) {
   const arrow = variation ? (variation.direction === "up" ? "↑" : variation.direction === "down" ? "↓" : "→") : null;
+  const favorableDirection = variation?.favorableDirection ?? "up";
   const variationColor =
-    variation?.direction === "up"
-      ? "text-emerald-600 dark:text-emerald-400"
-      : variation?.direction === "down"
-        ? "text-rose-600 dark:text-rose-400"
-        : "text-gray-500 dark:text-neutral-400";
+    !variation || variation.direction === "flat"
+      ? "text-gray-500 dark:text-neutral-400"
+      : variation.direction === favorableDirection
+        ? "text-emerald-600 dark:text-emerald-400"
+        : "text-rose-600 dark:text-rose-400";
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">

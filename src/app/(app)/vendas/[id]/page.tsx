@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { getSaleById } from "@/lib/sales/queries";
 import { formatMoney } from "@/lib/money";
-import { SALE_STATUS_LABELS } from "@/lib/sales/options";
+import { SALE_STATUS_BADGE_STYLE, SALE_STATUS_LABELS } from "@/lib/sales/options";
 import { deriveSalePaymentStatus, SALE_PAYMENT_STATUS_LABELS } from "@/lib/sales/calculations";
 import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { SaleBillsTable, type SaleBillRow } from "@/components/vendas/SaleBillsTable";
 import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
-import { SALE_STATUS_BADGE_STYLE, PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
+import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
 
 function formatDateDisplay(d: Date): string {
   return d.toLocaleDateString("pt-BR");

@@ -104,10 +104,20 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     ? { text: formatVariation(data.revenueGrowth), direction: directionFor(data.revenueGrowth), description: comparisonDescription }
     : null;
   const costsVariation: MetricVariation | null = comparisonActive
-    ? { text: formatVariation(data.costsGrowth), direction: directionFor(data.costsGrowth), description: comparisonDescription }
+    ? {
+        text: formatVariation(data.costsGrowth),
+        direction: directionFor(data.costsGrowth),
+        description: comparisonDescription,
+        favorableDirection: "down",
+      }
     : null;
   const expensesVariation: MetricVariation | null = comparisonActive
-    ? { text: formatVariation(data.expensesGrowth), direction: directionFor(data.expensesGrowth), description: comparisonDescription }
+    ? {
+        text: formatVariation(data.expensesGrowth),
+        direction: directionFor(data.expensesGrowth),
+        description: comparisonDescription,
+        favorableDirection: "down",
+      }
     : null;
   const profitVariation: MetricVariation | null = comparisonActive
     ? {

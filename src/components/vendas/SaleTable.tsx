@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Currency, SaleStatus } from "@prisma/client";
 import { formatMoney } from "@/lib/money";
-import { SALE_STATUS_LABELS } from "@/lib/sales/options";
+import { SALE_STATUS_BADGE_STYLE, SALE_STATUS_LABELS } from "@/lib/sales/options";
 import { SALE_PAYMENT_STATUS_LABELS, type SalePaymentStatus } from "@/lib/sales/calculations";
 
 export type SaleRow = {
@@ -15,16 +15,10 @@ export type SaleRow = {
   paymentStatus: SalePaymentStatus;
 };
 
-// Musgo/Âmbar/Terracota: paleta de status do app (positivo/atenção/crítico).
-// Draft/Cancelado/Não paga ficam fora do trio - são estados neutros/
-// administrativos, não alertas, então mantêm o cinza igual ao resto do app.
-export const SALE_STATUS_BADGE_STYLE: Record<SaleStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
-  CONFIRMED: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
-  CANCELLED: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
-  COMPLETED: "bg-[#E3EEE6] text-[#3f6b4a] dark:bg-[#1C2E21] dark:text-[#8FD4A0]",
-};
-
+// Musgo/Âmbar/Terracota: paleta de status de PAGAMENTO (positivo/atenção/
+// crítico). "Não paga" fica fora do trio - estado neutro, não alerta. O selo
+// de status da VENDA é neutro e mora em SALE_STATUS_BADGE_STYLE
+// (src/lib/sales/options.ts).
 export const PAYMENT_STATUS_BADGE_STYLE: Record<SalePaymentStatus, string> = {
   NAO_PAGA: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
   PARCIAL: "bg-[#FBEDD9] text-[#8a570c] dark:bg-[#332510] dark:text-[#F0B24A]",
