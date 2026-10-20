@@ -16,9 +16,12 @@ export type AgendaStatusBadge = {
   // KPI, selo de status de pagamento, selo de prioridade de insight e linha
   // de grafico (ver regra de design da Etapa 8); nunca a selo de status de
   // agendamento. Diferenciacao vem de icone + texto + peso da borda/texto,
-  // nunca de cor de status - CANCELADO usa texto mais apagado
-  // (text-gray-400) so por ser um estado "encerrado sem acao", nao por
-  // semantica de cor de status.
+  // nunca de cor de status - CANCELADO usa borda tracejada + texto mais
+  // apagado so por ser um estado "encerrado sem acao", nao por semantica de
+  // cor de status. O texto e gray-500/neutral-400 (antes gray-400/
+  // neutral-600, que ficava em 2.5-4:1): o mais claro que ainda passa 4.5:1
+  // sobre card e fundo de pagina nos dois temas. Com isso a cor do texto
+  // fica igual a de FALTOU, e a borda tracejada mantem os dois distintos.
   className: string;
 };
 
@@ -41,7 +44,7 @@ export const AGENDA_STATUS_BADGE: Record<AppointmentStatus, AgendaStatusBadge> =
   CANCELADO: {
     label: AGENDA_STATUS_LABELS.CANCELADO,
     icon: CircleX,
-    className: "border border-gray-200 text-gray-400 dark:border-neutral-800 dark:text-neutral-600",
+    className: "border border-dashed border-gray-200 text-gray-500 dark:border-neutral-800 dark:text-neutral-400",
   },
   FALTOU: {
     label: AGENDA_STATUS_LABELS.FALTOU,

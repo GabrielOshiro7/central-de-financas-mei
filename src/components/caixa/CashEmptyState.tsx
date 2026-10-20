@@ -20,13 +20,13 @@ export function CashEmptyState() {
       <div className="flex flex-wrap justify-center gap-3">
         <Link
           href="/configuracoes#empresa"
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white dark:bg-neutral-100 dark:text-neutral-900"
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
         >
           Configurar saldo inicial
         </Link>
         <Link
           href="/financeiro/receitas"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 dark:border-neutral-700 dark:text-neutral-300"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           Adicionar lançamento
         </Link>

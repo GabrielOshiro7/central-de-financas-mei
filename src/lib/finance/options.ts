@@ -12,6 +12,21 @@ export const ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
   EXPENSE: "Despesa",
 };
 
+// Selo de tipo do lançamento - SEMPRE neutro (cinza), como os selos de status
+// da venda (src/lib/sales/options.ts) e da Agenda. Tipo de lançamento não é
+// um dos 4 usos da paleta Musgo/Âmbar/Terracota (KPI, selo de status de
+// pagamento, selo de prioridade de insight, linha de gráfico) - com ela,
+// Receita/Custo/Despesa liam como "bom/atenção/crítico". Diferenciação por
+// texto + borda/fundo, com o mesmo peso de texto nos três (nenhum tipo é mais
+// importante que outro): receita com borda simples, custo preenchido, despesa
+// tracejada. Compartilhado por TransactionTable e RecurringEntryTable; coberto
+// por tests/unit/finance/entryTypeBadge.test.ts.
+export const ENTRY_TYPE_BADGE_STYLE: Record<FinancialEntryType, string> = {
+  REVENUE: "border border-gray-300 text-gray-700 dark:border-neutral-600 dark:text-neutral-300",
+  COST: "border border-gray-300 bg-gray-100 text-gray-700 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
+  EXPENSE: "border border-dashed border-gray-400 text-gray-700 dark:border-neutral-500 dark:text-neutral-300",
+};
+
 export const SOURCE_LABELS: Record<EntrySource, string> = {
   MANUAL: "Manual",
   IMPORT: "Importado",

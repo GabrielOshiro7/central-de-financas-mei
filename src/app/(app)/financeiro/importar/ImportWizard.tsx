@@ -224,7 +224,7 @@ export function ImportWizard({
   if (!hasPreview) {
     return (
       <div className="flex flex-col gap-8">
-        <div className="rounded-xl border border-gray-200 bg-white p-8 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
@@ -446,7 +446,7 @@ export function ImportWizard({
                     <input
                       value={row.raw[field]}
                       onChange={(e) => updateRow(row.rowNumber, field, e.target.value)}
-                      className="w-full min-w-[100px] rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="w-full min-w-[100px] rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                     />
                   </td>
                 ))}
@@ -488,7 +488,7 @@ export function ImportWizard({
         <button
           type="button"
           onClick={startOver}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           Começar de novo
         </button>

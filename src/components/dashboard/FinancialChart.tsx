@@ -20,16 +20,34 @@ function buildAriaLabel(point: EvolutionPoint, currency: Currency): string {
   return `${point.label} — ${parts.join(", ")}`;
 }
 
-export function FinancialChart({ series, currency }: { series: EvolutionPoint[]; currency: Currency }) {
+// `title` fica DENTRO do card (h2), como em todos os outros painéis do
+// Dashboard - antes era um h2 solto acima do card, na página.
+export function FinancialChart({
+  series,
+  currency,
+  title,
+}: {
+  series: EvolutionPoint[];
+  currency: Currency;
+  title?: string;
+}) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [anchor, setAnchor] = useState<TooltipAnchor | null>(null);
 
   const hasData = series.some((m) => m.hasAnyEntries);
+  const heading = title ? <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2> : null;
 
   if (!hasData) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-gray-300 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
-        Seus dados financeiros aparecerão aqui.
+      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        {heading}
+        <div
+          className={`flex h-48 items-center justify-center rounded-xl border border-dashed border-gray-300 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400 ${
+            heading ? "mt-4" : ""
+          }`}
+        >
+          Seus dados financeiros aparecerão aqui.
+        </div>
       </div>
     );
   }
@@ -49,8 +67,9 @@ export function FinancialChart({ series, currency }: { series: EvolutionPoint[];
   const activePoint = activeIndex !== null ? series[activeIndex] : null;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="flex items-end gap-4 overflow-x-auto pb-2">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      {heading}
+      <div className={`flex items-end gap-4 overflow-x-auto pb-2 ${heading ? "mt-4" : ""}`}>
         {series.map((point, i) => (
           <div key={point.key} className="flex flex-col items-center gap-1">
             <div className="relative flex h-32 items-end gap-0.5 px-1.5">

@@ -126,7 +126,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                       setActionError(null);
                     }}
                     className={`text-sm font-medium hover:underline ${
-                      row.active ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                      row.active ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-neutral-400"
                     }`}
                   >
                     {row.active ? "Inativar" : "Reativar"}

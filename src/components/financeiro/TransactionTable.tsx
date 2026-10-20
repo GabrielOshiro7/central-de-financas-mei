@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Repeat } from "lucide-react";
 import type { Currency, EntrySource, FinancialEntryType } from "@prisma/client";
-import { ENTRY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/finance/options";
+import { ENTRY_TYPE_BADGE_STYLE, ENTRY_TYPE_LABELS, SOURCE_LABELS } from "@/lib/finance/options";
 import { formatMoney } from "@/lib/money";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { TransactionFormModal, type CategoryOption } from "@/components/financeiro/TransactionFormModal";
@@ -21,12 +21,6 @@ export type TransactionRow = {
   amount: string;
   notes: string;
   source: EntrySource;
-};
-
-const TYPE_BADGE_STYLE: Record<FinancialEntryType, string> = {
-  REVENUE: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  COST: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  EXPENSE: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 export function TransactionTable({
@@ -123,7 +117,7 @@ export function TransactionTable({
             <tr role="row" key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
               <td role="cell" data-label="Data" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-key"><span className="rt-sr">Data: </span>{row.occurredAtDisplay}</td>
               <td role="cell" className="px-4 py-3 rt-hide-sm">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE_STYLE[row.type]}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ENTRY_TYPE_BADGE_STYLE[row.type]}`}>
                   {ENTRY_TYPE_LABELS[row.type]}
                 </span>
               </td>

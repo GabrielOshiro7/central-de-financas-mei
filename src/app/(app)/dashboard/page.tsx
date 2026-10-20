@@ -205,10 +205,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         />
       </div>
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-neutral-100">Evolução financeira</h2>
-        <FinancialChart series={data.evolutionSeries} currency={currency} />
-      </div>
+      <FinancialChart title="Evolução financeira" series={data.evolutionSeries} currency={currency} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <TrendMiniChart

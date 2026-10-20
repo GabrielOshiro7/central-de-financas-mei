@@ -102,7 +102,7 @@ export function TrendMiniChart({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
         <span>{title}</span>
         {tooltip && (

@@ -169,7 +169,7 @@ export function SaleDetailActions({
       {editable && (
         <Link
           href={`/vendas/${saleId}/editar`}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           Editar
         </Link>
@@ -191,7 +191,7 @@ export function SaleDetailActions({
             type="button"
             onClick={handleMarkCompleted}
             disabled={completePending}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             {completePending ? "Concluindo..." : "Marcar como concluída"}
           </button>

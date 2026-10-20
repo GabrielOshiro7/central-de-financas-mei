@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
-import { ENTRY_TYPE_LABELS } from "@/lib/finance/options";
+import { ENTRY_TYPE_BADGE_STYLE, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
 import { formatMoney } from "@/lib/money";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import {
@@ -29,12 +29,6 @@ export type RecurringEntryRow = {
   endDateDisplay: string | null;
   endDateInput: string;
   isActive: boolean;
-};
-
-const TYPE_BADGE_STYLE: Record<FinancialEntryType, string> = {
-  REVENUE: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  COST: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  EXPENSE: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
 };
 
 export function RecurringEntryTable({
@@ -124,7 +118,7 @@ export function RecurringEntryTable({
             <tr role="row" key={row.id} className="border-b border-gray-100 last:border-0 dark:border-neutral-800">
               <td role="cell" className="px-4 py-3 text-gray-900 dark:text-neutral-100 rt-title"><span className="rt-sr">Descrição: </span>{row.description}</td>
               <td role="cell" data-label="Tipo" className="px-4 py-3 rt-key"><span className="rt-sr">Tipo: </span>
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_BADGE_STYLE[row.type]}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ENTRY_TYPE_BADGE_STYLE[row.type]}`}>
                   {ENTRY_TYPE_LABELS[row.type]}
                 </span>
               </td>
