@@ -38,7 +38,15 @@ export function MetricCard({
         : "text-rose-600 dark:text-rose-400";
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    // O valor (sem espaços, ex. "R$148,530.75") não tinha onde quebrar e
+    // vazava por cima do card vizinho - no celular e também no desktop, nas
+    // grades de 6 colunas do Dashboard. min-w-0 + overflow-wrap fazem ele
+    // quebrar em duas linhas DENTRO do card, em qualquer largura, mantendo a
+    // fonte e o número de colunas. No mobile isso é só rede de segurança: entre
+    // 480 e 767px a fonte desce pra 20px e abaixo de 480px as grades passam a
+    // 1 coluna (ver as telas que usam o card), então os valores comuns cabem
+    // numa linha.
+    <div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-neutral-400">
         {icon && (
           <span className="inline-flex shrink-0" aria-hidden="true">
@@ -57,7 +65,7 @@ export function MetricCard({
         )}
       </div>
       <div
-        className={`mt-1 text-2xl font-semibold ${
+        className={`mt-1 text-2xl font-semibold [overflow-wrap:anywhere] min-[480px]:max-md:text-xl ${
           value ? "text-gray-900 dark:text-neutral-100" : "text-gray-400 dark:text-neutral-600"
         }`}
       >

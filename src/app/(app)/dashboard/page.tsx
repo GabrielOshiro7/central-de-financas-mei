@@ -163,7 +163,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       <DashboardHeader businessName={businessName} periodLabel={headerPeriodLabel} lastUpdatedLabel={lastUpdatedLabel} />
       <DashboardFilters />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <MetricCard
           label="Faturamento"
           value={revenueDisplay}

@@ -72,7 +72,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-4">
             <MetricCard label="Vendas no período" value={String(summary.salesCount)} />
             <MetricCard label="Faturamento" value={formatMoney(summary.totalRevenue, business.currency)} />
             <MetricCard

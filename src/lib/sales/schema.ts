@@ -46,6 +46,38 @@ function installmentSchema(currency: Currency | null) {
   });
 }
 
+// Mesma restricao que src/lib/agenda/schema.ts ja impoe na conclusao de
+// atendimento: `paidNow` (venda a vista, Bill criada ja PAID) so vale com
+// EXATAMENTE uma parcela. Sem isto, createSale/confirmSale ignoravam o
+// pedido em silencio (generateSaleBills so honra paidNow com 1 parcela) e
+// todas as parcelas nasciam pendentes sem avisar quem chamou. SaleForm e
+// SaleDetailActions ja so enviam paidNow nesse caso - a regra fica tambem no
+// backend porque ele nunca deve confiar apenas na UI.
+function paidNowRefinement(
+  data: { installments?: { paidNow?: boolean }[] },
+  ctx: z.RefinementCtx
+) {
+  if (!data.installments) return;
+  const paidNowCount = data.installments.filter((installment) => installment.paidNow).length;
+
+  if (paidNowCount > 1) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Apenas uma parcela pode ser marcada como paga agora.",
+      path: ["installments"],
+    });
+    return;
+  }
+
+  if (paidNowCount === 1 && data.installments.length !== 1) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Venda à vista (paga agora) só é permitida com uma única parcela.",
+      path: ["installments"],
+    });
+  }
+}
+
 function discountRefinement(currency: Currency | null) {
   return (
     data: { discountType?: "FIXED" | "PERCENTAGE"; discountValue?: number },
@@ -98,6 +130,7 @@ export function saleSchema(currency: Currency | null) {
       if (data.status === "CONFIRMED" && (!data.installments || data.installments.length === 0)) {
         ctx.addIssue({ code: "custom", message: "Informe ao menos uma parcela para confirmar a venda.", path: ["installments"] });
       }
+      paidNowRefinement(data, ctx);
     });
 }
 
@@ -105,10 +138,12 @@ export function saleSchema(currency: Currency | null) {
 // materializa os Bills (ver confirmSale em mutations.ts) - a venda em si
 // (itens/cliente/categoria) ja existe e nao muda aqui.
 export function confirmSaleSchema(currency: Currency | null) {
-  return z.object({
-    installments: z.array(installmentSchema(currency)).min(1, "Informe ao menos uma parcela."),
-    paymentMethod: z.string().trim().optional().or(z.literal("")),
-  });
+  return z
+    .object({
+      installments: z.array(installmentSchema(currency)).min(1, "Informe ao menos uma parcela."),
+      paymentMethod: z.string().trim().optional().or(z.literal("")),
+    })
+    .superRefine(paidNowRefinement);
 }
 
 // Schema de edicao completa - so aceito pelo backend enquanto a venda nao

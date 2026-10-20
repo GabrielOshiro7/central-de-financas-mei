@@ -90,7 +90,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Resumo comercial</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-4">
           <MetricCard label="Total comprado" value={formatMoney(commercial.totalPurchased, currency)} />
           <MetricCard label="Vendas" value={String(commercial.salesCount)} />
           <MetricCard
