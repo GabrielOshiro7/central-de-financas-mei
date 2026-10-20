@@ -152,7 +152,7 @@ export async function BillListPage({
       </div>
 
       {!hasAnyEver ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
           <p>{direction === "PAYABLE" ? "Nenhuma conta a pagar cadastrada." : "Nenhuma conta a receber cadastrada."}</p>
           <NewBillButton direction={direction} categories={categories} currency={business.currency} />
         </div>

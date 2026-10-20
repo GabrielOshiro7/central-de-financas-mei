@@ -13,7 +13,7 @@ import type { CashBalance } from "@/lib/finance/cash/queries";
 // importante desta etapa.
 export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currency: Currency }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="text-sm text-gray-500 dark:text-neutral-400">Caixa atual (histórico e realizado)</p>
       <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-neutral-100">
         {formatMoney(cash.balance, currency)}
@@ -29,7 +29,7 @@ export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currenc
       </p>
 
       {!cash.configured && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300">
+        <div className="mt-4 border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300">
           <p>
             Saldo inicial não configurado — este valor assume saldo zero na data do primeiro lançamento (
             {cash.asOfDate.toLocaleDateString("pt-BR")}).

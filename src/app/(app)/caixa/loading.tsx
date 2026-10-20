@@ -1,5 +1,5 @@
 function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-800 ${className}`} />;
+  return <div className={`animate-pulse bg-gray-200 dark:bg-neutral-800 ${className}`} />;
 }
 
 // Mesmo padrao de dashboard/loading.tsx (Etapa 4) - skeleton por bloco,

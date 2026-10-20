@@ -23,7 +23,7 @@ export function ClientFilters() {
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="flex flex-wrap items-end gap-3 border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="min-w-[220px] flex-1">
         <label htmlFor="client-search" className="mb-1 block text-xs font-medium text-gray-500 dark:text-neutral-400">
           Pesquisar
@@ -38,7 +38,7 @@ export function ClientFilters() {
             if (e.key === "Enter") updateParam({ q: search || null });
           }}
           onBlur={() => updateParam({ q: search || null })}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         />
       </div>
 
@@ -50,7 +50,7 @@ export function ClientFilters() {
           id="client-status"
           value={status}
           onChange={(e) => updateParam({ status: e.target.value || null })}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {CLIENT_STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

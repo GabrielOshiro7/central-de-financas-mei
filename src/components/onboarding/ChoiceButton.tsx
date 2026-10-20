@@ -17,7 +17,7 @@ export function ChoiceButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={selected}
-      className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition ${
+      className={`w-full border px-4 py-3 text-left text-sm transition ${
         disabled
           ? "cursor-not-allowed opacity-50 border-gray-300 text-gray-500 dark:border-neutral-700 dark:text-neutral-500"
           : selected

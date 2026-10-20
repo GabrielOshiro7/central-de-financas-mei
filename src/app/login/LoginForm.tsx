@@ -53,7 +53,7 @@ export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
       {sessionMessage && (
         <p
           role="status"
-          className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-neutral-800/60 dark:text-neutral-300"
+          className="bg-gray-50 px-3 py-2 text-sm text-gray-600 dark:bg-neutral-800/60 dark:text-neutral-300"
         >
           {sessionMessage}
         </p>

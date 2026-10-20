@@ -192,7 +192,7 @@ export function TransactionFormModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
@@ -211,7 +211,7 @@ export function TransactionFormModal({
                     setType(opt.value);
                     setCategoryId("");
                   }}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  className={`flex-1 border px-3 py-2 text-sm font-medium transition ${
                     type === opt.value
                       ? "border-gray-900 bg-gray-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
                       : "border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
@@ -247,7 +247,7 @@ export function TransactionFormModal({
               id="categoryId"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             >
               <option value="">Selecione...</option>
               {categoriesForType.map((c) => (
@@ -265,13 +265,13 @@ export function TransactionFormModal({
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="Nome da nova categoria"
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                  className="flex-1 border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                 />
                 <button
                   type="button"
                   onClick={handleCreateCategory}
                   disabled={creatingCategory || !newCategoryName.trim()}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                  className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   {creatingCategory ? "Criando..." : "Criar"}
                 </button>
@@ -282,7 +282,7 @@ export function TransactionFormModal({
           <MoneyField id="amount" label="Valor" currency={currency} value={amount} onChange={setAmount} />
 
           {!isEditing && (
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-neutral-700">
+            <div className="border border-gray-200 p-3 dark:border-neutral-700">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
                 <input
                   type="checkbox"
@@ -303,7 +303,7 @@ export function TransactionFormModal({
                       id="frequency"
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value as RecurrenceFrequency)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                     >
                       {FREQUENCY_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -322,7 +322,7 @@ export function TransactionFormModal({
                         id="dayOfWeek"
                         value={dayOfWeek}
                         onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                       >
                         {WEEKDAY_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -344,7 +344,7 @@ export function TransactionFormModal({
                             id="yearMonth"
                             value={yearMonth}
                             onChange={(e) => setYearMonth(Number(e.target.value))}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                           >
                             {MONTH_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>
@@ -380,7 +380,7 @@ export function TransactionFormModal({
                   />
 
                   {showPastStartDateWarning && (
-                    <p role="alert" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                    <p role="alert" className="bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                       Isso pode gerar lançamentos duplicados se você já tiver registrado esses meses
                       manualmente. Revise antes de confirmar.
                     </p>
@@ -399,7 +399,7 @@ export function TransactionFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
 
@@ -413,7 +413,7 @@ export function TransactionFormModal({
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="flex-1 border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Cancelar
             </button>

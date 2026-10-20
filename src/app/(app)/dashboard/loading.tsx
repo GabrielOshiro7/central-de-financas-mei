@@ -1,5 +1,5 @@
 function SkeletonBlock({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-gray-200 dark:bg-neutral-800 ${className}`} />;
+  return <div className={`animate-pulse bg-gray-200 dark:bg-neutral-800 ${className}`} />;
 }
 
 // Skeleton por bloco (secao 29 da Etapa 4) - convencao nativa do App Router

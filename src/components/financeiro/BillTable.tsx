@@ -138,14 +138,14 @@ export function BillTable({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+      <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
         <p>Nenhuma conta encontrada para os filtros selecionados.</p>
       </div>
     );
   }
 
   return (
-    <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="rtable-wrap overflow-x-auto border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <table role="table" className="rtable w-full min-w-[860px] text-sm">
         <thead role="rowgroup">
           <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
@@ -268,7 +268,7 @@ export function BillTable({
           <div
             role="alertdialog"
             aria-modal="true"
-            className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+            className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{directionLabels.action}</h2>
@@ -286,7 +286,7 @@ export function BillTable({
                 type="date"
                 value={settleDate}
                 onChange={(e) => setSettleDate(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
             </div>
             {settleError && (
@@ -299,7 +299,7 @@ export function BillTable({
                 type="button"
                 onClick={() => setSettling(null)}
                 disabled={settlePending}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
                 Cancelar
               </button>
@@ -307,7 +307,7 @@ export function BillTable({
                 type="button"
                 onClick={handleConfirmSettle}
                 disabled={settlePending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {settlePending ? "Confirmando..." : "Confirmar"}
               </button>

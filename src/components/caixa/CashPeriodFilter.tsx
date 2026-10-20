@@ -48,7 +48,7 @@ export function CashPeriodFilter() {
               end: value === "CUSTOM" ? end : null,
             });
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -73,7 +73,7 @@ export function CashPeriodFilter() {
                 setStart(value);
                 updateParam({ start: value || null, end: end || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -89,7 +89,7 @@ export function CashPeriodFilter() {
                 setEnd(value);
                 updateParam({ start: start || null, end: value || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
         </>

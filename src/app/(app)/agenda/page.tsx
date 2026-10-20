@@ -159,18 +159,18 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
     content = (
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
-          <Link href={previousHref} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
+          <Link href={previousHref} className="border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
             ‹ Anterior
           </Link>
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatTokyoDateLong(start)}</h2>
             {dayTabKey !== todayKey && (
-              <Link href={`/agenda?view=day&day=${todayKey}`} className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
+              <Link href={`/agenda?view=day&day=${todayKey}`} className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
                 Hoje
               </Link>
             )}
           </div>
-          <Link href={nextHref} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
+          <Link href={nextHref} className="border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
             Próximo ›
           </Link>
         </div>
@@ -301,14 +301,14 @@ function MonthNav({ year, month, monthLabel }: { year: number; month: number; mo
     <div className="flex items-center justify-between gap-2">
       <Link
         href={`/agenda?view=month&month=${monthParamString(previousYear, previousMonth)}`}
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        className="border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         ‹ Mês anterior
       </Link>
       <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{monthLabel}</h2>
       <Link
         href={`/agenda?view=month&month=${monthParamString(nextYear, nextMonth)}`}
-        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        className="border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         Próximo mês ›
       </Link>

@@ -11,7 +11,7 @@ export function AuthCard({
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-neutral-950">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="w-full max-w-sm border border-gray-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <h1 className="text-center text-xl font-semibold text-gray-900 dark:text-neutral-100">
           {title}
         </h1>

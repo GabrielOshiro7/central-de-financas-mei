@@ -32,7 +32,7 @@ export function ConfirmDialog({
       <div
         role="alertdialog"
         aria-modal="true"
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+        className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2>
@@ -42,7 +42,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={pending}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Cancelar
           </button>
@@ -50,7 +50,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? pendingLabel : confirmLabel}
           </button>

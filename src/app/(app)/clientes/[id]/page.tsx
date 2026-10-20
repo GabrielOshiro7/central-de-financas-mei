@@ -50,7 +50,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
         </Link>
       </div>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Dados</h2>
         <dl className="mt-4 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -116,11 +116,11 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Histórico</h2>
         {history.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+          <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
             <p>Nenhuma venda registrada para este cliente ainda.</p>
           </div>
         ) : (
-          <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+          <div className="rtable-wrap overflow-x-auto border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
             <table role="table" className="rtable w-full min-w-[640px] text-sm">
               <thead role="rowgroup">
                 <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
@@ -173,7 +173,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
       <section className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Histórico de agendamentos</h2>
         {appointmentHistory.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+          <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
             <p>Nenhum agendamento registrado para este cliente ainda.</p>
           </div>
         ) : (

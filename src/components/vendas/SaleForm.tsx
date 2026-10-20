@@ -338,12 +338,12 @@ export function SaleForm({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
   const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Informações</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
@@ -379,7 +379,7 @@ export function SaleForm({
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Itens</h2>
           <button type="button" onClick={addItem} className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
@@ -395,7 +395,7 @@ export function SaleForm({
 
         <div className="flex flex-col gap-3">
           {items.map((item, index) => (
-            <div key={index} className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-3 lg:grid-cols-12 lg:items-end dark:border-neutral-700">
+            <div key={index} className="grid grid-cols-1 gap-2 border border-gray-200 p-3 lg:grid-cols-12 lg:items-end dark:border-neutral-700">
               <div className="lg:col-span-3">
                 <label htmlFor={`product-${index}`} className={labelClass}>
                   Produto/serviço (opcional)
@@ -523,7 +523,7 @@ export function SaleForm({
           )}
         </div>
 
-        <div className="mt-4 flex flex-col gap-1 rounded-lg bg-gray-50 p-4 text-sm dark:bg-neutral-800">
+        <div className="mt-4 flex flex-col gap-1 bg-gray-50 p-4 text-sm dark:bg-neutral-800">
           <div className="flex justify-between text-gray-600 dark:text-neutral-400">
             <span>Subtotal</span>
             <span>{totals.subtotal}</span>
@@ -540,7 +540,7 @@ export function SaleForm({
       </section>
 
       {showPaymentSection && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Pagamento</h2>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -568,7 +568,7 @@ export function SaleForm({
                       setPaymentTiming("AVISTA");
                       setInstallments([{ dueDateInput: saleDate, amount: totals.total.toString() }]);
                     }}
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    className={`flex-1 px-3 py-2 text-sm font-medium transition ${
                       paymentTiming === "AVISTA"
                         ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
@@ -579,7 +579,7 @@ export function SaleForm({
                   <button
                     type="button"
                     onClick={() => setPaymentTiming("APRAZO")}
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    className={`flex-1 px-3 py-2 text-sm font-medium transition ${
                       paymentTiming === "APRAZO"
                         ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
@@ -595,7 +595,7 @@ export function SaleForm({
           {(mode === "edit" || paymentTiming === "APRAZO") && (
             <div className="mt-4">
               {mode === "create" && (
-                <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg bg-gray-50 p-3 dark:bg-neutral-800">
+                <div className="mb-3 flex flex-wrap items-end gap-3 bg-gray-50 p-3 dark:bg-neutral-800">
                   <div>
                     <label htmlFor="installmentCount" className={labelClass}>
                       Nº de parcelas
@@ -625,7 +625,7 @@ export function SaleForm({
                   <button
                     type="button"
                     onClick={applyEqualSplit}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                    className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700"
                   >
                     Dividir igualmente
                   </button>
@@ -685,7 +685,7 @@ export function SaleForm({
         </section>
       )}
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <label htmlFor="notes" className={labelClass}>
           Observações (opcional)
         </label>
@@ -705,7 +705,7 @@ export function SaleForm({
               type="button"
               disabled={pending}
               onClick={() => submit("DRAFT")}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Salvar rascunho
             </button>

@@ -39,7 +39,7 @@ export async function EmpresaSection({ business }: { business: Business }) {
     <div id="empresa" className="flex scroll-mt-6 flex-col gap-6">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-neutral-100">Empresa</h2>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase text-gray-500 dark:text-neutral-400">Tipo de negócio</dt>

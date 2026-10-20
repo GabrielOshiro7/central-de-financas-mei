@@ -56,7 +56,7 @@ export function DashboardFilters() {
               end: value === "CUSTOM" ? end : null,
             });
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -81,7 +81,7 @@ export function DashboardFilters() {
                 setStart(value);
                 updateParam({ start: value || null, end: end || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
           <div className="flex flex-col gap-1">
@@ -97,7 +97,7 @@ export function DashboardFilters() {
                 setEnd(value);
                 updateParam({ start: start || null, end: value || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
         </>
@@ -114,7 +114,7 @@ export function DashboardFilters() {
             const value = e.target.value as ComparisonMode;
             updateParam({ comparison: value === DEFAULT_COMPARISON ? null : value });
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {COMPARISON_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

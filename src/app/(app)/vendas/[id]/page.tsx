@@ -72,7 +72,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
         editable={sale.status !== "CANCELLED"}
       />
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Informações</h2>
         <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
@@ -90,7 +90,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
         </dl>
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Itens</h2>
         <div className="rtable-wrap overflow-x-auto">
           <table role="table" className="rtable w-full min-w-[480px] text-sm">
@@ -117,7 +117,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
           </table>
         </div>
 
-        <div className="mt-4 ml-auto flex max-w-xs flex-col gap-1 rounded-lg bg-gray-50 p-4 text-sm dark:bg-neutral-800">
+        <div className="mt-4 ml-auto flex max-w-xs flex-col gap-1 bg-gray-50 p-4 text-sm dark:bg-neutral-800">
           <div className="flex justify-between text-gray-600 dark:text-neutral-400">
             <span>Subtotal</span>
             <span>{formatMoney(sale.subtotal, currency)}</span>
@@ -149,7 +149,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
       </section>
 
       {sale.notes && (
-        <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-neutral-100">Observações</h2>
           <p className="text-sm text-gray-700 dark:text-neutral-300">{sale.notes}</p>
         </section>

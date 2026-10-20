@@ -73,7 +73,7 @@ export function ReauthModal({
         role="alertdialog"
         aria-modal="true"
         aria-label="Confirme sua senha"
-        className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+        className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Confirme sua senha</h2>
@@ -103,7 +103,7 @@ export function ReauthModal({
               type="button"
               onClick={handleCancel}
               disabled={pending}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Cancelar
             </button>

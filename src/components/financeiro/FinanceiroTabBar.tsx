@@ -101,14 +101,22 @@ export function FinanceiroTabBar({ action }: { action?: ReactNode }) {
   return (
     <div
       data-scrolled={scrolled}
-      className="subnav sticky top-0 z-30 -mx-6 -mt-6 flex items-center gap-4 px-6"
+      className="subnav sticky top-0 z-30 -mx-6 -mt-6 flex items-center gap-4 border-b border-gray-300 px-6 dark:border-neutral-700"
     >
+      {/* Linha separadora fixa (border-b da barra) entre as abas e o
+          conteúdo. O backdrop desce 1px (-bottom-px) pra que a borda dele,
+          que só aparece ao rolar e sangra até as bordas do <main>, caia
+          exatamente em cima dessa linha, na mesma cor - sem linha dupla. */}
       <div
         aria-hidden="true"
-        className="subnav-backdrop pointer-events-none absolute -inset-x-[100vw] inset-y-0 -z-10 border-b border-gray-200 bg-[#FAF9F6]/85 shadow-xs backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/85 dark:shadow-none"
+        className="subnav-backdrop pointer-events-none absolute -inset-x-[100vw] top-0 -bottom-px -z-10 border-b border-gray-300 bg-[#FAF9F6]/85 shadow-xs backdrop-blur dark:border-neutral-700 dark:bg-neutral-950/85 dark:shadow-none"
       />
       <nav aria-label="Seções do Financeiro" className="min-w-0 flex-1">
-        <div ref={scrollerRef} className="subnav-scroller relative flex gap-5 overflow-x-auto">
+        {/* justify-between espalha as abas na largura toda quando cabem;
+            quando não cabem (tela estreita), o espaço livre fica negativo e o
+            navegador volta a alinhar no início - a rolagem horizontal com
+            esmaecimento continua igual. */}
+        <div ref={scrollerRef} className="subnav-scroller relative flex justify-between gap-5 overflow-x-auto">
           {FINANCEIRO_TABS.map((tab) => {
             const active = pathname === tab.href;
             return (

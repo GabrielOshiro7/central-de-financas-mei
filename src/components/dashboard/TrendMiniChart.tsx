@@ -46,7 +46,7 @@ export function TrendMiniChart({
 
   if (points.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
+      <div className="border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400">
         Sem dados suficientes para {title.toLowerCase()}.
       </div>
     );
@@ -102,7 +102,7 @@ export function TrendMiniChart({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
         <span>{title}</span>
         {tooltip && (

@@ -12,7 +12,7 @@ export function CashForecastNote({ forecast, currency }: { forecast: ForecastBal
   const netPositive = !forecast.projectedNet.isNegative();
 
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/40">
+    <div className="border border-dashed border-gray-300 bg-gray-50 p-4 dark:border-neutral-700 dark:bg-neutral-800/40">
       <p className="text-xs font-medium uppercase text-gray-500 dark:text-neutral-400">
         Previsão de contas a pagar e a receber
       </p>

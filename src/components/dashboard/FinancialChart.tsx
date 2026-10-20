@@ -39,10 +39,10 @@ export function FinancialChart({
 
   if (!hasData) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         {heading}
         <div
-          className={`flex h-48 items-center justify-center rounded-xl border border-dashed border-gray-300 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400 ${
+          className={`flex h-48 items-center justify-center border border-dashed border-gray-300 text-center text-sm text-gray-500 dark:border-neutral-700 dark:text-neutral-400 ${
             heading ? "mt-4" : ""
           }`}
         >
@@ -67,7 +67,7 @@ export function FinancialChart({
   const activePoint = activeIndex !== null ? series[activeIndex] : null;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       {heading}
       <div className={`flex items-end gap-4 overflow-x-auto pb-2 ${heading ? "mt-4" : ""}`}>
         {series.map((point, i) => (

@@ -15,7 +15,7 @@ export function CategoryBreakdownChart({
 }) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2>
         <p className="mt-3 text-sm text-gray-500 dark:text-neutral-400">Sem dados neste período.</p>
       </div>
@@ -25,7 +25,7 @@ export function CategoryBreakdownChart({
   const top = entries.slice(0, 6);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2>
       <div className="mt-4 flex flex-col gap-3">
         {top.map((entry, i) => (

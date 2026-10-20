@@ -46,11 +46,11 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
       </div>
 
       {sale.status === "CANCELLED" ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <div className="border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
           Uma venda cancelada não pode ser editada.
         </div>
       ) : locked ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <SaleNotesForm saleId={sale.id} initialNotes={sale.notes ?? ""} />
         </div>
       ) : (

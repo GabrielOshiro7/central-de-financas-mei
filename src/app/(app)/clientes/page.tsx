@@ -64,7 +64,7 @@ export default async function ClientesPage(props: PageProps<"/clientes">) {
       </div>
 
       {!hasAnyEver ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
           <p>Nenhum cliente cadastrado.</p>
           <NewClientButton />
         </div>

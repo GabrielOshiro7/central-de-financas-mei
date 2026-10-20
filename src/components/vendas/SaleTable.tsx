@@ -33,14 +33,14 @@ export const PAYMENT_STATUS_BADGE_STYLE: Record<SalePaymentStatus, string> = {
 export function SaleTable({ rows, currency }: { rows: SaleRow[]; currency: Currency }) {
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+      <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
         <p>Nenhuma venda encontrada para os filtros selecionados.</p>
       </div>
     );
   }
 
   return (
-    <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="rtable-wrap overflow-x-auto border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <table role="table" className="rtable w-full min-w-[860px] text-sm">
         <thead role="rowgroup">
           <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">

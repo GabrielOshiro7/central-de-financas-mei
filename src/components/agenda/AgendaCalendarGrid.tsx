@@ -131,7 +131,7 @@ export function AgendaCalendarGrid({
   }
 
   return (
-    <div className="relative rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
+    <div className="relative border border-gray-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 sm:p-6">
       <div className="flex items-center justify-between gap-2">
         <button
           type="button"
@@ -146,7 +146,7 @@ export function AgendaCalendarGrid({
           type="button"
           onClick={() => (pickerOpen ? setPickerOpen(false) : openPicker())}
           aria-expanded={pickerOpen}
-          className="rounded-lg px-3 py-1.5 text-lg font-semibold text-gray-900 transition hover:bg-gray-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
+          className="px-3 py-1.5 text-lg font-semibold text-gray-900 transition hover:bg-gray-100 dark:text-neutral-100 dark:hover:bg-neutral-800"
         >
           {monthLabel}
         </button>
@@ -155,7 +155,7 @@ export function AgendaCalendarGrid({
           <button
             type="button"
             onClick={goToToday}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Hoje
           </button>
@@ -270,7 +270,7 @@ function MonthYearPicker({
   }, [onClose]);
 
   return (
-    <div className="absolute inset-x-4 top-20 z-10 rounded-xl border border-gray-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 sm:inset-x-6">
+    <div className="absolute inset-x-4 top-20 z-10 border border-gray-200 bg-white p-4 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 sm:inset-x-6">
       <div className="flex items-center justify-center gap-4">
         <button
           type="button"
@@ -300,7 +300,7 @@ function MonthYearPicker({
               type="button"
               onClick={() => onPickMonth(monthNumber)}
               aria-current={isCurrent ? "date" : undefined}
-              className={`rounded-lg px-2 py-2 text-sm font-medium transition ${
+              className={`px-2 py-2 text-sm font-medium transition ${
                 isCurrent
                   ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                   : "text-gray-700 hover:bg-gray-100 dark:text-neutral-300 dark:hover:bg-neutral-800"

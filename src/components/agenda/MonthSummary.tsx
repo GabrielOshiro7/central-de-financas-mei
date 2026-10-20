@@ -17,12 +17,12 @@ export function MonthSummary({ counts }: { counts: Record<AppointmentStatus, num
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="border border-gray-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900">
         <div className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{total}</div>
         <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-neutral-400">Total</div>
       </div>
       {SUMMARY_ROWS.map(({ key, label }) => (
-        <div key={key} className="rounded-xl border border-gray-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900">
+        <div key={key} className="border border-gray-200 bg-white p-4 text-center dark:border-neutral-800 dark:bg-neutral-900">
           <div className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{counts[key]}</div>
           <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-neutral-400">{label}</div>
         </div>

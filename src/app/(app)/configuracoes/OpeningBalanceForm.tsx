@@ -57,7 +57,7 @@ export function OpeningBalanceForm({ data, currency }: { data: OpeningBalanceDat
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
+      className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <div>
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Saldo inicial do caixa</h2>

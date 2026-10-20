@@ -10,7 +10,7 @@ export function InsightsSummaryPanel({ insights }: { insights: InsightCardData[]
   const top3 = insights.slice(0, 3);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Insights</h2>
         <Link href="/insights" className="text-xs font-medium text-gray-500 hover:underline dark:text-neutral-400">

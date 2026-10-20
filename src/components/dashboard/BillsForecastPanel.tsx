@@ -12,7 +12,7 @@ export function BillsForecastPanel({ bills, currency }: { bills: BillDashboardIn
   const netPositive = !forecast.projectedNet.isNegative();
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Contas a pagar e a receber</h2>
         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
@@ -82,7 +82,7 @@ export function BillsForecastPanel({ bills, currency }: { bills: BillDashboardIn
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 dark:bg-neutral-800/60">
+      <div className="mt-4 flex items-center justify-between bg-gray-50 px-4 py-3 dark:bg-neutral-800/60">
         <div>
           <p className="text-xs text-gray-500 dark:text-neutral-400">
             Saldo previsto (previsão) = recebimentos futuros − pagamentos futuros. Não é o saldo bancário real.

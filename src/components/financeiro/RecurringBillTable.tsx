@@ -102,7 +102,7 @@ export function RecurringBillTable({
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Contas recorrentes</h2>
-      <div className="rtable-wrap overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="rtable-wrap overflow-x-auto border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <table role="table" className="rtable w-full min-w-[820px] text-sm">
           <thead role="rowgroup">
             <tr role="row" className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">

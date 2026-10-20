@@ -224,13 +224,13 @@ export function ImportWizard({
   if (!hasPreview) {
     return (
       <div className="flex flex-col gap-8">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() => xlsxInputRef.current?.click()}
               disabled={uploading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              className="flex flex-1 items-center justify-center gap-2 border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               <FileSpreadsheet size={18} strokeWidth={1.75} aria-hidden="true" />
               Importar Excel
@@ -239,7 +239,7 @@ export function ImportWizard({
               type="button"
               onClick={() => csvInputRef.current?.click()}
               disabled={uploading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+              className="flex flex-1 items-center justify-center gap-2 border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               <FileText size={18} strokeWidth={1.75} aria-hidden="true" />
               Importar CSV
@@ -270,18 +270,18 @@ export function ImportWizard({
           <p className="mt-6 text-xs text-gray-400 dark:text-neutral-500">Formatos aceitos: .xlsx e .csv</p>
         </div>
 
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="border border-dashed border-gray-300 bg-white p-6 text-center dark:border-neutral-700 dark:bg-neutral-900">
           <p className="text-sm text-gray-600 dark:text-neutral-400">Não possui um arquivo?</p>
           <div className="mt-3 flex flex-col justify-center gap-3 sm:flex-row">
             <a
               href="/api/financeiro/import/template?format=xlsx"
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Baixar template Excel
             </a>
             <a
               href="/api/financeiro/import/template?format=csv"
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Baixar template CSV
             </a>
@@ -298,7 +298,7 @@ export function ImportWizard({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
         <p className="text-sm text-gray-700 dark:text-neutral-300">
           Encontramos {rows.length} lançamento{rows.length === 1 ? "" : "s"}.
         </p>
@@ -315,7 +315,7 @@ export function ImportWizard({
       </div>
 
       {result && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
+        <div className="border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300">
           {result.inserted} lançamento{result.inserted === 1 ? "" : "s"} importado{result.inserted === 1 ? "" : "s"}{" "}
           com sucesso.
           {result.categoriesCreated > 0 && ` ${result.categoriesCreated} categoria(s) nova(s) criada(s).`}
@@ -325,7 +325,7 @@ export function ImportWizard({
       )}
 
       {newCategoryGroups.length > 0 && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+        <div className="border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
           <p className="text-sm font-medium text-blue-900 dark:text-blue-300">
             {newCategoryGroups.length} nova{newCategoryGroups.length === 1 ? "" : "s"} categoria
             {newCategoryGroups.length === 1 ? "" : "s"} será{newCategoryGroups.length === 1 ? "" : "ão"} criada
@@ -353,7 +353,7 @@ export function ImportWizard({
                         return next;
                       });
                     }}
-                    className="rounded-lg border border-blue-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-blue-800 dark:bg-neutral-800 dark:text-neutral-100"
+                    className="border border-blue-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-blue-800 dark:bg-neutral-800 dark:text-neutral-100"
                   >
                     <option value="">Criar como nova categoria</option>
                     {optionsForType.map((opt) => (
@@ -370,7 +370,7 @@ export function ImportWizard({
       )}
 
       {duplicateCount > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+        <div className="border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
           <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
             Encontramos possíveis lançamentos duplicados.
           </p>
@@ -378,7 +378,7 @@ export function ImportWizard({
             <button
               type="button"
               onClick={() => setDuplicateAction("skip")}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              className={`border px-3 py-1.5 text-sm font-medium transition ${
                 duplicateAction === "skip"
                   ? "border-amber-600 bg-amber-600 text-white"
                   : "border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-300"
@@ -389,7 +389,7 @@ export function ImportWizard({
             <button
               type="button"
               onClick={() => setDuplicateAction("import_anyway")}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              className={`border px-3 py-1.5 text-sm font-medium transition ${
                 duplicateAction === "import_anyway"
                   ? "border-amber-600 bg-amber-600 text-white"
                   : "border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-300"
@@ -400,7 +400,7 @@ export function ImportWizard({
             <button
               type="button"
               onClick={() => setDuplicateAction(null)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
+              className={`border px-3 py-1.5 text-sm font-medium transition ${
                 duplicateAction === null
                   ? "border-amber-600 bg-amber-600 text-white"
                   : "border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-300"
@@ -412,7 +412,7 @@ export function ImportWizard({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="overflow-x-auto border border-gray-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <table className="w-full min-w-[900px] text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-xs uppercase text-gray-500 dark:border-neutral-800 dark:text-neutral-400">
@@ -446,7 +446,7 @@ export function ImportWizard({
                     <input
                       value={row.raw[field]}
                       onChange={(e) => updateRow(row.rowNumber, field, e.target.value)}
-                      className="w-full min-w-[100px] rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="w-full min-w-[100px] border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                     />
                   </td>
                 ))}
@@ -488,7 +488,7 @@ export function ImportWizard({
         <button
           type="button"
           onClick={startOver}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           Começar de novo
         </button>
@@ -496,7 +496,7 @@ export function ImportWizard({
           type="button"
           onClick={handleConfirm}
           disabled={confirming || importableCount === 0 || (duplicateCount > 0 && duplicateAction === null)}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+          className="bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
         >
           {confirming ? "Importando..." : `Importar ${importableCount} lançamento${importableCount === 1 ? "" : "s"}`}
         </button>

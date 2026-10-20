@@ -20,7 +20,7 @@ const VALID_PERIODS = new Set(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_STATUS = new Set<string>(["DRAFT", "CONFIRMED", "CANCELLED", "COMPLETED"]);
 
 const newSaleButtonClass =
-  "rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
+  "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
 
 export default async function VendasPage(props: PageProps<"/vendas">) {
   const searchParams = await props.searchParams;
@@ -64,7 +64,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
       </div>
 
       {!hasAnyEver ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
           <p>Nenhuma venda encontrada.</p>
           <Link href="/vendas/nova" className={newSaleButtonClass}>
             Registrar venda

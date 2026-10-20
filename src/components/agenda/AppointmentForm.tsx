@@ -13,7 +13,7 @@ const secondaryButtonClass =
   "border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800";
 const linkButtonClass = "text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400";
 const inputClass =
-  "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+  "w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300";
 
 export type ClientOption = { id: string; name: string; tradeName: string };

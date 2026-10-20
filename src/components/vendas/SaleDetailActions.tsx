@@ -162,14 +162,14 @@ export function SaleDetailActions({
   }
 
   const inputClass =
-    "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+    "w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
   return (
     <div className="flex flex-wrap gap-3">
       {editable && (
         <Link
           href={`/vendas/${saleId}/editar`}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           Editar
         </Link>
@@ -179,7 +179,7 @@ export function SaleDetailActions({
         <button
           type="button"
           onClick={openConfirmModal}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+          className="bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
         >
           Confirmar venda
         </button>
@@ -191,7 +191,7 @@ export function SaleDetailActions({
             type="button"
             onClick={handleMarkCompleted}
             disabled={completePending}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             {completePending ? "Concluindo..." : "Marcar como concluída"}
           </button>
@@ -201,7 +201,7 @@ export function SaleDetailActions({
               setCancelling(true);
               setCancelError(null);
             }}
-            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
+            className="border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/20"
           >
             Cancelar venda
           </button>
@@ -218,7 +218,7 @@ export function SaleDetailActions({
           <div
             role="dialog"
             aria-modal="true"
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Confirmar venda</h2>
@@ -245,7 +245,7 @@ export function SaleDetailActions({
                   setPaymentTiming("AVISTA");
                   setInstallments([{ dueDateInput: saleDateInput, amount: total }]);
                 }}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
                   paymentTiming === "AVISTA"
                     ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
@@ -259,7 +259,7 @@ export function SaleDetailActions({
                   setPaymentTiming("APRAZO");
                   setInstallmentCount(2);
                 }}
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`flex-1 px-3 py-2 text-sm font-medium transition ${
                   paymentTiming === "APRAZO"
                     ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
@@ -332,7 +332,7 @@ export function SaleDetailActions({
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={confirmPending}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
                 Cancelar
               </button>
@@ -340,7 +340,7 @@ export function SaleDetailActions({
                 type="button"
                 onClick={handleConfirmSale}
                 disabled={confirmPending}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {confirmPending ? "Confirmando..." : "Confirmar"}
               </button>

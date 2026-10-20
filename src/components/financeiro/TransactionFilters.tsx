@@ -36,7 +36,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="flex flex-wrap items-end gap-3 border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div>
         <label htmlFor="filter-period" className="mb-1 block text-xs font-medium text-gray-500 dark:text-neutral-400">
           Período
@@ -52,7 +52,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
               end: value === "CUSTOM" ? customEnd : null,
             });
           }}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -77,7 +77,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
                 setCustomStart(value);
                 updateParam({ start: value || null, end: customEnd || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
           <div>
@@ -93,7 +93,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
                 setCustomEnd(value);
                 updateParam({ start: customStart || null, end: value || null });
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
         </>
@@ -107,7 +107,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
           id="filter-category"
           value={categoryId}
           onChange={(e) => updateParam({ categoryId: e.target.value || null })}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           <option value="">Todas</option>
           {categories.map((c) => (
@@ -126,7 +126,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
           id="filter-source"
           value={source}
           onChange={(e) => updateParam({ source: e.target.value || null })}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           <option value="">Todos</option>
           {SOURCE_OPTIONS.map((opt) => (

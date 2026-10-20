@@ -46,7 +46,7 @@ export function MetricCard({
     // 480 e 767px a fonte desce pra 20px e abaixo de 480px as grades passam a
     // 1 coluna (ver as telas que usam o card), então os valores comuns cabem
     // numa linha.
-    <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="min-w-0 border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-neutral-400">
         {icon && (
           <span className="inline-flex shrink-0" aria-hidden="true">

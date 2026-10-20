@@ -193,7 +193,7 @@ export function BillFormModal({
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-lg dark:bg-neutral-900"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
@@ -217,7 +217,7 @@ export function BillFormModal({
               id="categoryId"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             >
               <option value="">Selecione...</option>
               {categories.map((c) => (
@@ -270,7 +270,7 @@ export function BillFormModal({
               id="paymentMethod"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             >
               <option value="">Não informado</option>
               {PAYMENT_METHOD_OPTIONS.map((opt) => (
@@ -296,7 +296,7 @@ export function BillFormModal({
           />
 
           {!isEditing && (
-            <div className="rounded-lg border border-gray-200 p-3 dark:border-neutral-700">
+            <div className="border border-gray-200 p-3 dark:border-neutral-700">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
                 <input
                   type="checkbox"
@@ -317,7 +317,7 @@ export function BillFormModal({
                       id="frequency"
                       value={frequency}
                       onChange={(e) => setFrequency(e.target.value as RecurringBillFrequency)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                      className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                     >
                       {RECURRING_BILL_FREQUENCY_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -336,7 +336,7 @@ export function BillFormModal({
                         id="dayOfWeek"
                         value={dayOfWeek}
                         onChange={(e) => setDayOfWeek(Number(e.target.value))}
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                        className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                       >
                         {WEEKDAY_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>
@@ -358,7 +358,7 @@ export function BillFormModal({
                             id="yearMonth"
                             value={yearMonth}
                             onChange={(e) => setYearMonth(Number(e.target.value))}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+                            className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                           >
                             {MONTH_OPTIONS.map((opt) => (
                               <option key={opt.value} value={opt.value}>
@@ -406,7 +406,7 @@ export function BillFormModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
 
@@ -420,7 +420,7 @@ export function BillFormModal({
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              className="flex-1 border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Cancelar
             </button>

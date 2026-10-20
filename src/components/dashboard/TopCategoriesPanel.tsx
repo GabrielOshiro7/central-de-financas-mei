@@ -10,7 +10,7 @@ export function TopCategoriesPanel({ ranking, currency }: { ranking: TopCategori
   const hasData = ranking.entries.length > 0;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Principais gastos</h2>
       <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">Custos e despesas combinados no período.</p>
 
