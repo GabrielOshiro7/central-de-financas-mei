@@ -41,7 +41,7 @@ async function completeOnboarding(page: Page, name: string) {
 }
 
 async function addRevenue(page: Page, description: string) {
-  await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+  await page.getByRole("button", { name: "Nova receita" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Data").fill(todayIso());
   await dialog.getByLabel("Descrição").fill(description);

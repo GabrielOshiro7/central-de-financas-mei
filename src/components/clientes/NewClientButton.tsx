@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ClientFormModal } from "@/components/clientes/ClientFormModal";
+import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
 
 export function NewClientButton() {
   const [open, setOpen] = useState(false);
@@ -11,9 +12,9 @@ export function NewClientButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+        className={CREATE_BUTTON_CLASS}
       >
-        + Novo cliente
+        <CreateButtonContent label="Novo cliente" />
       </button>
 
       <ClientFormModal open={open} onClose={() => setOpen(false)} />

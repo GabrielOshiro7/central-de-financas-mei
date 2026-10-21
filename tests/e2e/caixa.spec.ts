@@ -52,7 +52,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     // Registra dois lancamentos manuais (Etapa 3, ja testado - so preparando dado pro Caixa).
     await gotoHydrated(page, "/financeiro/receitas");
     async function addRevenue(date: string, description: string, amount: string) {
-      await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+      await page.getByRole("button", { name: "Nova receita" }).click();
       const dialog = page.getByRole("dialog");
       await dialog.getByLabel("Data").fill(date);
       await dialog.getByLabel("Descrição").fill(description);

@@ -12,6 +12,14 @@ export const ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
   EXPENSE: "Despesa",
 };
 
+// Texto do botão de criação de cada aba (Receitas/Custos/Despesas) e título
+// do modal aberto por ele, com o tipo já fixo. Gênero concorda com o tipo.
+export const NEW_ENTRY_LABELS: Record<FinancialEntryType, string> = {
+  REVENUE: "Nova receita",
+  COST: "Novo custo",
+  EXPENSE: "Nova despesa",
+};
+
 // Selo de tipo do lançamento - SEMPRE neutro (cinza), como os selos de status
 // da venda (src/lib/sales/options.ts) e da Agenda. Tipo de lançamento não é
 // um dos 4 usos da paleta Musgo/Âmbar/Terracota (KPI, selo de status de

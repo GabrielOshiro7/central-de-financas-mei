@@ -17,9 +17,8 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { AppointmentSimpleList, AppointmentGroupedList, type AppointmentListItem } from "@/components/agenda/AppointmentList";
 import { AgendaCalendarGrid, type CalendarDayCell } from "@/components/agenda/AgendaCalendarGrid";
 import { MonthSummary } from "@/components/agenda/MonthSummary";
+import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
 
-const newAppointmentButtonClass =
-  "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
 const tabButtonClass = (active: boolean) =>
   `px-3 py-1.5 text-sm font-medium transition ${
     active
@@ -266,8 +265,8 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Agenda</h1>
-        <Link href="/agenda/novo" className={newAppointmentButtonClass}>
-          + Novo agendamento
+        <Link href="/agenda/novo" className={CREATE_BUTTON_CLASS}>
+          <CreateButtonContent label="Novo agendamento" />
         </Link>
       </div>
 

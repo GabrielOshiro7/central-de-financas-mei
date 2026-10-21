@@ -1,18 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PERIOD_OPTIONS, DEFAULT_PERIOD, type PeriodKey } from "@/lib/finance/period";
 import { SOURCE_OPTIONS } from "@/lib/finance/options";
 
 export type FilterCategoryOption = { id: string; name: string };
 
-export function TransactionFilters({ categories }: { categories: FilterCategoryOption[] }) {
+export function TransactionFilters({
+  categories,
+  action,
+}: {
+  categories: FilterCategoryOption[];
+  // Botão de criação da aba (ex.: "Nova receita"), à direita do painel.
+  action?: ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const actionRef = useRef<HTMLDivElement>(null);
 
   const period = (searchParams.get("period") as PeriodKey | null) ?? DEFAULT_PERIOD;
+
+  // A ação fica à direita (ml-auto) enquanto cabe na mesma linha dos
+  // filtros; quando o painel quebra linha ela vai pro fim com largura total.
+  // CSS sozinho não sabe se um item de flex-wrap quebrou (e a largura do
+  // select de Categoria depende dos nomes cadastrados), então mede: zera o
+  // estado, compara a base da ação com a do primeiro filtro (items-end alinha
+  // as bases na mesma linha) e grava data-wrapped - tudo síncrono, antes do
+  // paint. Abaixo de 640px o CSS já força largura total (sempre quebra ali),
+  // pra não haver pulo antes da hidratação.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    const actionEl = actionRef.current;
+    if (!panel || !actionEl) return;
+    const sync = () => {
+      const first = panel.firstElementChild as HTMLElement | null;
+      if (!first || first === actionEl) return;
+      actionEl.dataset.wrapped = "false";
+      const actionBottom = actionEl.offsetTop + actionEl.offsetHeight;
+      const firstBottom = first.offsetTop + first.offsetHeight;
+      actionEl.dataset.wrapped = String(actionBottom > firstBottom + 1);
+    };
+    sync();
+    // jsdom (testes de componente) não tem ResizeObserver.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(sync);
+    observer?.observe(panel);
+    return () => observer?.disconnect();
+  }, [period, action]);
   const categoryId = searchParams.get("categoryId") ?? "";
   const source = searchParams.get("source") ?? "";
 
@@ -36,7 +72,10 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
   }
 
   return (
-    <div className="flex flex-wrap items-end gap-3 border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <div
+      ref={panelRef}
+      className="flex flex-wrap items-end gap-3 border border-gray-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+    >
       <div>
         <label htmlFor="filter-period" className="mb-1 block text-xs font-medium text-gray-500 dark:text-neutral-400">
           Período
@@ -52,7 +91,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
               end: value === "CUSTOM" ? customEnd : null,
             });
           }}
-          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="h-9.5 border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           {PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -77,7 +116,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
                 setCustomStart(value);
                 updateParam({ start: value || null, end: customEnd || null });
               }}
-              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="h-9.5 border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
           <div>
@@ -93,7 +132,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
                 setCustomEnd(value);
                 updateParam({ start: customStart || null, end: value || null });
               }}
-              className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+              className="h-9.5 border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
           </div>
         </>
@@ -107,7 +146,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
           id="filter-category"
           value={categoryId}
           onChange={(e) => updateParam({ categoryId: e.target.value || null })}
-          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="h-9.5 border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           <option value="">Todas</option>
           {categories.map((c) => (
@@ -126,7 +165,7 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
           id="filter-source"
           value={source}
           onChange={(e) => updateParam({ source: e.target.value || null })}
-          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+          className="h-9.5 border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
           <option value="">Todos</option>
           {SOURCE_OPTIONS.map((opt) => (
@@ -136,6 +175,12 @@ export function TransactionFilters({ categories }: { categories: FilterCategoryO
           ))}
         </select>
       </div>
+
+      {action && (
+        <div ref={actionRef} className="ml-auto flex max-sm:basis-full data-[wrapped=true]:basis-full">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

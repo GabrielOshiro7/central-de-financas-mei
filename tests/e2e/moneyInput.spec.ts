@@ -52,7 +52,7 @@ test.describe("MoneyInput - digitação real no navegador", () => {
     await completeOnboarding(page, "Empresa Money E2E");
 
     await gotoHydrated(page, "/financeiro/receitas");
-    await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+    await page.getByRole("button", { name: "Nova receita" }).click();
     const dialog = page.getByRole("dialog");
     const valor = dialog.getByLabel("Valor");
 

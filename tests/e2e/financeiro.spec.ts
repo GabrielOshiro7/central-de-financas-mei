@@ -53,8 +53,9 @@ test.describe("financeiro - lançamentos manuais", () => {
     await expect(page).toHaveURL(/\/financeiro/);
 
     // Criar um lancamento de receita (modal escopado por role=dialog, ja que
-    // "Categoria" tambem e o rotulo do filtro nas paginas de lista).
-    await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+    // "Categoria" tambem e o rotulo do filtro nas paginas de lista). /financeiro
+    // redireciona pra Receitas, cujo botao de criacao e "Nova receita".
+    await page.getByRole("button", { name: "Nova receita" }).click();
     let dialog = page.getByRole("dialog");
     await dialog.getByLabel("Data").fill(todayIso());
     await dialog.getByLabel("Descrição").fill("Venda balcão E2E");
@@ -100,9 +101,9 @@ test.describe("financeiro - lançamentos manuais", () => {
     await gotoHydrated(page, "/financeiro/despesas");
 
     async function addExpense(date: string, description: string) {
-      await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+      // O botao da aba Despesas ja abre o modal com o tipo fixo em Despesa.
+      await page.getByRole("button", { name: "Nova despesa" }).click();
       const dialog = page.getByRole("dialog");
-      await dialog.getByRole("button", { name: "Despesa", exact: true }).click();
       await dialog.getByLabel("Data").fill(date);
       await dialog.getByLabel("Descrição").fill(description);
       await dialog.getByLabel("Categoria").selectOption({ label: "Aluguel" });

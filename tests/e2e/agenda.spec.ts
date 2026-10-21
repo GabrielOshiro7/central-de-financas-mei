@@ -77,7 +77,9 @@ test.describe("Etapa 8 - agenda", () => {
     await expect(page.getByText("Nenhum agendamento neste dia.")).toBeVisible();
 
     // exact: o painel do dia vazio tem tambem "+ Novo agendamento nesta data".
-    await page.getByRole("link", { name: "+ Novo agendamento", exact: true }).click();
+    // O "+" do botao do cabecalho virou icone decorativo (aria-hidden), entao o
+    // nome acessivel e so "Novo agendamento".
+    await page.getByRole("link", { name: "Novo agendamento", exact: true }).click();
     await expect(page).toHaveURL(/\/agenda\/novo/);
 
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();

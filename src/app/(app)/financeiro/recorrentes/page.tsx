@@ -4,6 +4,7 @@ import { formatFrequencyLabel } from "@/lib/finance/recurring/format";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { RecurringEntryTable, type RecurringEntryRow } from "@/components/financeiro/RecurringEntryTable";
 import { InfoTooltip } from "@/components/InfoTooltip";
+import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
 
 function formatDateDisplay(d: Date): string {
   return d.toLocaleDateString("pt-BR");
@@ -51,6 +52,19 @@ export default async function RecurringEntriesPage() {
     isActive: entry.isActive,
   }));
 
+  // Seletor de tipo visível (a aba mistura os três tipos) e recorrência
+  // travada. Com itens, fica à direita acima da tabela; sem itens, só como
+  // CTA do estado vazio - nunca os dois ao mesmo tempo.
+  const newButton = (
+    <NewTransactionButton
+      label="Novo lançamento recorrente"
+      categories={categories}
+      currency={business.currency}
+      lockRecurring
+      className="max-sm:w-full"
+    />
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -59,10 +73,17 @@ export default async function RecurringEntriesPage() {
           <InfoTooltip text="Lançamentos que se repetem automaticamente a cada período (ex.: todo mês), sem você precisar cadastrar de novo toda vez." />
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
-          Para criar um, marque &quot;Recorrente&quot; ao adicionar um lançamento em Receitas, Custos ou Despesas.
+          Para criar um, use o botão &quot;Novo lançamento recorrente&quot; - ou marque &quot;Recorrente&quot; ao adicionar
+          um lançamento em Receitas, Custos ou Despesas.
         </p>
       </div>
-      <RecurringEntryTable rows={rows} categories={categories} currency={business.currency} />
+      {rows.length > 0 && <div className="flex justify-end">{newButton}</div>}
+      <RecurringEntryTable
+        rows={rows}
+        categories={categories}
+        currency={business.currency}
+        emptyAction={newButton}
+      />
     </div>
   );
 }

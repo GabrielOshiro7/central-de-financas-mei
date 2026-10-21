@@ -12,6 +12,8 @@ import {
 } from "@/lib/finance/period";
 import { TransactionFilters } from "@/components/financeiro/TransactionFilters";
 import { TransactionTable, type TransactionRow } from "@/components/financeiro/TransactionTable";
+import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
+import { NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { InfoTooltip } from "@/components/InfoTooltip";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
@@ -73,6 +75,9 @@ export async function TransactionListPage({
     listVisibleCategories(business.id, type),
   ]);
 
+  // Mesma lista (só do tipo da aba) pro modal de criação e pro de edição.
+  const modalCategories = categories.map((c) => ({ id: c.id, name: c.name, type: c.type }));
+
   const rows: TransactionRow[] = items.map((item) => ({
     id: item.id,
     type: item.type,
@@ -92,12 +97,20 @@ export async function TransactionListPage({
         <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
         <InfoTooltip text={helpText} />
       </div>
-      <TransactionFilters categories={categories.map((c) => ({ id: c.id, name: c.name }))} />
-      <TransactionTable
-        rows={rows}
-        categories={categories.map((c) => ({ id: c.id, name: c.name, type: c.type }))}
-        currency={business.currency}
+      <TransactionFilters
+        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        action={
+          <NewTransactionButton
+            label={NEW_ENTRY_LABELS[type]}
+            categories={modalCategories}
+            currency={business.currency}
+            defaultType={type}
+            lockType
+            className="grow"
+          />
+        }
       />
+      <TransactionTable rows={rows} categories={modalCategories} currency={business.currency} />
     </div>
   );
 }

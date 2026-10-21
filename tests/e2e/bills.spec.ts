@@ -54,7 +54,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await gotoHydrated(page, "/financeiro/pagar");
     await expect(page.getByRole("heading", { name: "Contas a pagar" })).toBeVisible();
 
-    await page.getByRole("button", { name: "+ Nova conta a pagar" }).click();
+    await page.getByRole("button", { name: "Nova conta a pagar", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descrição").fill("Aluguel do escritório E2E");
     await dialog.getByLabel("Categoria").selectOption({ label: "Aluguel" });
@@ -105,7 +105,7 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await gotoHydrated(page, "/financeiro/receber");
     await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
 
-    await page.getByRole("button", { name: "+ Nova conta a receber" }).click();
+    await page.getByRole("button", { name: "Nova conta a receber", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Descrição").fill("Venda a prazo E2E");
     await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });

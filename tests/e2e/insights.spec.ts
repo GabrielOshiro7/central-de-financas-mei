@@ -58,7 +58,7 @@ async function completeOnboarding(page: Page, name: string) {
 
 async function createAndSettleReceivable(page: Page, description: string, amount: string, dueDateIso: string) {
   await gotoHydrated(page, "/financeiro/receber");
-  await page.getByRole("button", { name: "+ Nova conta a receber" }).click();
+  await page.getByRole("button", { name: "Nova conta a receber", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Descrição").fill(description);
   await dialog.getByLabel("Categoria").selectOption({ label: "Venda de produtos" });
@@ -78,9 +78,9 @@ async function createAndSettleReceivable(page: Page, description: string, amount
 
 async function addExpense(page: Page, description: string, amount: string, dateIso: string) {
   await gotoHydrated(page, "/financeiro/despesas");
-  await page.getByRole("button", { name: "+ Novo lançamento" }).click();
+  // O botao da aba Despesas ja abre o modal com o tipo fixo em Despesa.
+  await page.getByRole("button", { name: "Nova despesa" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Despesa", exact: true }).click();
   await dialog.getByLabel("Data").fill(dateIso);
   await dialog.getByLabel("Descrição").fill(description);
   await dialog.getByLabel("Categoria").selectOption({ label: "Aluguel" });

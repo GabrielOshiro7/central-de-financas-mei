@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
 import { ENTRY_TYPE_BADGE_STYLE, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
@@ -35,10 +35,13 @@ export function RecurringEntryTable({
   rows,
   categories,
   currency,
+  emptyAction,
 }: {
   rows: RecurringEntryRow[];
   categories: CategoryOption[];
   currency: Currency | null;
+  // CTA do estado vazio (botão "Novo lançamento recorrente").
+  emptyAction?: ReactNode;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<RecurringEntryRow | null>(null);
@@ -92,8 +95,9 @@ export function RecurringEntryTable({
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-        Nenhum lançamento recorrente cadastrado.
+      <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <p>Nenhum lançamento recorrente cadastrado.</p>
+        {emptyAction}
       </div>
     );
   }

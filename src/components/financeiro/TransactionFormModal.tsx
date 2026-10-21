@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
-import { ENTRY_TYPE_OPTIONS } from "@/lib/finance/options";
+import { ENTRY_TYPE_OPTIONS, NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
 
 export type CategoryOption = { id: string; name: string; type: FinancialEntryType };
@@ -37,6 +37,8 @@ export function TransactionFormModal({
   categories,
   currency,
   defaultType,
+  lockType = false,
+  lockRecurring = false,
   initial,
   onSaved,
 }: {
@@ -45,11 +47,23 @@ export function TransactionFormModal({
   categories: CategoryOption[];
   currency: Currency | null;
   defaultType?: FinancialEntryType;
+  // Criação a partir de uma aba de tipo (Receitas/Custos/Despesas): o tipo é
+  // o defaultType e o seletor Receita/Custo/Despesa não aparece. O payload
+  // continua levando `type`, igual a quando o usuário escolhe no seletor.
+  lockType?: boolean;
+  // Criação a partir da aba Recorrentes: a recorrência é obrigatória - o
+  // checkbox "Recorrente" não aparece e os campos de recorrência já vêm
+  // abertos. O seletor de tipo continua (a aba mistura os três tipos).
+  lockRecurring?: boolean;
   initial?: TransactionFormInitial | null;
   onSaved?: () => void;
 }) {
   const router = useRouter();
+  const titleId = useId();
   const isEditing = Boolean(initial);
+  // Os modos travados só valem na criação; a edição segue sempre igual.
+  const typeLocked = lockType && !isEditing;
+  const recurringLocked = lockRecurring && !isEditing;
 
   const [type, setType] = useState<FinancialEntryType>(initial?.type ?? defaultType ?? "REVENUE");
   const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ?? todayInputValue());
@@ -67,7 +81,7 @@ export function TransactionFormModal({
   // nunca ao editar uma ocorrencia ja materializada (isso nao deve afetar o
   // molde nem virar uma recorrencia nova - ver "CANCELAMENTO / EXCLUSAO" e
   // "MUDANCA DE VALOR" do prompt da Etapa 4.1).
-  const [isRecurring, setIsRecurring] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(recurringLocked);
   const [frequency, setFrequency] = useState<RecurrenceFrequency>("MONTHLY");
   const [dayOfWeek, setDayOfWeek] = useState(1);
   const [dayOfMonth, setDayOfMonth] = useState(1);
@@ -81,6 +95,14 @@ export function TransactionFormModal({
 
   if (!open) return null;
 
+  const title = isEditing
+    ? "Editar lançamento"
+    : recurringLocked
+      ? "Novo lançamento recorrente"
+      : typeLocked
+        ? NEW_ENTRY_LABELS[type]
+        : "Novo lançamento";
+
   const showPastStartDateWarning = isRecurring && occurredAt < todayInputValue();
 
   function reset() {
@@ -92,7 +114,7 @@ export function TransactionFormModal({
     setNotes("");
     setNewCategoryName("");
     setError(null);
-    setIsRecurring(false);
+    setIsRecurring(recurringLocked);
     setFrequency("MONTHLY");
     setDayOfWeek(1);
     setDayOfMonth(1);
@@ -192,36 +214,39 @@ export function TransactionFormModal({
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
-          {isEditing ? "Editar lançamento" : "Novo lançamento"}
+        <h2 id={titleId} className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+          {title}
         </h2>
 
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
-          <div>
-            <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">Tipo</span>
-            <div className="flex gap-2">
-              {ENTRY_TYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    setType(opt.value);
-                    setCategoryId("");
-                  }}
-                  className={`flex-1 border px-3 py-2 text-sm font-medium transition ${
-                    type === opt.value
-                      ? "border-gray-900 bg-gray-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {!typeLocked && (
+            <div>
+              <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">Tipo</span>
+              <div className="flex gap-2">
+                {ENTRY_TYPE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setType(opt.value);
+                      setCategoryId("");
+                    }}
+                    className={`flex-1 border px-3 py-2 text-sm font-medium transition ${
+                      type === opt.value
+                        ? "border-gray-900 bg-gray-900 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900"
+                        : "border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <FormField
             id="occurredAt"
@@ -283,18 +308,20 @@ export function TransactionFormModal({
 
           {!isEditing && (
             <div className="border border-gray-200 p-3 dark:border-neutral-700">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
-                <input
-                  type="checkbox"
-                  checked={isRecurring}
-                  onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 dark:border-neutral-600"
-                />
-                Recorrente
-              </label>
+              {!recurringLocked && (
+                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-neutral-300">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 dark:border-neutral-600"
+                  />
+                  Recorrente
+                </label>
+              )}
 
               {isRecurring && (
-                <div className="mt-3 flex flex-col gap-3">
+                <div className={`flex flex-col gap-3 ${recurringLocked ? "" : "mt-3"}`}>
                   <div>
                     <label htmlFor="frequency" className="mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300">
                       Frequência

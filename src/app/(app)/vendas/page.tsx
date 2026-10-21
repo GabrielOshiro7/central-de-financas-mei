@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SaleFilters } from "@/components/vendas/SaleFilters";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
+import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -57,8 +58,8 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Vendas</h1>
         {hasAnyEver && (
-          <Link href="/vendas/nova" className={newSaleButtonClass}>
-            + Nova venda
+          <Link href="/vendas/nova" className={CREATE_BUTTON_CLASS}>
+            <CreateButtonContent label="Nova venda" />
           </Link>
         )}
       </div>

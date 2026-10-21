@@ -51,7 +51,7 @@ test.describe("Etapa 6 - clientes", () => {
     await expect(page.getByRole("heading", { name: "Clientes" })).toBeVisible();
     await expect(page.getByText("Nenhum cliente cadastrado.")).toBeVisible();
 
-    await page.getByRole("button", { name: "+ Novo cliente" }).click();
+    await page.getByRole("button", { name: "Novo cliente", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await dialog.getByLabel("Nome", { exact: true }).fill("João da Silva E2E");
     await dialog.getByLabel("Telefone (opcional)").fill("11999990000");
@@ -106,7 +106,7 @@ test.describe("Etapa 6 - clientes", () => {
     await register(page, "Dono A", emailA);
     await completeOnboarding(page, "Empresa A E2E");
     await gotoHydrated(page, "/clientes");
-    await page.getByRole("button", { name: "+ Novo cliente" }).click();
+    await page.getByRole("button", { name: "Novo cliente", exact: true }).click();
     await page.getByRole("dialog").getByLabel("Nome", { exact: true }).fill("Cliente Duplicado E2E");
     await page.getByRole("dialog").getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
