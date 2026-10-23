@@ -10,6 +10,7 @@ import { CashEmptyState } from "@/components/caixa/CashEmptyState";
 import { CashPeriodFilter } from "@/components/caixa/CashPeriodFilter";
 import { DEFAULT_CASH_PERIOD } from "@/components/caixa/constants";
 import { TrendMiniChart, type TrendPoint } from "@/components/dashboard/TrendMiniChart";
+import { clockFor } from "@/lib/time/zoned";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 
@@ -55,7 +56,7 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
   // O filtro de periodo SO recorta quais meses da serie ja calculada
   // aparecem no grafico - o card de saldo atual (current, acima) nunca muda
   // com ele, sempre "ate hoje" (secao "INTERFACE" da Etapa 5.1).
-  const range = resolvePeriodRange(effectivePeriod, now, customRange);
+  const range = resolvePeriodRange(effectivePeriod, clockFor(business, now), customRange);
   const visibleMonthKeys = new Set(range.months.map((m) => `${m.year}-${m.month}`));
   const visibleSeries = monthlySeries.filter((p) => visibleMonthKeys.has(`${p.year}-${p.month}`));
 

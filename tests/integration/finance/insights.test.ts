@@ -8,6 +8,7 @@ import { getInsightsForBusiness } from "@/lib/insights/queries";
 import { generateInsightsForBusiness } from "@/lib/insights/mutations";
 import * as aiProvider from "@/lib/ai/provider";
 import type { AIProvider } from "@/lib/ai/provider";
+import { processClock } from "../../helpers/processClock";
 
 // Provedor falso so para este arquivo: ecoa de volta EXATAMENTE os mesmos
 // numeros/texto que já estavam no draft (extraídos do próprio prompt), então
@@ -65,7 +66,7 @@ describe("Insights (Etapa 7) - integração", () => {
         ],
       });
 
-      const insights = await getInsightsForBusiness(businessId, now);
+      const insights = await getInsightsForBusiness(businessId, processClock(now));
       const revenueInsight = insights.find((i) => i.metric === "REVENUE_GROWTH");
       expect(revenueInsight).toBeDefined();
 
@@ -90,7 +91,7 @@ describe("Insights (Etapa 7) - integração", () => {
         ],
       });
 
-      const first = await getInsightsForBusiness(businessId, now);
+      const first = await getInsightsForBusiness(businessId, processClock(now));
       const firstRevenue = first.find((i) => i.metric === "REVENUE_GROWTH");
       expect(firstRevenue?.currentValue?.toString()).toBe("1400");
       expect(firstRevenue?.narrativeSource).toBe("template");
@@ -107,7 +108,7 @@ describe("Insights (Etapa 7) - integração", () => {
       if (!billResult.ok) return;
       await settleBill(businessId, userId, billResult.value.id, new Date(2026, 8, 14));
 
-      const second = await getInsightsForBusiness(businessId, now);
+      const second = await getInsightsForBusiness(businessId, processClock(now));
       const secondRevenue = second.find((i) => i.metric === "REVENUE_GROWTH");
       expect(secondRevenue?.currentValue?.toString()).toBe("1900");
       // Caminho de leitura nunca chama IA, mesmo ao regenerar por
@@ -136,7 +137,7 @@ describe("Insights (Etapa 7) - integração", () => {
         ],
       });
 
-      const insights = await getInsightsForBusiness(businessId, now);
+      const insights = await getInsightsForBusiness(businessId, processClock(now));
       expect(insights.find((i) => i.metric === "REVENUE_GROWTH")).toBeUndefined();
     } finally {
       await cleanupBusiness(businessId, userId);
@@ -155,7 +156,7 @@ describe("Insights (Etapa 7) - integração", () => {
       });
 
       vi.spyOn(aiProvider, "getAIProvider").mockReturnValue(new EchoProvider());
-      await generateInsightsForBusiness(businessId, now, { withAI: true });
+      await generateInsightsForBusiness(businessId, processClock(now), { withAI: true });
 
       const afterRegenerate = await prisma.insight.findFirst({ where: { businessId, metric: "REVENUE_GROWTH" } });
       expect(afterRegenerate?.narrativeSource).toBe("ai");
@@ -165,7 +166,7 @@ describe("Insights (Etapa 7) - integração", () => {
         data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 2", amount: "700", occurredAt: new Date(2026, 8, 20) },
       });
 
-      const afterChange = await getInsightsForBusiness(businessId, now);
+      const afterChange = await getInsightsForBusiness(businessId, processClock(now));
       const revenueInsight = afterChange.find((i) => i.metric === "REVENUE_GROWTH");
       expect(revenueInsight?.currentValue?.toString()).toBe("2000");
       // Nunca deve mostrar uma narrativa de IA associada a números que já
@@ -184,7 +185,7 @@ describe("Insights (Etapa 7) - integração", () => {
         data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Primeira venda", amount: "500", occurredAt: new Date(2026, 8, 10) },
       });
 
-      const insights = await getInsightsForBusiness(businessId, now);
+      const insights = await getInsightsForBusiness(businessId, processClock(now));
       expect(insights).toEqual([]);
     } finally {
       await cleanupBusiness(businessId, userId);
@@ -206,8 +207,8 @@ describe("Insights (Etapa 7) - integração", () => {
       }
 
       const [insightsA, insightsB] = await Promise.all([
-        getInsightsForBusiness(a.businessId, now),
-        getInsightsForBusiness(b.businessId, now),
+        getInsightsForBusiness(a.businessId, processClock(now)),
+        getInsightsForBusiness(b.businessId, processClock(now)),
       ]);
 
       expect(insightsA.every((i) => i.businessId === a.businessId)).toBe(true);
@@ -247,7 +248,7 @@ describe("Insights (Etapa 7) - integração", () => {
       const cancelResult = await cancelSale(businessId, saleResult.value.id);
       expect(cancelResult.ok).toBe(true);
 
-      const insights = await getInsightsForBusiness(businessId, now);
+      const insights = await getInsightsForBusiness(businessId, processClock(now));
       const revenueInsight = insights.find((i) => i.metric === "REVENUE_GROWTH");
       // Nenhum FinancialEntry foi criado pela venda cancelada (nunca chegou a
       // ser paga) - currentValue de setembro é 0, nunca os 900 da venda

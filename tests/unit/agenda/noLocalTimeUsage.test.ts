@@ -46,3 +46,41 @@ describe("src/lib/agenda nunca usa data/hora local do host", () => {
     });
   }
 });
+
+// Etapa F3a: os arquivos de periodo/dashboard/insights passaram a usar o fuso
+// da empresa (src/lib/time/zoned.ts). A mesma guarda vale para eles, mais
+// um pouco: tambem setDate/setMonth/setFullYear, toLocale* (sempre sem
+// timeZone aqui) e `new Date(ano, mes, ...)` (construtor local). Comentarios
+// sao ignorados. src/lib/finance/legacyLocalDay.ts e o legado declarado da
+// F3b e fica de fora de proposito.
+const F3A_FILES = [
+  "src/lib/finance/period.ts",
+  "src/lib/finance/queries.ts",
+  "src/lib/finance/dashboardService.ts",
+  "src/lib/insights/snapshot.ts",
+  "src/lib/insights/queries.ts",
+  "src/lib/insights/mutations.ts",
+];
+const F3A_FORBIDDEN = [
+  ...FORBIDDEN_PATTERNS,
+  ...["setDate", "setMonth", "setFullYear", "getTimezoneOffset", "toLocaleString", "toLocaleDateString", "toLocaleTimeString"].map((name) => ({
+    name,
+    pattern: new RegExp(`\\.${name}\\s*\\(`),
+  })),
+  { name: "new Date(ano, mes, ...)", pattern: /new Date\(\s*[\w.]+\s*,/ },
+  { name: 'new Date("YYYY-MM-DD")', pattern: /new Date\(\s*["'`]/ },
+];
+
+describe("arquivos da F3a nunca usam data/hora local do host", () => {
+  for (const relative of F3A_FILES) {
+    it(`${relative} nao usa getters/setters locais, toLocale* nem construtor local`, () => {
+      const code = readFileSync(join(process.cwd(), relative), "utf8")
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("//"))
+        .join("\n");
+      for (const { name, pattern } of F3A_FORBIDDEN) {
+        expect(code, `${relative} usa ${name}`).not.toMatch(pattern);
+      }
+    });
+  }
+});

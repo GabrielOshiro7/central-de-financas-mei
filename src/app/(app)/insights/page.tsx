@@ -2,10 +2,11 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import { InsightCard } from "@/components/insights/InsightCard";
 import { RegenerateButton } from "@/components/insights/RegenerateButton";
+import { clockFor } from "@/lib/time/zoned";
 
 export default async function InsightsPage() {
   const { business } = await requireOnboardedUser();
-  const insights = await getInsightsForBusiness(business.id);
+  const insights = await getInsightsForBusiness(business.id, clockFor(business));
 
   return (
     <div className="flex flex-col gap-6">

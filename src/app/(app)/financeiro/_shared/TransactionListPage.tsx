@@ -15,6 +15,7 @@ import { TransactionTable, type TransactionRow } from "@/components/financeiro/T
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
 import { NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { InfoTooltip } from "@/components/InfoTooltip";
+import { clockFor } from "@/lib/time/zoned";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_SOURCES = new Set<string>(["MANUAL", "IMPORT"]);
@@ -68,7 +69,7 @@ export async function TransactionListPage({
   const sourceParam = paramString(searchParams, "source");
   const source = sourceParam && VALID_SOURCES.has(sourceParam) ? (sourceParam as EntrySource) : undefined;
 
-  const range = resolvePeriodRange(effectivePeriod, new Date(), customRange);
+  const range = resolvePeriodRange(effectivePeriod, clockFor(business), customRange);
 
   const [{ items }, categories] = await Promise.all([
     listTransactions(business.id, { type, categoryId, source, range, pageSize: 100 }),

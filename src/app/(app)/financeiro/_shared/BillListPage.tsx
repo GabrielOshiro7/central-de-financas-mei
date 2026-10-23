@@ -13,6 +13,7 @@ import { BillSummaryCards } from "@/components/financeiro/BillSummaryCards";
 import { RecurringBillTable, type RecurringBillRow } from "@/components/financeiro/RecurringBillTable";
 import { NewBillButton } from "@/components/financeiro/NewBillButton";
 import { InfoTooltip } from "@/components/InfoTooltip";
+import { clockFor } from "@/lib/time/zoned";
 
 const VALID_STATUSES = new Set<string>(["PENDING", "OVERDUE", "PAID", "CANCELLED"]);
 const VALID_DUE = new Set<string>(DUE_SOON_OPTIONS.map((o) => o.value));
@@ -82,7 +83,7 @@ export async function BillListPage({
   };
 
   const categoryType = direction === "PAYABLE" ? undefined : "REVENUE";
-  const paidRange = resolvePeriodRange("THIS_MONTH", now);
+  const paidRange = resolvePeriodRange("THIS_MONTH", clockFor(business, now));
 
   const [{ items }, hasAnyEver, summary, recurringBills, allCategories] = await Promise.all([
     listBills(business.id, filters, now),

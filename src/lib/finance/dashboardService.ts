@@ -41,6 +41,7 @@ import { getBillSummary, getForecastBalance, type BillSummary, type ForecastBala
 import { getSalesSummary, getTopClients, type SalesSummary, type TopClientEntry } from "@/lib/sales/queries";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import type { InsightCardData } from "@/components/insights/InsightCard";
+import type { BusinessClock } from "@/lib/time/zoned";
 
 type Decimal = Prisma.Decimal;
 
@@ -117,9 +118,13 @@ export async function getDashboardData(
   currency: Currency,
   periodLabel: string,
   filters: DashboardFilters,
-  now: Date = new Date()
+  // Relogio da empresa (fuso + agora): periodos, series e insights sao
+  // resolvidos no fuso dela (Etapa F3a). Os getters de contas/vendas ainda
+  // recebem so o instante (F3b).
+  clock: BusinessClock
 ): Promise<DashboardData> {
-  const range = resolvePeriodRange(filters.period, now, filters.customRange);
+  const { now, timeZone } = clock;
+  const range = resolvePeriodRange(filters.period, clock, filters.customRange);
   const comparisonRange = resolveComparisonRange(filters.comparison, range);
 
   // A granularidade da serie temporal segue o alignment do periodo ATUAL,
@@ -128,7 +133,9 @@ export async function getDashboardData(
   // por dia nunca deve ser resumido em barras mensais (ver EvolutionPoint em
   // FinancialChart.tsx e o comentario de getDailySeriesForRange).
   const fetchSeries = (r: { start: Date; end: Date }) =>
-    range.alignment === "day" ? getDailySeriesForRange(businessId, r) : getMonthlySeriesForRange(businessId, r);
+    range.alignment === "day"
+      ? getDailySeriesForRange(businessId, r, timeZone)
+      : getMonthlySeriesForRange(businessId, r, timeZone);
 
   const [
     summary,
@@ -174,7 +181,7 @@ export async function getDashboardData(
     // junto resumo/grafico/contas/vendas, que ja tinham carregado com
     // sucesso - um problema isolado dos insights nunca deveria custar o
     // resto do dashboard.
-    getInsightsForBusiness(businessId, now).catch((err) => {
+    getInsightsForBusiness(businessId, clock).catch((err) => {
       console.error("[dashboard] falha ao gerar/carregar insights, seguindo sem eles:", err);
       return [];
     }),

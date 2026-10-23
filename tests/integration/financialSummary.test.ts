@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummary } from "@/lib/finance/queries";
+import { processClock } from "../helpers/processClock";
 
 describe("resumo financeiro (dados inseridos diretamente no banco de teste)", () => {
   let userId: string;
@@ -69,7 +70,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
       ],
     });
 
-    const summary = await getFinancialSummary(businessId, "THIS_MONTH", now);
+    const summary = await getFinancialSummary(businessId, "THIS_MONTH", processClock(now));
 
     expect(summary.revenue.toString()).toBe("1000");
     expect(summary.costs.toString()).toBe("400");
@@ -95,7 +96,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
       },
     });
 
-    const summary = await getFinancialSummary(businessId, "THIS_MONTH", now);
+    const summary = await getFinancialSummary(businessId, "THIS_MONTH", processClock(now));
 
     expect(summary.revenue.toString()).toBe("0");
     expect(summary.netMargin).toBeNull();
@@ -105,7 +106,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
   it("período sem nenhum lançamento retorna resumo vazio, não um erro", async () => {
     await prisma.financialEntry.deleteMany({ where: { businessId } });
 
-    const summary = await getFinancialSummary(businessId, "THIS_MONTH");
+    const summary = await getFinancialSummary(businessId, "THIS_MONTH", processClock());
 
     expect(summary.hasAnyEntries).toBe(false);
     expect(summary.revenue.toString()).toBe("0");

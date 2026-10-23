@@ -12,6 +12,18 @@ import {
   type PeriodRange,
   type CustomRange,
 } from "@/lib/finance/period";
+import {
+  addDays,
+  compareKeys,
+  monthRange,
+  parseDateKey,
+  startOfDayInstant,
+  toDateKey,
+  zonedParts,
+  type BusinessClock,
+  type DateKey,
+  type TimeZone,
+} from "@/lib/time/zoned";
 import type { EntrySource, FinancialEntryType, Prisma } from "@prisma/client";
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -34,10 +46,10 @@ export async function getFinancialSummaryForRange(
 export async function getFinancialSummary(
   businessId: string,
   period: PeriodKey,
-  now: Date = new Date(),
+  clock: BusinessClock,
   customRange?: CustomRange
 ): Promise<FinancialSummary> {
-  const { start, end } = resolvePeriodRange(period, now, customRange);
+  const { start, end } = resolvePeriodRange(period, clock, customRange);
   return getFinancialSummaryForRange(businessId, { start, end });
 }
 
@@ -55,12 +67,14 @@ export type MonthlyPoint = FinancialSummary & {
 // So deve ser usada para ranges com alignment "month" (THIS_MONTH,
 // LAST_3/6_MONTHS, THIS_YEAR, LAST_YEAR) - para alignment "day" use
 // getDailySeriesForRange, senao a serie agrupa por mes inteiro em vez dos
-// dias realmente dentro do periodo escolhido.
+// dias realmente dentro do periodo escolhido. Meses resolvidos no fuso da
+// empresa (`timeZone`), nunca no fuso do processo.
 export async function getMonthlySeriesForRange(
   businessId: string,
-  range: { start: Date; end: Date }
+  range: { start: Date; end: Date },
+  timeZone: TimeZone
 ): Promise<MonthlyPoint[]> {
-  const months = monthsBetween(range.start, range.end);
+  const months = monthsBetween(range.start, range.end, timeZone);
   if (months.length === 0) return [];
   const first = months[0];
   const last = months[months.length - 1];
@@ -69,34 +83,36 @@ export async function getMonthlySeriesForRange(
     where: {
       businessId,
       occurredAt: {
-        gte: new Date(first.year, first.month, 1),
-        lt: new Date(last.year, last.month + 1, 1),
+        gte: monthRange(first.year, first.month + 1, timeZone).start,
+        lt: monthRange(last.year, last.month + 1, timeZone).end,
       },
     },
     select: { type: true, amount: true, occurredAt: true },
   });
 
-  return months.map(({ year, month }) => {
-    const monthEntries = entries.filter(
-      (e) => e.occurredAt.getFullYear() === year && e.occurredAt.getMonth() === month
-    );
-    return {
-      year,
-      month,
-      label: MONTH_LABELS[month],
-      ...summarizeEntries(monthEntries),
-    };
-  });
+  const byMonth = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    const { year, month } = zonedParts(entry.occurredAt, timeZone);
+    const key = `${year}-${month - 1}`;
+    byMonth.set(key, [...(byMonth.get(key) ?? []), entry]);
+  }
+
+  return months.map(({ year, month }) => ({
+    year,
+    month,
+    label: MONTH_LABELS[month],
+    ...summarizeEntries(byMonth.get(`${year}-${month}`) ?? []),
+  }));
 }
 
 export async function getMonthlySeries(
   businessId: string,
   period: PeriodKey,
-  now: Date = new Date(),
+  clock: BusinessClock,
   customRange?: CustomRange
 ): Promise<MonthlyPoint[]> {
-  const { start, end } = resolvePeriodRange(period, now, customRange);
-  return getMonthlySeriesForRange(businessId, { start, end });
+  const { start, end } = resolvePeriodRange(period, clock, customRange);
+  return getMonthlySeriesForRange(businessId, { start, end }, clock.timeZone);
 }
 
 export type DailyPoint = FinancialSummary & {
@@ -110,35 +126,32 @@ export type DailyPoint = FinancialSummary & {
 // do valor exato que getFinancialSummaryForRange mostra pro mesmo periodo
 // nos cards do topo - por isso a granularidade aqui e por DIA, nao por mes.
 // Quem decide qual das duas funcoes chamar e o alignment do PeriodRange
-// resolvido, nunca uma estimativa por duracao em dias.
+// resolvido, nunca uma estimativa por duracao em dias. Dias de calendario no
+// fuso da empresa (`timeZone`); `date` e o primeiro instante de cada dia.
 export async function getDailySeriesForRange(
   businessId: string,
-  range: { start: Date; end: Date }
+  range: { start: Date; end: Date },
+  timeZone: TimeZone
 ): Promise<DailyPoint[]> {
   const entries = await prisma.financialEntry.findMany({
     where: { businessId, occurredAt: { gte: range.start, lt: range.end } },
     select: { type: true, amount: true, occurredAt: true },
   });
 
-  const days: Date[] = [];
-  for (
-    let cursor = new Date(range.start);
-    cursor.getTime() < range.end.getTime();
-    cursor.setDate(cursor.getDate() + 1)
-  ) {
-    days.push(new Date(cursor));
+  const byDay = new Map<DateKey, typeof entries>();
+  for (const entry of entries) {
+    const key = toDateKey(entry.occurredAt, timeZone);
+    byDay.set(key, [...(byDay.get(key) ?? []), entry]);
   }
 
-  return days.map((date) => {
-    const dayEntries = entries.filter(
-      (e) =>
-        e.occurredAt.getFullYear() === date.getFullYear() &&
-        e.occurredAt.getMonth() === date.getMonth() &&
-        e.occurredAt.getDate() === date.getDate()
-    );
-    const label = `${String(date.getDate()).padStart(2, "0")}/${String(date.getMonth() + 1).padStart(2, "0")}`;
-    return { date, label, ...summarizeEntries(dayEntries) };
-  });
+  const points: DailyPoint[] = [];
+  const endKey = toDateKey(range.end, timeZone);
+  for (let key = toDateKey(range.start, timeZone); compareKeys(key, endKey) < 0; key = addDays(key, 1)) {
+    const { month, day } = parseDateKey(key);
+    const label = `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+    points.push({ date: startOfDayInstant(key, timeZone), label, ...summarizeEntries(byDay.get(key) ?? []) });
+  }
+  return points;
 }
 
 // Distingue "empresa nunca lancou nada" (empty state real, secao 27 da

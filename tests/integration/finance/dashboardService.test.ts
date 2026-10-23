@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import { listTransactions } from "@/lib/finance/queries";
+import { processClock } from "../../helpers/processClock";
 
 function sumAmounts(items: { amount: { toNumber: () => number } }[]): number {
   return items.reduce((total, item) => total + item.amount.toNumber(), 0);
@@ -110,7 +111,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
     const data = await getDashboardData(businessAId, "BRL", "Este mês", {
       period: "THIS_MONTH",
       comparison: "NONE",
-    });
+    }, processClock());
 
     const [revenueTx, costTx, expenseTx] = await Promise.all([
       listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }),
@@ -130,7 +131,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
     const data = await getDashboardData(businessAId, "BRL", "Este mês", {
       period: "THIS_MONTH",
       comparison: "NONE",
-    });
+    }, processClock());
     expect(data.summary.revenue.toNumber()).toBe(1500); // não 1500 + 99999 da empresa B
     expect(data.topCategories.grandTotal.toNumber()).toBe(600); // 400 (custo) + 200 (despesa) de A
   });

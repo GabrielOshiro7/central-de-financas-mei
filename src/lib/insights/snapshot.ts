@@ -3,6 +3,14 @@ import { getFinancialSummaryForRange, hasFinancialEntriesBefore } from "@/lib/fi
 import { getOverdueAmountForDueRange } from "@/lib/finance/bills/queries";
 import { getSalesSummary, getTopClients } from "@/lib/sales/queries";
 import { resolvePeriodRange, getPreviousPeriodRange, type PeriodRange } from "@/lib/finance/period";
+import {
+  formatInstant,
+  lastDayOfMonth,
+  zonedInstant,
+  zonedParts,
+  type BusinessClock,
+  type TimeZone,
+} from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 type Decimal = Prisma.Decimal;
@@ -12,44 +20,46 @@ type Decimal = Prisma.Decimal;
 // inteiro (o que inflaria uma queda/alta artificial so por o mes atual ainda
 // nao ter terminado).
 //
-// Tratamento explicito do dia inexistente: `new Date(year, month, dia)` do
-// JS ROLA SILENCIOSAMENTE para o mes seguinte quando `dia` nao existe naquele
-// mes (ex.: new Date(2026, 1, 31) vira 2 ou 3 de marco, nao um erro) - por
-// isso o dia de referencia e sempre clampado ao ultimo dia real do mes
-// anterior antes de montar a data. "Dia 31" comparado a um fevereiro de 28
-// dias vira "fevereiro inteiro" (o melhor recorte possivel), nunca um
-// vazamento para marco.
+// Tratamento explicito do dia inexistente: montar uma data com um dia que
+// nao existe naquele mes ROLA SILENCIOSAMENTE para o mes seguinte (ex.:
+// 31/02 vira 2 ou 3 de marco, nao um erro) - por isso o dia de referencia e
+// sempre clampado ao ultimo dia real do mes anterior antes de montar a data.
+// "Dia 31" comparado a um fevereiro de 28 dias vira "fevereiro inteiro" (o
+// melhor recorte possivel), nunca um vazamento para marco. Mes e dias
+// resolvidos no fuso da empresa (Etapa F3a).
 export function clipToSameDayOfMonth(
   range: { start: Date; end: Date },
-  referenceDay: number
+  referenceDay: number,
+  timeZone: TimeZone
 ): { start: Date; end: Date } {
-  const year = range.start.getFullYear();
-  const month = range.start.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const clampedDay = Math.min(referenceDay, daysInMonth);
-  return { start: range.start, end: new Date(year, month, clampedDay + 1, 0, 0, 0, 0) };
+  const { year, month } = zonedParts(range.start, timeZone);
+  const clampedDay = Math.min(referenceDay, lastDayOfMonth(year, month));
+  return { start: range.start, end: zonedInstant(timeZone, year, month, clampedDay + 1) };
 }
 
-export function resolveInsightPeriods(now: Date): {
+export function resolveInsightPeriods(clock: BusinessClock): {
   current: PeriodRange;
   previousClipped: { start: Date; end: Date };
   isPartial: boolean;
 } {
-  const current = resolvePeriodRange("THIS_MONTH", now);
+  const { now, timeZone } = clock;
+  const current = resolvePeriodRange("THIS_MONTH", clock);
   const previousFull = getPreviousPeriodRange(current);
-  const previousClipped = clipToSameDayOfMonth(previousFull, now.getDate());
+  const previousClipped = clipToSameDayOfMonth(previousFull, zonedParts(now, timeZone).day, timeZone);
   // Mes em andamento = ainda ha instantes futuros dentro do range atual
   // (mesma nocao de "hoje" usada em todo o resto do financeiro/dashboard).
   const isPartial = current.end.getTime() > now.getTime();
   return { current, previousClipped, isPartial };
 }
 
-export function getPeriodKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+// "YYYY-MM" do mes de `date` no fuso da empresa.
+export function getPeriodKey(date: Date, timeZone: TimeZone): string {
+  const { year, month } = zonedParts(date, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
-function formatMonthLabel(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date);
+function formatMonthLabel(date: Date, timeZone: TimeZone): string {
+  return formatInstant(date, timeZone, { month: "long", year: "numeric" });
 }
 
 export type ChurnedClient = { clientId: string; name: string; previousShare: Decimal };
@@ -93,9 +103,10 @@ export type IndicatorSnapshot = {
 export async function computeIndicatorSnapshot(
   businessId: string,
   currency: Currency,
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<IndicatorSnapshot> {
-  const { current, previousClipped, isPartial } = resolveInsightPeriods(now);
+  const { now, timeZone } = clock;
+  const { current, previousClipped, isPartial } = resolveInsightPeriods(clock);
 
   const [
     hasPreviousPeriod,
@@ -143,8 +154,8 @@ export async function computeIndicatorSnapshot(
 
   return {
     currency,
-    periodKey: getPeriodKey(current.start),
-    periodLabel: formatMonthLabel(current.start),
+    periodKey: getPeriodKey(current.start, timeZone),
+    periodLabel: formatMonthLabel(current.start, timeZone),
     periodStart: current.start,
     periodEnd: current.end,
     comparisonPeriodStart: previousClipped.start,

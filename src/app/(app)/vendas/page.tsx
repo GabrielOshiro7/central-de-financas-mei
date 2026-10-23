@@ -9,6 +9,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SaleFilters } from "@/components/vendas/SaleFilters";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
+import { clockFor } from "@/lib/time/zoned";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -30,7 +31,8 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
   const now = new Date();
   const periodParam = paramString(searchParams, "period");
   const period = (periodParam && VALID_PERIODS.has(periodParam as PeriodKey) ? periodParam : DEFAULT_PERIOD) as PeriodKey;
-  const range = period === "CUSTOM" ? resolvePeriodRange(DEFAULT_PERIOD, now) : resolvePeriodRange(period, now);
+  const clock = clockFor(business, now);
+  const range = period === "CUSTOM" ? resolvePeriodRange(DEFAULT_PERIOD, clock) : resolvePeriodRange(period, clock);
 
   const search = paramString(searchParams, "q");
   const statusParam = paramString(searchParams, "status");

@@ -3,12 +3,13 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { clipToSameDayOfMonth, resolveInsightPeriods, computeIndicatorSnapshot } from "@/lib/insights/snapshot";
+import { PROCESS_TZ, processClock } from "../../helpers/processClock";
 
 describe("clipToSameDayOfMonth", () => {
   it("corta no mesmo dia quando ele existe no mês anterior", () => {
     // Mês anterior de 31 dias (janeiro/2026), dia de referência = 15.
     const range = { start: new Date(2026, 0, 1), end: new Date(2026, 1, 1) };
-    const clipped = clipToSameDayOfMonth(range, 15);
+    const clipped = clipToSameDayOfMonth(range, 15, PROCESS_TZ);
     expect(clipped.start).toEqual(new Date(2026, 0, 1));
     // end exclusivo: dia 16 às 00:00 (inclui o dia 15 inteiro).
     expect(clipped.end).toEqual(new Date(2026, 0, 16));
@@ -16,7 +17,7 @@ describe("clipToSameDayOfMonth", () => {
 
   it("clampa para o último dia de fevereiro comum (28 dias) quando o dia de referência é 30", () => {
     const range = { start: new Date(2026, 1, 1), end: new Date(2026, 2, 1) }; // fevereiro/2026 (comum, 28 dias)
-    const clipped = clipToSameDayOfMonth(range, 30);
+    const clipped = clipToSameDayOfMonth(range, 30, PROCESS_TZ);
     expect(clipped.start).toEqual(new Date(2026, 1, 1));
     // Com o clamp (dia 28, o último real): o fim exclusivo é 1º de março -
     // fevereiro inteiro, igual a qualquer range mensal não recortado (mesma
@@ -28,7 +29,7 @@ describe("clipToSameDayOfMonth", () => {
 
   it("clampa para o último dia de fevereiro bissexto (29 dias) quando o dia de referência é 31", () => {
     const range = { start: new Date(2028, 1, 1), end: new Date(2028, 2, 1) }; // fevereiro/2028 (bissexto, 29 dias)
-    const clipped = clipToSameDayOfMonth(range, 31);
+    const clipped = clipToSameDayOfMonth(range, 31, PROCESS_TZ);
     // Mesmo raciocínio: com o clamp (dia 29), o fim exclusivo cai em 1º de
     // março - nunca em 2 ou 3 de março, que é o que um `new Date` sem clamp
     // sobre o dia 31 bruto produziria.
@@ -37,7 +38,7 @@ describe("clipToSameDayOfMonth", () => {
 
   it("não precisa clampar quando o dia de referência existe no mês anterior (31 vs. 31 dias)", () => {
     const range = { start: new Date(2026, 0, 1), end: new Date(2026, 1, 1) }; // janeiro/2026 (31 dias)
-    const clipped = clipToSameDayOfMonth(range, 31);
+    const clipped = clipToSameDayOfMonth(range, 31, PROCESS_TZ);
     expect(clipped.end).toEqual(new Date(2026, 1, 1));
   });
 });
@@ -45,7 +46,7 @@ describe("clipToSameDayOfMonth", () => {
 describe("resolveInsightPeriods", () => {
   it("marca isPartial=true quando ainda há dias restantes no mês atual", () => {
     const now = new Date(2026, 8, 15); // 15/09/2026
-    const { current, isPartial } = resolveInsightPeriods(now);
+    const { current, isPartial } = resolveInsightPeriods(processClock(now));
     expect(current.start).toEqual(new Date(2026, 8, 1));
     expect(current.end).toEqual(new Date(2026, 9, 1));
     expect(isPartial).toBe(true);
@@ -53,14 +54,14 @@ describe("resolveInsightPeriods", () => {
 
   it("recorta o período anterior até o mesmo dia-do-mês de 'now'", () => {
     const now = new Date(2026, 8, 15); // 15/09/2026
-    const { previousClipped } = resolveInsightPeriods(now);
+    const { previousClipped } = resolveInsightPeriods(processClock(now));
     expect(previousClipped.start).toEqual(new Date(2026, 7, 1));
     expect(previousClipped.end).toEqual(new Date(2026, 7, 16)); // até 15/08 inclusive
   });
 
   it("clampa o recorte do período anterior quando o mês atual tem mais dias que fevereiro", () => {
     const now = new Date(2026, 2, 31); // 31/03/2026 - mês anterior é fevereiro (28 dias)
-    const { previousClipped } = resolveInsightPeriods(now);
+    const { previousClipped } = resolveInsightPeriods(processClock(now));
     expect(previousClipped.start).toEqual(new Date(2026, 1, 1));
     expect(previousClipped.end).toEqual(new Date(2026, 2, 1)); // fevereiro inteiro, nunca vaza pra março
   });
@@ -128,7 +129,7 @@ describe("computeIndicatorSnapshot - hasPreviousPeriod desacoplado do recorte", 
     const clippedSummary = await getFinancialSummaryForRange(businessId, previousClippedRange);
     expect(clippedSummary.hasAnyEntries).toBe(false);
 
-    const snapshot = await computeIndicatorSnapshot(businessId, "BRL", now);
+    const snapshot = await computeIndicatorSnapshot(businessId, "BRL", processClock(now));
     expect(snapshot.hasPreviousPeriod).toBe(true);
   });
 });

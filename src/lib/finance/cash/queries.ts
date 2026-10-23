@@ -2,7 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { summarizeEntries } from "@/lib/finance/calculations";
 import { calculateAccumulatedBalance } from "@/lib/finance/cash/calculations";
-import { monthsBetween } from "@/lib/finance/period";
+// Legado ate a F3b (caixa ainda no fuso do processo) - ver legacyLocalDay.ts.
+import { legacyLocalMonthsBetween as monthsBetween } from "@/lib/finance/legacyLocalDay";
 
 const { Decimal } = Prisma;
 

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { computeIndicatorSnapshot } from "@/lib/insights/snapshot";
 import { evaluateSnapshot } from "@/lib/insights/rules";
 import { enrichWithAI } from "@/lib/insights/narrative";
+import type { BusinessClock } from "@/lib/time/zoned";
 
 // Fingerprint barato de desatualizacao (aprovado explicitamente antes de
 // codificar esta etapa): COUNT + MAX(updatedAt) de FinancialEntry no range
@@ -29,7 +30,7 @@ export async function computeDataFingerprint(
 // entao nunca toca rede externa (decisao explicita da Etapa 7).
 export async function generateInsightsForBusiness(
   businessId: string,
-  now: Date,
+  clock: BusinessClock,
   opts: { withAI: boolean }
 ): Promise<void> {
   const business = await prisma.business.findUniqueOrThrow({
@@ -37,7 +38,7 @@ export async function generateInsightsForBusiness(
     select: { currency: true },
   });
 
-  const snapshot = await computeIndicatorSnapshot(businessId, business.currency, now);
+  const snapshot = await computeIndicatorSnapshot(businessId, business.currency, clock);
   const drafts = evaluateSnapshot(snapshot);
   const finalDrafts = opts.withAI ? await Promise.all(drafts.map((draft) => enrichWithAI(draft))) : drafts;
 
@@ -95,7 +96,7 @@ export async function generateInsightsForBusiness(
           source: draft.source,
           narrativeSource: draft.narrativeSource,
           dataFingerprint: fingerprint,
-          generatedAt: now,
+          generatedAt: clock.now,
         },
       });
     }

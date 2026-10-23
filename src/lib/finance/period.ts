@@ -1,13 +1,34 @@
-// TODAS as datas deste arquivo (e de quem o consome) sao resolvidas com o
-// fuso horario LOCAL DO PROCESSO NODE, via getters nativos de Date
-// (getFullYear/getMonth/getDate) - nunca UTC explicito. Essa e a mesma
-// convencao que a Etapa 3 ja usava para "mes anterior" etc.; nao ha TZ
-// explicito em docker-compose.yml/.env.example, entao o comportamento em
-// producao depende do fuso do host onde o processo roda. Mantido de
-// proposito identico em todas as telas com filtro de periodo (Etapa 4) - ver teste
-// "lancamento perto da meia-noite" em period.test.ts. Essa dependencia do
-// fuso do host e uma limitacao de escopo conhecida, nao resolvida nesta
-// etapa (ver relatorio final).
+// Periodos do financeiro/dashboard (Etapa F3a do plano de fuso): TODAS as
+// datas deste arquivo sao resolvidas no FUSO DA EMPRESA, recebido
+// explicitamente (BusinessClock / PeriodRange.timeZone) e calculado por
+// src/lib/time/zoned.ts - nunca pelos getters locais do Date, que refletiriam
+// o fuso do processo Node. Para empresa em Asia/Tokyo com o servidor em
+// Asia/Tokyo o resultado e identico ao de antes; com o servidor em UTC (ou
+// qualquer outro fuso) o "hoje"/"este mes" continua sendo o da empresa.
+//
+// Cada PeriodRange carrega o proprio fuso, para que "periodo anterior" e
+// "mesmo periodo do ano anterior" desloquem por dias/meses de CALENDARIO
+// nesse fuso (seguro para horario de verao), sem o chamador repassar nada.
+import {
+  addDays,
+  dateKeyToDbDate,
+  isDateKey,
+  compareKeys,
+  parseDateKey,
+  startOfDayInstant,
+  toDateKey,
+  todayKey,
+  zonedInstant,
+  zonedParts,
+  type BusinessClock,
+  type DateKey,
+  type TimeZone,
+} from "@/lib/time/zoned";
+
+// Legado (vencimento/vendas/clientes - F3b): reexportado sem mudanca para nao
+// alterar esses chamadores nesta etapa. Ver src/lib/finance/legacyLocalDay.ts.
+export { startOfDay } from "@/lib/finance/legacyLocalDay";
+
 export type PeriodKey =
   | "TODAY"
   | "THIS_MONTH"
@@ -43,9 +64,8 @@ export type MonthRef = { year: number; month: number }; // month: 0-11
 // (THIS_MONTH, LAST_MONTH, LAST_3/6_MONTHS, THIS_YEAR, LAST_YEAR). "day": o
 // range e delimitado por dias soltos, mesmo que por coincidencia comece no
 // dia 1 (TODAY, LAST_7/30/90_DAYS, CUSTOM). Campo explicito porque inferir
-// isso so a partir de `start.getDate() === 1` da falso positivo: TODAY caindo
-// no dia 1o de um mes, ou LAST_7_DAYS quando "hoje" e dia 7, tambem tem
-// start.getDate() === 1 sem serem, de fato, "o mes inteiro" - ver os testes
+// isso so a partir de "o inicio cai no dia 1" da falso positivo: TODAY caindo
+// no dia 1o de um mes, ou LAST_7_DAYS quando "hoje" e dia 7 - ver os testes
 // de colisao em period.test.ts.
 export type PeriodAlignment = "month" | "day";
 
@@ -54,27 +74,24 @@ export type PeriodRange = {
   end: Date; // exclusivo
   months: MonthRef[];
   alignment: PeriodAlignment;
+  timeZone: TimeZone; // fuso da empresa em que start/end/months foram resolvidos
 };
 
-export type CustomRange = { start: Date; end: Date }; // end inclusivo (data escolhida pelo usuario)
+// Datas de calendario escolhidas pelo usuario (end inclusivo).
+export type CustomRange = { start: DateKey; end: DateKey };
 
-function startOfMonth(year: number, month: number): Date {
-  return new Date(year, month, 1, 0, 0, 0, 0);
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Mes com overflow normalizado (month0 -1 = dezembro do ano anterior etc.).
+function normalizeMonth(year: number, month0: number): MonthRef {
+  const total = year * 12 + month0;
+  return { year: Math.floor(total / 12), month: ((total % 12) + 12) % 12 };
 }
 
-// Exportado (Etapa 5) para o modulo de Contas a Pagar/Receber derivar
-// "atrasado" (status PENDING + dueDate < hoje) com a MESMA nocao de "hoje"
-// usada em todo o resto do financeiro/dashboard - nunca uma segunda
-// convencao de data independente (ver deriveBillStatus em
-// src/lib/finance/bills/status.ts).
-export function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-}
-
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + days);
-  return r;
+// 00:00 do dia 1 de (year, month0) no fuso, com overflow normalizado.
+function startOfMonth(year: number, month0: number, timeZone: TimeZone): Date {
+  const { year: y, month } = normalizeMonth(year, month0);
+  return zonedInstant(timeZone, y, month + 1, 1);
 }
 
 // Exportado porque o servico do dashboard (Etapa 4) precisa dos mesmos meses
@@ -84,119 +101,94 @@ function addDays(d: Date, days: number): Date {
 // (endExclusive - 1ms) para achar o mes final - se comparassemos direto com
 // endExclusive, um fim de range que cai no meio de um mes (ex.: dia 6)
 // excluiria esse mes inteiro por engano.
-export function monthsBetween(start: Date, endExclusive: Date): MonthRef[] {
+export function monthsBetween(start: Date, endExclusive: Date, timeZone: TimeZone): MonthRef[] {
+  const first = zonedParts(start, timeZone);
+  const last = zonedParts(new Date(endExclusive.getTime() - 1), timeZone);
   const months: MonthRef[] = [];
-  let year = start.getFullYear();
-  let month = start.getMonth();
-  const inclusiveEnd = new Date(endExclusive.getTime() - 1);
-  const endIndex = inclusiveEnd.getFullYear() * 12 + inclusiveEnd.getMonth();
-
-  while (year * 12 + month <= endIndex) {
-    months.push({ year, month });
-    month += 1;
-    if (month > 11) {
-      month = 0;
-      year += 1;
-    }
+  for (let index = first.year * 12 + first.month - 1; index <= last.year * 12 + last.month - 1; index += 1) {
+    months.push(normalizeMonth(0, index));
   }
   return months;
 }
 
-function monthsBack(year: number, month: number, count: number): PeriodRange {
-  const start = startOfMonth(year, month - (count - 1));
-  const end = startOfMonth(year, month + 1);
-  const months: MonthRef[] = Array.from({ length: count }, (_, i) => {
-    const d = new Date(year, month - (count - 1) + i, 1);
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
-  return { start, end, months, alignment: "month" };
+function monthsBack(year: number, month0: number, count: number, timeZone: TimeZone): PeriodRange {
+  const start = startOfMonth(year, month0 - (count - 1), timeZone);
+  const end = startOfMonth(year, month0 + 1, timeZone);
+  const months = Array.from({ length: count }, (_, i) => normalizeMonth(year, month0 - (count - 1) + i));
+  return { start, end, months, alignment: "month", timeZone };
+}
+
+// Range por dias de calendario [startKey, endKeyExclusive) no fuso.
+function dayKeysRange(startKey: DateKey, endKeyExclusive: DateKey, timeZone: TimeZone): PeriodRange {
+  const start = startOfDayInstant(startKey, timeZone);
+  const end = startOfDayInstant(endKeyExclusive, timeZone);
+  return { start, end, months: monthsBetween(start, end, timeZone), alignment: "day", timeZone };
 }
 
 // Range de N dias terminando hoje (inclusive) - usado por LAST_7/30/90_DAYS.
 // `end` e sempre "inicio de amanha" (meia-noite do dia seguinte a hoje), ou
 // seja, cobre o dia de hoje inteiro. Sempre alignment "day", mesmo quando
 // `start` cai por coincidencia no dia 1 de um mes.
-function lastNDaysRange(now: Date, days: number): PeriodRange {
-  const todayStart = startOfDay(now);
-  const start = addDays(todayStart, -(days - 1));
-  const end = addDays(todayStart, 1);
-  return { start, end, months: monthsBetween(start, end), alignment: "day" };
+function lastNDaysRange(today: DateKey, days: number, timeZone: TimeZone): PeriodRange {
+  return dayKeysRange(addDays(today, -(days - 1)), addDays(today, 1), timeZone);
 }
 
 // `customRange` so e usado (e obrigatorio) quando period === "CUSTOM". O `end`
 // do range custom e tratado como inclusivo (o usuario escolhe "ate" um dia),
 // entao internamente somamos 1 dia para virar o limite exclusivo usado nas
 // queries.
-export function resolvePeriodRange(
-  period: PeriodKey,
-  now: Date = new Date(),
-  customRange?: CustomRange
-): PeriodRange {
-  const year = now.getFullYear();
-  const month = now.getMonth();
+export function resolvePeriodRange(period: PeriodKey, clock: BusinessClock, customRange?: CustomRange): PeriodRange {
+  const { timeZone } = clock;
+  const today = todayKey(clock);
+  const { year, month: month1 } = zonedParts(clock.now, timeZone);
+  const month = month1 - 1;
 
   switch (period) {
-    case "TODAY": {
-      const start = startOfDay(now);
-      const end = addDays(start, 1);
-      return { start, end, months: monthsBetween(start, end), alignment: "day" };
-    }
-    case "THIS_MONTH": {
-      const start = startOfMonth(year, month);
-      const end = startOfMonth(year, month + 1);
-      return { start, end, months: [{ year, month }], alignment: "month" };
-    }
-    case "LAST_MONTH": {
-      const start = startOfMonth(year, month - 1);
-      const end = startOfMonth(year, month);
+    case "TODAY":
+      return dayKeysRange(today, addDays(today, 1), timeZone);
+    case "THIS_MONTH":
       return {
-        start,
-        end,
-        months: [{ year: start.getFullYear(), month: start.getMonth() }],
+        start: startOfMonth(year, month, timeZone),
+        end: startOfMonth(year, month + 1, timeZone),
+        months: [{ year, month }],
         alignment: "month",
+        timeZone,
       };
-    }
+    case "LAST_MONTH":
+      return {
+        start: startOfMonth(year, month - 1, timeZone),
+        end: startOfMonth(year, month, timeZone),
+        months: [normalizeMonth(year, month - 1)],
+        alignment: "month",
+        timeZone,
+      };
     case "LAST_7_DAYS":
-      return lastNDaysRange(now, 7);
+      return lastNDaysRange(today, 7, timeZone);
     case "LAST_30_DAYS":
-      return lastNDaysRange(now, 30);
+      return lastNDaysRange(today, 30, timeZone);
     case "LAST_90_DAYS":
-      return lastNDaysRange(now, 90);
+      return lastNDaysRange(today, 90, timeZone);
     case "LAST_3_MONTHS":
-      return monthsBack(year, month, 3);
+      return monthsBack(year, month, 3, timeZone);
     case "LAST_6_MONTHS":
-      return monthsBack(year, month, 6);
+      return monthsBack(year, month, 6, timeZone);
     case "THIS_YEAR": {
-      const start = new Date(year, 0, 1);
-      const end = new Date(year + 1, 0, 1);
       const months: MonthRef[] = Array.from({ length: month + 1 }, (_, i) => ({ year, month: i }));
-      return { start, end, months, alignment: "month" };
+      return { start: startOfMonth(year, 0, timeZone), end: startOfMonth(year + 1, 0, timeZone), months, alignment: "month", timeZone };
     }
     case "LAST_YEAR": {
-      const start = new Date(year - 1, 0, 1);
-      const end = new Date(year, 0, 1);
       const months: MonthRef[] = Array.from({ length: 12 }, (_, i) => ({ year: year - 1, month: i }));
-      return { start, end, months, alignment: "month" };
+      return { start: startOfMonth(year - 1, 0, timeZone), end: startOfMonth(year, 0, timeZone), months, alignment: "month", timeZone };
     }
     case "CUSTOM": {
       if (!customRange) {
         throw new Error("customRange é obrigatório quando period é CUSTOM.");
       }
-      const start = new Date(
-        customRange.start.getFullYear(),
-        customRange.start.getMonth(),
-        customRange.start.getDate()
-      );
-      const endExclusive = new Date(
-        customRange.end.getFullYear(),
-        customRange.end.getMonth(),
-        customRange.end.getDate() + 1
-      );
       // "day" sempre, mesmo quando o intervalo escolhido comeca no dia 1 e
       // cobre meses inteiros - e um range arbitrario do usuario, nao um mes
       // civil, entao "periodo anterior"/"mesmo periodo ano anterior" devem
-      // deslocar por duracao exata, nao por mes.
-      return { start, end: endExclusive, months: monthsBetween(start, endExclusive), alignment: "day" };
+      // deslocar por dias, nao por mes.
+      return dayKeysRange(customRange.start, addDays(customRange.end, 1), timeZone);
     }
     default: {
       // Checagem de exaustividade em tempo de compilacao: se um novo
@@ -209,39 +201,42 @@ export function resolvePeriodRange(
 }
 
 // Le start/end (yyyy-mm-dd) vindos de searchParams. Retorna undefined se
-// nao forem duas datas validas - o chamador deve tratar isso como "sem
-// range custom valido" (ex.: cair de volta pro DEFAULT_PERIOD).
+// nao forem duas datas de calendario validas, ou se o inicio vier depois do
+// fim - o chamador deve tratar isso como "sem range custom valido" (ex.:
+// cair de volta pro DEFAULT_PERIOD). Datas de calendario nao dependem de
+// fuso: o fuso so entra ao resolver o range (resolvePeriodRange).
 export function parseCustomRangeParams(start: string | null, end: string | null): CustomRange | undefined {
   if (!start || !end) return undefined;
-  const startDate = new Date(`${start}T00:00:00`);
-  const endDate = new Date(`${end}T00:00:00`);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return undefined;
-  if (startDate.getTime() > endDate.getTime()) return undefined;
-  return { start: startDate, end: endDate };
+  if (!isDateKey(start) || !isDateKey(end)) return undefined;
+  if (compareKeys(start, end) > 0) return undefined;
+  return { start, end };
+}
+
+// Numero de dias de calendario entre duas DateKey (b - a).
+function daysBetweenKeys(a: DateKey, b: DateKey): number {
+  return Math.round((dateKeyToDbDate(b).getTime() - dateKeyToDbDate(a).getTime()) / MS_PER_DAY);
 }
 
 // Periodo anterior = intervalo imediatamente anterior, de mesma duracao
 // (secao 16 do prompt da Etapa 3). Para os periodos com alignment "month"
 // (THIS_MONTH, LAST_MONTH, LAST_3/6_MONTHS, THIS_YEAR, LAST_YEAR), "mesma
-// duracao" significa o mesmo NUMERO DE MESES civis, nao os mesmos
-// milissegundos: meses tem tamanhos diferentes (28-31 dias), entao subtrair
-// milissegundos faria "mes anterior" cair no dia errado (ex.: fevereiro tem
-// menos dias que marco). Para alignment "day" (TODAY, LAST_7/30/90_DAYS,
-// CUSTOM) usamos subtracao por duracao em milissegundos - inclusive quando
-// esses ranges comecam, por coincidencia, no dia 1 de um mes (por isso a
-// checagem usa `range.alignment`, nao `range.start.getDate() === 1`).
+// duracao" significa o mesmo NUMERO DE MESES civis: meses tem tamanhos
+// diferentes (28-31 dias), entao subtrair milissegundos faria "mes anterior"
+// cair no dia errado. Para alignment "day" (TODAY, LAST_7/30/90_DAYS, CUSTOM)
+// a duracao e o mesmo NUMERO DE DIAS de calendario no fuso da empresa (e nao
+// de milissegundos, que num dia de troca de horario de verao teria 23h/25h) -
+// inclusive quando esses ranges comecam, por coincidencia, no dia 1 de um mes
+// (por isso a checagem usa `range.alignment`).
 export function getPreviousPeriodRange(range: PeriodRange): { start: Date; end: Date } {
+  const { timeZone } = range;
   if (range.alignment === "month" && range.months.length > 0) {
-    const monthCount = range.months.length;
-    const start = new Date(range.start.getFullYear(), range.start.getMonth() - monthCount, 1);
-    return { start, end: range.start };
+    const { year, month } = zonedParts(range.start, timeZone);
+    return { start: startOfMonth(year, month - 1 - range.months.length, timeZone), end: range.start };
   }
 
-  const durationMs = range.end.getTime() - range.start.getTime();
-  return {
-    start: new Date(range.start.getTime() - durationMs),
-    end: range.start,
-  };
+  const startKey = toDateKey(range.start, timeZone);
+  const dayCount = daysBetweenKeys(startKey, toDateKey(range.end, timeZone));
+  return { start: startOfDayInstant(addDays(startKey, -dayCount), timeZone), end: range.start };
 }
 
 export type ComparisonMode = "PREVIOUS_PERIOD" | "SAME_PERIOD_LAST_YEAR" | "NONE";
@@ -258,20 +253,24 @@ export const DEFAULT_COMPARISON: ComparisonMode = "PREVIOUS_PERIOD";
 // "month", subtrai 1 do ANO CIVIL de cada mes da lista `months` - nunca
 // subtrai por dias, entao 29/fev NUNCA entra em jogo nesse caminho
 // (comparamos meses inteiros, nao dias). Para alignment "day" (TODAY,
-// LAST_7/30/90_DAYS, CUSTOM), desloca start/end com `new Date(y-1, m, d)`; a
-// normalizacao nativa do Date (29/fev de ano bissexto vira 1/mar no ano
-// anterior nao-bissexto, que nao tem 29/fev) e aceita e coberta por teste -
-// nao existe uma data "correta" alternativa para esse caso.
+// LAST_7/30/90_DAYS, CUSTOM), desloca o dia de calendario de start/end um ano
+// para tras com normalizacao de overflow (29/fev de ano bissexto vira 1/mar
+// no ano anterior nao-bissexto, que nao tem 29/fev) - comportamento aceito e
+// coberto por teste, nao existe uma data "correta" alternativa para esse caso.
 function getSameRangeLastYear(range: PeriodRange): { start: Date; end: Date } {
+  const { timeZone } = range;
   if (range.alignment === "month" && range.months.length > 0) {
     const firstMonth = range.months[0];
     const lastMonth = range.months[range.months.length - 1];
-    const start = startOfMonth(firstMonth.year - 1, firstMonth.month);
-    const end = startOfMonth(lastMonth.year - 1, lastMonth.month + 1);
+    const start = startOfMonth(firstMonth.year - 1, firstMonth.month, timeZone);
+    const end = startOfMonth(lastMonth.year - 1, lastMonth.month + 1, timeZone);
     return { start, end };
   }
 
-  const shiftYear = (d: Date) => new Date(d.getFullYear() - 1, d.getMonth(), d.getDate());
+  const shiftYear = (instant: Date) => {
+    const { year, month, day } = parseDateKey(toDateKey(instant, timeZone));
+    return zonedInstant(timeZone, year - 1, month, day);
+  };
   return { start: shiftYear(range.start), end: shiftYear(range.end) };
 }
 

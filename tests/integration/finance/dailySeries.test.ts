@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { resolvePeriodRange } from "@/lib/finance/period";
 import { getDailySeriesForRange, getFinancialSummaryForRange } from "@/lib/finance/queries";
+import { PROCESS_TZ, processClock } from "../../helpers/processClock";
 
 describe("getDailySeriesForRange - granularidade diária para períodos por dia (Etapa 4)", () => {
   let userId: string;
@@ -32,7 +33,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
 
   it("LAST_7_DAYS retorna 7 pontos (um por dia) cuja soma bate com o resumo do mesmo período", async () => {
     const now = new Date();
-    const range = resolvePeriodRange("LAST_7_DAYS", now);
+    const range = resolvePeriodRange("LAST_7_DAYS", processClock(now));
     expect(range.alignment).toBe("day");
 
     // Um lançamento de receita por dia dentro do range, com valores distintos
@@ -54,7 +55,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
     });
     await prisma.financialEntry.createMany({ data: entries });
 
-    const series = await getDailySeriesForRange(businessId, range);
+    const series = await getDailySeriesForRange(businessId, range, PROCESS_TZ);
     expect(series).toHaveLength(7);
 
     const seriesTotal = series.reduce((total, point) => total + point.revenue.toNumber(), 0);
