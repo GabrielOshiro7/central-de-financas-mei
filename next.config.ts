@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // So o servidor do Playwright define NEXT_DIST_DIR (".next-test"): dois
+  // `next dev` nao compartilham a mesma pasta de build (lock em .next/dev).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   // Permite acessar o dev server via IP da LAN (ex.: celular testando touch)
   // - sem isso o Next 16 bloqueia em silêncio requisições cross-origin a
   // recursos internos de dev (HMR, navegação RSC), então o login parecia

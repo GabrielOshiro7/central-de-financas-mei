@@ -1,1 +1,4 @@
-import "dotenv/config";
+import { assertTestDatabase, loadTestEnv } from "./testEnv";
+
+loadTestEnv();
+assertTestDatabase();
