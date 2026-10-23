@@ -319,7 +319,13 @@ export function BillTable({
       <ConfirmDialog
         open={Boolean(reverting)}
         title="Reverter confirmação"
-        message="A conta volta a ficar pendente e o lançamento financeiro gerado é desvinculado do histórico (não é apagado)."
+        message={
+          reverting
+            ? `A conta volta a ficar pendente e o ${direction === "PAYABLE" ? "pagamento" : "recebimento"} de ${
+                currency ? formatMoney(reverting.amount, currency) : reverting.amount
+              } é desfeito: o valor sai do Caixa e do Dashboard.`
+            : ""
+        }
         confirmLabel="Reverter"
         pending={revertPending}
         onConfirm={handleConfirmRevert}

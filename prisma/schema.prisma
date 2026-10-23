@@ -308,8 +308,9 @@ model FinancialEntry {
   // recurringEntryId): uma Bill representa UM compromisso, entao so pode
   // gerar NO MAXIMO um lancamento financeiro - a propria constraint garante
   // a idempotencia de "marcar como pago" mesmo sob duplo clique ou
-  // requisicoes concorrentes. onDelete: SetNull -> reverter o pagamento
-  // desvincula o lancamento (vira avulso no historico) em vez de apaga-lo.
+  // requisicoes concorrentes. Reverter o pagamento APAGA este lancamento
+  // (revertBillSettlement, na mesma transacao); onDelete: SetNull so cobre a
+  // exclusao fisica da Bill, que nenhum fluxo faz com a Bill paga.
   billId String? @unique @map("bill_id")
   bill   Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
 

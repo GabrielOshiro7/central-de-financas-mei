@@ -40,6 +40,15 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
+// Saldo exibido no card do Caixa, ou "vazio" quando a empresa ainda nao tem
+// nenhum lancamento (estado vazio real do Caixa, sem card).
+async function cashSnapshot(page: Page): Promise<string> {
+  await gotoHydrated(page, "/caixa");
+  const label = page.getByText("Caixa atual (histórico e realizado)");
+  if ((await label.count()) === 0) return "vazio";
+  return (await label.locator("xpath=following-sibling::p[1]").innerText()).trim();
+}
+
 test.describe("Etapa 5 - contas a pagar e a receber", () => {
   test("cria, paga e reverte uma conta a pagar pela UI", async ({ page }) => {
     const consoleErrors: string[] = [];
@@ -70,6 +79,9 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await expect(row.getByText("Pendente")).toBeVisible();
     await expect(row.getByText("Imobiliária E2E")).toBeVisible();
 
+    const cashBeforePayment = await cashSnapshot(page);
+    await gotoHydrated(page, "/financeiro/pagar");
+
     // Marcar como pago -> dialogo de data -> confirmar.
     await row.getByRole("button", { name: "Marcar como pago" }).click();
     const settleDialog = page.getByRole("alertdialog");
@@ -81,13 +93,25 @@ test.describe("Etapa 5 - contas a pagar e a receber", () => {
     await expect(row.getByText("Pago", { exact: true })).toBeVisible();
     await expect(row.getByText("Pendente")).toHaveCount(0);
 
-    // Reverter -> volta a Pendente.
+    // Caixa: o pagamento muda o saldo (o "antes" foi lido logo antes de
+    // pagar - criar a conta nao gera lancamento).
+    const cashAfterPayment = await cashSnapshot(page);
+    expect(cashAfterPayment).not.toBe(cashBeforePayment);
+
+    // Reverter -> volta a Pendente, e o texto avisa que o valor sai do Caixa.
+    await gotoHydrated(page, "/financeiro/pagar");
     await row.getByRole("button", { name: "Reverter" }).click();
     const revertDialog = page.getByRole("alertdialog");
     await expect(revertDialog.getByText("Reverter confirmação")).toBeVisible();
+    // Mesmo valor formatado que a tabela mostra (formatMoney).
+    await expect(revertDialog.getByText(/pagamento de R\$\s?1[.,]500[.,]00 é desfeito: o valor sai do Caixa e do Dashboard/)).toBeVisible();
     await revertDialog.getByRole("button", { name: "Reverter" }).click();
     await expect(revertDialog).toHaveCount(0);
     await expect(row.getByText("Pendente")).toBeVisible();
+
+    // Etapa R: o lançamento da liquidação foi apagado - o Caixa volta
+    // exatamente ao valor de antes do pagamento.
+    expect(await cashSnapshot(page)).toBe(cashBeforePayment);
 
     expect(consoleErrors, `Erros de console encontrados: ${consoleErrors.join("; ")}`).toEqual([]);
   });

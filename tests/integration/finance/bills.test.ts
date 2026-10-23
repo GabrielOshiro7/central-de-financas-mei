@@ -160,7 +160,12 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(entries).toHaveLength(1);
   });
 
-  it("reverter desvincula (não apaga) o lançamento financeiro e a conta volta a PENDING", async () => {
+  // Regra nova (Etapa R): reverter APAGA o lançamento gerado pela liquidação.
+  // Substitui a regra do ADENDO item 5 (desvincular e manter como avulso):
+  // reverter significa que o pagamento não aconteceu, e manter o lançamento
+  // fazia Caixa/Dashboard contarem dinheiro inexistente e permitia dupla
+  // contagem ao liquidar de novo.
+  it("reverter apaga o lançamento financeiro da liquidação e a conta volta a PENDING", async () => {
     const created = await createBill(businessId, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Conta a reverter",
@@ -181,10 +186,99 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(bill?.status).toBe("PENDING");
     expect(bill?.paidAt).toBeNull();
 
-    // O lançamento continua existindo (nunca apagado), só desvinculado.
     const entry = await prisma.financialEntry.findUnique({ where: { id: settled.value.financialEntryId } });
-    expect(entry).not.toBeNull();
-    expect(entry?.billId).toBeNull();
+    expect(entry).toBeNull();
+    expect(await prisma.financialEntry.count({ where: { businessId } })).toBe(0);
+  });
+
+  describe("reverter liquidação (Etapa R)", () => {
+    async function createAndSettle(direction: "PAYABLE" | "RECEIVABLE", description: string, amount = 300) {
+      const created = await createBill(businessId, direction, {
+        categoryId: direction === "PAYABLE" ? expenseCategoryId : revenueCategoryId,
+        description,
+        amount,
+        dueDate: new Date(2026, 1, 10),
+      });
+      if (!created.ok) throw new Error(created.error);
+      const settled = await settleBill(businessId, userId, created.value.id, new Date(2026, 1, 10));
+      if (!settled.ok) throw new Error(settled.error);
+      return { billId: created.value.id, entryId: settled.value.financialEntryId };
+    }
+
+    for (const direction of ["PAYABLE", "RECEIVABLE"] as const) {
+      it(`${direction}: liquidar gera 1 lançamento; reverter deixa 0 lançamentos da conta e a conta pendente`, async () => {
+        const { billId } = await createAndSettle(direction, `Reverter ${direction}`);
+        expect(await prisma.financialEntry.count({ where: { billId } })).toBe(1);
+
+        const reverted = await revertBillSettlement(businessId, billId);
+        expect(reverted.ok).toBe(true);
+
+        expect(await prisma.financialEntry.count({ where: { billId } })).toBe(0);
+        expect(await prisma.financialEntry.count({ where: { businessId, source: "BILL" } })).toBe(0);
+        const bill = await prisma.bill.findUniqueOrThrow({ where: { id: billId } });
+        expect(bill.status).toBe("PENDING");
+        expect(bill.paidAt).toBeNull();
+      });
+
+      it(`${direction}: liquidar → reverter → liquidar de novo deixa exatamente 1 lançamento`, async () => {
+        const { billId } = await createAndSettle(direction, `Re-liquidar ${direction}`);
+        await revertBillSettlement(businessId, billId);
+        const again = await settleBill(businessId, userId, billId, new Date(2026, 1, 12));
+        expect(again.ok).toBe(true);
+
+        expect(await prisma.financialEntry.count({ where: { businessId } })).toBe(1);
+        const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId } });
+        expect(entry.billId).toBe(billId);
+        expect(entry.occurredAt.getTime()).toBe(new Date(2026, 1, 12).getTime());
+      });
+    }
+
+    it("reverter conta não liquidada: mesmo erro de antes e nada é apagado", async () => {
+      const pending = await createBill(businessId, "PAYABLE", {
+        categoryId: expenseCategoryId,
+        description: "Ainda pendente",
+        amount: 80,
+        dueDate: new Date(2026, 1, 10),
+      });
+      if (!pending.ok) throw new Error(pending.error);
+      const { billId: paidId } = await createAndSettle("RECEIVABLE", "Outra já paga");
+      const before = await prisma.financialEntry.count({ where: { businessId } });
+
+      const result = await revertBillSettlement(businessId, pending.value.id);
+      expect(result).toEqual({ ok: false, error: "Só é possível reverter uma conta já confirmada." });
+
+      // Reverter duas vezes a mesma conta: a segunda cai no mesmo erro.
+      expect((await revertBillSettlement(businessId, paidId)).ok).toBe(true);
+      const second = await revertBillSettlement(businessId, paidId);
+      expect(second).toEqual({ ok: false, error: "Só é possível reverter uma conta já confirmada." });
+
+      expect(await prisma.financialEntry.count({ where: { businessId } })).toBe(before - 1);
+      expect((await prisma.bill.findUniqueOrThrow({ where: { id: pending.value.id } })).status).toBe("PENDING");
+    });
+
+    it("não apaga lançamentos de outras contas nem manuais/recorrentes da mesma empresa", async () => {
+      const target = await createAndSettle("PAYABLE", "Alvo do revert");
+      const other = await createAndSettle("RECEIVABLE", "Outra conta");
+      const manual = await prisma.financialEntry.create({
+        data: { businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, description: "Manual", amount: 300, occurredAt: new Date(2026, 1, 10), source: "MANUAL" },
+      });
+      const recurring = await prisma.financialEntry.create({
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Recorrente", amount: 300, occurredAt: new Date(2026, 1, 10), source: "RECURRING" },
+      });
+
+      expect((await revertBillSettlement(businessId, target.billId)).ok).toBe(true);
+
+      const remaining = await prisma.financialEntry.findMany({ where: { businessId }, select: { id: true } });
+      expect(remaining.map((e) => e.id).sort()).toEqual([other.entryId, manual.id, recurring.id].sort());
+    });
+
+    it("lançamento editado manualmente depois da liquidação também é apagado no revert", async () => {
+      const { billId, entryId } = await createAndSettle("PAYABLE", "Editado depois");
+      await prisma.financialEntry.update({ where: { id: entryId }, data: { amount: 999, description: "Editado à mão" } });
+
+      expect((await revertBillSettlement(businessId, billId)).ok).toBe(true);
+      expect(await prisma.financialEntry.findUnique({ where: { id: entryId } })).toBeNull();
+    });
   });
 
   it("não permite cancelar uma conta já paga, nem editar/pagar uma conta cancelada", async () => {

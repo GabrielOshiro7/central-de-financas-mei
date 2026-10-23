@@ -209,20 +209,23 @@ export async function settleBill(
   }
 }
 
-// Reverter para pendente (ADENDO item 5): desvincula o FinancialEntry
-// (billId -> null, vira lancamento avulso no historico) em vez de apaga-lo -
-// mesma regra ja adotada para exclusao de RecurringEntry.
+// Reverter para pendente: o pagamento/recebimento nao aconteceu, entao o
+// FinancialEntry gerado pela liquidacao e APAGADO na mesma transacao (tudo ou
+// nada) - mesmo que o usuario o tenha editado depois. Substitui a regra antiga
+// do ADENDO item 5 (desvincular e manter como lancamento avulso), que fazia o
+// Caixa/Dashboard contarem dinheiro inexistente e permitia dupla contagem ao
+// liquidar de novo. A regra de manter avulsos ao EXCLUIR um RecurringEntry
+// continua valendo (ver recurring/mutations.ts) - nao tem relacao com esta.
+// So apaga lancamentos source BILL vinculados a ESTA Bill (billId e @unique).
 export async function revertBillSettlement(businessId: string, id: string): Promise<MutationResult<{ id: string }>> {
-  const bill = await prisma.bill.findFirst({ where: { id, businessId }, include: { financialEntry: true } });
+  const bill = await prisma.bill.findFirst({ where: { id, businessId } });
   if (!bill) return { ok: false, error: "Conta não encontrada." };
   if (bill.status !== "PAID") {
     return { ok: false, error: "Só é possível reverter uma conta já confirmada." };
   }
 
   await prisma.$transaction(async (tx) => {
-    if (bill.financialEntry) {
-      await tx.financialEntry.update({ where: { id: bill.financialEntry.id }, data: { billId: null } });
-    }
+    await tx.financialEntry.deleteMany({ where: { billId: id, businessId, source: "BILL" } });
     await tx.bill.update({ where: { id }, data: { status: "PENDING", paidAt: null } });
   });
 

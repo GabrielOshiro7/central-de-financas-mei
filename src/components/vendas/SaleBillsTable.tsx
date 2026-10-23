@@ -248,7 +248,11 @@ export function SaleBillsTable({ bills, currency }: { bills: SaleBillRow[]; curr
       <ConfirmDialog
         open={Boolean(reverting)}
         title="Reverter recebimento"
-        message="A parcela volta a ficar pendente e o lançamento financeiro gerado é desvinculado do histórico (não é apagado)."
+        message={
+          reverting
+            ? `A parcela volta a ficar pendente e o recebimento de ${formatMoney(reverting.amount, currency)} é desfeito: o valor sai do Caixa e do Dashboard.`
+            : ""
+        }
         confirmLabel="Reverter"
         pendingLabel="Revertendo..."
         pending={revertPending}
