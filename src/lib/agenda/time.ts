@@ -1,167 +1,119 @@
 // Etapa 8 (Agenda): TODAS as datas deste arquivo (e de quem o consome) sao
-// resolvidas EXPLICITAMENTE em Asia/Tokyo, via Intl.DateTimeFormat com
-// timeZone fixo - nunca getters/setters locais do processo Node
-// (getHours/getDate/getDay/getMonth/getFullYear/setHours), que refletiriam o
-// fuso do HOST, nao de Toquio (ver a limitacao ja documentada e
-// deliberadamente NAO reaproveitada de src/lib/finance/period.ts). Um teste
-// estatico (tests/unit/agenda/noLocalTimeUsage.test.ts) falha se qualquer
-// arquivo de src/lib/agenda usar esses metodos.
+// resolvidas EXPLICITAMENTE em Asia/Tokyo - nunca getters/setters locais do
+// processo Node (getHours/getDate/getDay/getMonth/getFullYear/setHours), que
+// refletiriam o fuso do HOST, nao de Toquio. Um teste estatico
+// (tests/unit/agenda/noLocalTimeUsage.test.ts) falha se qualquer arquivo de
+// src/lib/agenda usar esses metodos.
+//
+// Etapa F1: a conta de fuso em si mora no utilitario unico
+// src/lib/time/zoned.ts (fuso por parametro, seguro para horario de verao).
+// Este arquivo so fixa o fuso da Agenda e mantem a API `*Tokyo` de sempre,
+// com exatamente o mesmo comportamento, ate os chamadores passarem a usar o
+// fuso da empresa (etapas seguintes do plano).
 //
 // AGENDA_TIMEZONE e AGENDA_WEEK_START_DAY sao a UNICA fonte de verdade do
 // fuso e do primeiro dia da semana da Agenda - nenhum outro arquivo deve
 // hardcodear "Asia/Tokyo" ou o numero 1 (segunda) de novo.
+import {
+  dayRange,
+  formatInstant,
+  monthRange,
+  parseDateTimeInput,
+  startOfDayOf,
+  toDateKey,
+  weekRange,
+  weekdayIndex,
+  zonedInstant,
+  zonedParts,
+  type DateRange,
+} from "@/lib/time/zoned";
+
 export const AGENDA_TIMEZONE = "Asia/Tokyo";
 
 // 1 = segunda-feira (ISO-8601 / convencao brasileira). 0=domingo..6=sabado.
 export const AGENDA_WEEK_START_DAY = 1;
 
-// Asia/Tokyo nunca observou horario de verao desde 1951 - por isso um offset
-// fixo de +9h e seguro e deterministico aqui (sem tabela de transicoes de
-// DST). NAO reaproveitar esse atalho para outro fuso sem verificar se ele
-// tem DST.
-const TOKYO_OFFSET_MINUTES = 9 * 60;
-const MS_PER_MINUTE = 60 * 1000;
-const MS_PER_DAY = 24 * 60 * MS_PER_MINUTE;
-
-const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-
-type TokyoParts = { year: number; month: number; day: number; hour: number; minute: number; second: number };
-
-// Decompoe um instante UTC nos componentes de calendario/hora de Toquio.
-// `month` e 1-indexado (janeiro=1), diferente do Date nativo.
-function toTokyoParts(date: Date): TokyoParts {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: AGENDA_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? NaN);
-  return {
-    year: get("year"),
-    month: get("month"),
-    day: get("day"),
-    // hour12:false pode devolver "24" para meia-noite em alguns ambientes -
-    // normaliza para 0.
-    hour: get("hour") % 24,
-    minute: get("minute"),
-    second: get("second"),
-  };
-}
+export type { DateRange };
 
 // Constroi o instante UTC correspondente a uma data/hora de Toquio.
 // `month` e 1-indexado (janeiro=1). Exportada (Etapa Agenda-calendario) para
 // calendar.ts construir datas a partir de ano/mes/dia explicitos (grade do
-// mes, range do mes) sem duplicar a conta de offset aqui de novo.
+// mes, range do mes).
 export function fromTokyoParts(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
-  const utcMillis = Date.UTC(year, month - 1, day, hour, minute, second, 0) - TOKYO_OFFSET_MINUTES * MS_PER_MINUTE;
-  return new Date(utcMillis);
-}
-
-function addDaysTokyo(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * MS_PER_DAY);
+  return zonedInstant(AGENDA_TIMEZONE, year, month, day, hour, minute, second);
 }
 
 // Exportada (Etapa Agenda-calendario) - calendar.ts usa pra saber em que
 // coluna (domingo=0) comeca a grade do mes, sem reimplementar a conversao.
 export function tokyoWeekdayIndex(date: Date): number {
-  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: AGENDA_TIMEZONE, weekday: "short" }).format(date);
-  const idx = WEEKDAY_INDEX[weekday];
-  if (idx === undefined) throw new Error(`Dia da semana inesperado retornado pelo Intl: ${weekday}`);
-  return idx;
+  return weekdayIndex(date, AGENDA_TIMEZONE);
 }
-
-export type DateRange = { start: Date; end: Date };
 
 // Meia-noite de Toquio do dia em que `date` cai (em Toquio).
 export function startOfDayTokyo(date: Date): Date {
-  const { year, month, day } = toTokyoParts(date);
-  return fromTokyoParts(year, month, day);
+  return startOfDayOf(date, AGENDA_TIMEZONE);
 }
 
 export function todayRangeTokyo(now: Date): DateRange {
-  const start = startOfDayTokyo(now);
-  return { start, end: addDaysTokyo(start, 1) };
+  return dayRange(toDateKey(now, AGENDA_TIMEZONE), AGENDA_TIMEZONE);
 }
 
 // Inicio da semana (AGENDA_WEEK_START_DAY, segunda) em que `date` cai, em
 // Toquio.
 export function startOfWeekTokyo(date: Date): Date {
-  const start = startOfDayTokyo(date);
-  const weekday = tokyoWeekdayIndex(start);
-  const diff = (weekday - AGENDA_WEEK_START_DAY + 7) % 7;
-  return addDaysTokyo(start, -diff);
+  return weekRangeTokyo(date).start;
 }
 
 export function weekRangeTokyo(now: Date): DateRange {
-  const start = startOfWeekTokyo(now);
-  return { start, end: addDaysTokyo(start, 7) };
+  return weekRange(toDateKey(now, AGENDA_TIMEZONE), AGENDA_TIMEZONE, AGENDA_WEEK_START_DAY);
 }
 
 // Dia 1 (meia-noite de Toquio) do mes em que `date` cai, em Toquio.
 export function startOfMonthTokyo(date: Date): Date {
-  const { year, month } = toTokyoParts(date);
-  return fromTokyoParts(year, month, 1);
+  return monthRangeTokyo(date).start;
 }
 
 // Dia 1 (meia-noite de Toquio) do mes SEGUINTE ao de `date` - usado como
-// limite exclusivo de range mensal. Vira o ano explicitamente em dezembro
-// (sem depender de normalizacao de Date local).
+// limite exclusivo de range mensal (vira o ano em dezembro).
 export function startOfNextMonthTokyo(date: Date): Date {
-  const { year, month } = toTokyoParts(date);
-  if (month === 12) return fromTokyoParts(year + 1, 1, 1);
-  return fromTokyoParts(year, month + 1, 1);
+  return monthRangeTokyo(date).end;
 }
 
 export function monthRangeTokyo(now: Date): DateRange {
-  return { start: startOfMonthTokyo(now), end: startOfNextMonthTokyo(now) };
+  const { year, month } = zonedParts(now, AGENDA_TIMEZONE);
+  return monthRange(year, month, AGENDA_TIMEZONE);
 }
 
 // Interpreta o valor de um <input type="datetime-local"> ("YYYY-MM-DDTHH:mm",
 // sem segundos/fuso) SEMPRE como horario de Toquio - nunca o fuso do
 // navegador/servidor.
 export function parseTokyoDateTimeInput(value: string): Date {
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!match) throw new Error(`Formato de data/hora invalido: ${value}`);
-  const [year, month, day, hour, minute] = match.slice(1).map(Number);
-  return fromTokyoParts(year, month, day, hour, minute);
+  return parseDateTimeInput(value, AGENDA_TIMEZONE);
 }
 
 // "YYYY-MM-DD" do dia em Toquio - usado tanto para exibicao quanto (Etapa 8,
 // incremento 3) como a mesma representacao de string que createSale ja
-// recebe para Sale.saleDate (ver decisao do incremento 3 - NAO implementada
-// aqui).
+// recebe para Sale.saleDate.
 export function formatTokyoDateKey(date: Date): string {
-  const { year, month, day } = toTokyoParts(date);
-  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return toDateKey(date, AGENDA_TIMEZONE);
 }
 
 export function formatTokyoDate(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: AGENDA_TIMEZONE, day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+  return formatInstant(date, AGENDA_TIMEZONE, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 export function formatTokyoTime(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: AGENDA_TIMEZONE, hour: "2-digit", minute: "2-digit", hour12: false }).format(date);
+  return formatInstant(date, AGENDA_TIMEZONE, { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 // "2 de outubro de 2026" - usado pelos cabecalhos por extenso do redesign do
 // calendario (grade mensal, painel do dia, agrupamento da aba Mes).
 export function formatTokyoDateLong(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    timeZone: AGENDA_TIMEZONE,
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
+  return formatInstant(date, AGENDA_TIMEZONE, { day: "numeric", month: "long", year: "numeric" });
 }
 
 // "outubro de 2026" (minusculo - quem exibe no cabecalho do calendario
 // capitaliza a primeira letra na hora de montar o texto, nao aqui).
 export function formatTokyoMonthYear(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { timeZone: AGENDA_TIMEZONE, month: "long", year: "numeric" }).format(date);
+  return formatInstant(date, AGENDA_TIMEZONE, { month: "long", year: "numeric" });
 }
