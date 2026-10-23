@@ -213,6 +213,15 @@ model Business {
   openingBalance     Decimal   @default(0) @map("opening_balance") @db.Decimal(14, 2)
   openingBalanceDate DateTime? @map("opening_balance_date")
 
+  // Fuso da EMPRESA (Etapa F2 do plano de fuso): pais ISO 3166-1 alfa-2 e
+  // fuso IANA. Default JP/Asia/Tokyo para as linhas existentes e para toda
+  // empresa nova (o onboarding nao pergunta ainda - Decisao pendente 1).
+  // Validados por src/lib/time/schema.ts; o relogio da empresa sai de
+  // getBusinessClock (src/lib/time/businessClock.ts). Ninguem le estes campos
+  // ainda: os chamadores passam a usa-los na F3.
+  country  String @default("JP") @map("country")
+  timezone String @default("Asia/Tokyo") @map("timezone")
+
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
   onboardingStep      Int     @default(1) @map("onboarding_step")
 
