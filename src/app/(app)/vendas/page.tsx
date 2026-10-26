@@ -40,7 +40,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
 
   const [{ items }, summary, hasAnyEver] = await Promise.all([
     listSales(business.id, { period: { start: range.start, end: range.end }, search, status, pageSize: 100 }),
-    getSalesSummary(business.id, range, now),
+    getSalesSummary(business.id, range, clock),
     hasAnySalesEver(business.id),
   ]);
 
@@ -52,7 +52,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
     total: sale.total.toString(),
     paymentMethod: sale.paymentMethod ?? "",
     status: sale.status,
-    paymentStatus: deriveSalePaymentStatus(sale.bills, now),
+    paymentStatus: deriveSalePaymentStatus(sale.bills, clock),
   }));
 
   return (

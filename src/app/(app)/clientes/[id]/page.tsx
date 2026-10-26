@@ -10,17 +10,20 @@ import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bill
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatTokyoDate, formatTokyoTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
+import { clockFor } from "@/lib/time/zoned";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();
+  // Vencido / atrasado no fuso da empresa (Etapa F3b).
+  const clock = clockFor(business);
 
   const client = await getClientById(business.id, id);
   if (!client) notFound();
 
   const [commercial, financial, history, appointmentHistory] = await Promise.all([
     getClientCommercialSummary(business.id, id),
-    getClientFinancialSummary(business.id, id),
+    getClientFinancialSummary(business.id, id, clock),
     getClientHistory(business.id, id),
     getClientAppointmentHistory(business.id, id),
   ]);
@@ -149,7 +152,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                     <td role="cell" data-label="Parcelas" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-wide rt-sub"><span className="rt-sr">Parcelas: </span>
                       <ul className="flex flex-col gap-1">
                         {sale.bills.map((bill) => {
-                          const displayStatus = deriveBillStatus(bill);
+                          const displayStatus = deriveBillStatus(bill, clock);
                           return (
                             <li key={bill.id} className="flex items-center gap-2">
                               <span>{bill.dueDate.toLocaleDateString("pt-BR")}</span>

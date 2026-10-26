@@ -5,6 +5,7 @@ import { createTransaction } from "@/lib/finance/mutations";
 import { createBill, settleBill } from "@/lib/finance/bills/mutations";
 import { updateOpeningBalance } from "@/lib/finance/cash/mutations";
 import { getCurrentCashBalance, getMonthlyCashSeries } from "@/lib/finance/cash/queries";
+import { processClock } from "../../helpers/processClock";
 
 describe("posição de caixa (Etapa 5.1)", () => {
   let userId: string;
@@ -189,7 +190,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
     const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
     const [current, series] = await Promise.all([
       getCurrentCashBalance(businessId, business),
-      getMonthlyCashSeries(businessId, business, now),
+      getMonthlyCashSeries(businessId, business, processClock(now)),
     ]);
 
     expect(series).toHaveLength(3); // jan, fev, mar/2026

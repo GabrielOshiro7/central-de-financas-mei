@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { recurringBillSchema } from "@/lib/finance/bills/schema";
 import { createRecurringBill } from "@/lib/finance/bills/mutations";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
+import { clockFor } from "@/lib/time/zoned";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
   // Materializa imediatamente as ocorrencias ate o horizonte (secao
   // "MATERIALIZACAO" - ver bills/materialize.ts), mesmo padrao do endpoint
   // equivalente de RecurringEntry.
-  await materializeRecurringBills(business.id);
+  await materializeRecurringBills(business.id, clockFor(business));
 
   return NextResponse.json({ id: result.value.id }, { status: 201 });
 }

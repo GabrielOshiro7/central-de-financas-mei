@@ -1,6 +1,6 @@
 import type { RecurringBillFrequency } from "@prisma/client";
 import { firstOccurrence, nextOccurrence, type RecurrenceRule } from "@/lib/finance/recurring/occurrences";
-import { startOfDay } from "@/lib/finance/period";
+import { compareKeys, toDateKey, type TimeZone } from "@/lib/time/zoned";
 
 // Reaproveita INTEGRALMENTE o motor puro de datas de
 // src/lib/finance/recurring/occurrences.ts (firstOccurrence/nextOccurrence,
@@ -63,17 +63,20 @@ function advanceBySteps(base: RecurrenceRule, from: Date, step: number): Date {
 // Mesma forma de generateOccurrences (recurring/occurrences.ts): todas as
 // datas entre a primeira ocorrencia valida e `uptoDate` (inclusive),
 // respeitando endDate. Pura - quem materializa (bills/materialize.ts) e que
-// transforma essas datas em Bill reais.
-export function generateBillOccurrences(entry: RecurringBillLike, uptoDate: Date): Date[] {
+// transforma essas datas em Bill reais. O LIMITE (uptoDate/endDate) e
+// comparado por dia de calendario no fuso da empresa (Etapa F3b); as datas
+// das ocorrencias em si ainda vem do motor de recurring/occurrences.ts, que
+// passa a operar em datas de calendario na F5.
+export function generateBillOccurrences(entry: RecurringBillLike, uptoDate: Date, timeZone: TimeZone): Date[] {
   const { base, step } = toBaseRuleAndStep(entry);
 
-  const upto = startOfDay(uptoDate);
-  const cappedEnd = entry.endDate ? startOfDay(entry.endDate) : null;
-  const effectiveEnd = cappedEnd && cappedEnd.getTime() < upto.getTime() ? cappedEnd : upto;
+  const upto = toDateKey(uptoDate, timeZone);
+  const cappedEnd = entry.endDate ? toDateKey(entry.endDate, timeZone) : null;
+  const effectiveEnd = cappedEnd && compareKeys(cappedEnd, upto) < 0 ? cappedEnd : upto;
 
   const dates: Date[] = [];
   let current: Date | null = firstOccurrence(base, entry.startDate);
-  while (current !== null && current.getTime() <= effectiveEnd.getTime()) {
+  while (current !== null && compareKeys(toDateKey(current, timeZone), effectiveEnd) <= 0) {
     dates.push(current);
     current = advanceBySteps(base, current, step);
   }

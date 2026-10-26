@@ -2,7 +2,7 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { resolvePeriodRange } from "@/lib/finance/period";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
-import { listBills, getBillSummary, hasAnyBillsEver, type BillFilters as BillQueryFilters } from "@/lib/finance/bills/queries";
+import { listBills, getBillSummary, hasAnyBillsEver, type BillFilters as BillQueryFilters, startOfBusinessToday } from "@/lib/finance/bills/queries";
 import { listRecurringBills } from "@/lib/finance/bills/mutations";
 import { deriveBillStatus, type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
 import { formatRecurringBillFrequencyLabel } from "@/lib/finance/bills/format";
@@ -13,7 +13,7 @@ import { BillSummaryCards } from "@/components/financeiro/BillSummaryCards";
 import { RecurringBillTable, type RecurringBillRow } from "@/components/financeiro/RecurringBillTable";
 import { NewBillButton } from "@/components/financeiro/NewBillButton";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { clockFor } from "@/lib/time/zoned";
+import { addDays, clockFor, startOfDayInstant, todayKey } from "@/lib/time/zoned";
 
 const VALID_STATUSES = new Set<string>(["PENDING", "OVERDUE", "PAID", "CANCELLED"]);
 const VALID_DUE = new Set<string>(DUE_SOON_OPTIONS.map((o) => o.value));
@@ -27,12 +27,6 @@ function formatDateInput(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + days);
-  return r;
 }
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -57,10 +51,10 @@ export async function BillListPage({
   searchParams: SearchParams;
 }) {
   const { business } = await requireOnboardedUser();
-  await materializeRecurringBills(business.id);
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Relogio da empresa (fuso + agora): "hoje", vencimento e "vencendo em N
+  // dias" sao dias de calendario no fuso dela (Etapa F3b).
+  const clock = clockFor(business);
+  await materializeRecurringBills(business.id, clock);
 
   const statusParam = paramString(searchParams, "status");
   const displayStatus: BillDisplayStatus | undefined =
@@ -71,7 +65,12 @@ export async function BillListPage({
 
   const dueParam = paramString(searchParams, "due");
   const dueOption = dueParam && VALID_DUE.has(dueParam) ? DUE_SOON_OPTIONS.find((o) => o.value === dueParam) : undefined;
-  const dueRange = dueOption ? { start: today, end: addDays(today, dueOption.days + 1) } : undefined;
+  const dueRange = dueOption
+    ? {
+        start: startOfBusinessToday(clock),
+        end: startOfDayInstant(addDays(todayKey(clock), dueOption.days + 1), clock.timeZone),
+      }
+    : undefined;
 
   const filters: BillQueryFilters = {
     direction,
@@ -83,12 +82,12 @@ export async function BillListPage({
   };
 
   const categoryType = direction === "PAYABLE" ? undefined : "REVENUE";
-  const paidRange = resolvePeriodRange("THIS_MONTH", clockFor(business, now));
+  const paidRange = resolvePeriodRange("THIS_MONTH", clock);
 
   const [{ items }, hasAnyEver, summary, recurringBills, allCategories] = await Promise.all([
-    listBills(business.id, filters, now),
+    listBills(business.id, filters, clock),
     hasAnyBillsEver(business.id, direction),
-    getBillSummary(business.id, direction, paidRange, now),
+    getBillSummary(business.id, direction, paidRange, clock),
     listRecurringBills(business.id, direction),
     direction === "PAYABLE"
       ? Promise.all([listVisibleCategories(business.id, "COST"), listVisibleCategories(business.id, "EXPENSE")]).then(
@@ -109,7 +108,7 @@ export async function BillListPage({
     dueDateInput: formatDateInput(item.dueDate),
     issueDateInput: item.issueDate ? formatDateInput(item.issueDate) : "",
     amount: item.amount.toString(),
-    displayStatus: deriveBillStatus(item, now),
+    displayStatus: deriveBillStatus(item, clock),
     paidAtDisplay: item.paidAt ? formatDateDisplay(item.paidAt) : null,
     documentNumber: item.documentNumber ?? "",
     paymentMethod: item.paymentMethod ?? "",

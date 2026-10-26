@@ -1,6 +1,6 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { startOfDay } from "@/lib/finance/period";
+import { compareKeys, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -109,7 +109,7 @@ export type SalesSummary = {
 export async function getSalesSummary(
   businessId: string,
   range: { start: Date; end: Date },
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<SalesSummary> {
   const [sales, bills] = await Promise.all([
     prisma.sale.findMany({
@@ -129,7 +129,8 @@ export async function getSalesSummary(
   const salesCount = sales.length;
   const averageTicket = salesCount > 0 ? totalRevenue.dividedBy(salesCount) : null;
 
-  const today = startOfDay(now);
+  // Vencido = dia de calendario antes de "hoje" no fuso da empresa (F3b).
+  const today = todayKey(clock);
   let totalReceived = new Decimal(0);
   let totalPending = new Decimal(0);
   let totalOverdue = new Decimal(0);
@@ -138,7 +139,7 @@ export async function getSalesSummary(
     if (bill.status === "PAID") {
       totalReceived = totalReceived.plus(bill.amount);
     } else if (bill.status === "PENDING") {
-      if (startOfDay(bill.dueDate).getTime() < today.getTime()) {
+      if (compareKeys(toDateKey(bill.dueDate, clock.timeZone), today) < 0) {
         totalOverdue = totalOverdue.plus(bill.amount);
       } else {
         totalPending = totalPending.plus(bill.amount);

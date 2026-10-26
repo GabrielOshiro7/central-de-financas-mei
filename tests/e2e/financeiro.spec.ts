@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { businessToday } from "./helpers/businessDate";
 
 const PASSWORD = "SenhaValida123";
 
@@ -11,8 +12,10 @@ function uniqueEmail(prefix = "fin") {
 // Receitas/Custos/Despesas filtram por "Este mês" por padrão - usar uma data
 // do mês corrente evita que o lançamento criado no teste fique escondido
 // pelo filtro padrão.
+// Dia de hoje no fuso da empresa de teste (antes: dia UTC via toISOString,
+// que falhava entre 00:00 e 09:00 de Tóquio).
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  return businessToday();
 }
 
 async function register(page: Page, name: string, email: string) {

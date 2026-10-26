@@ -1,15 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { startOfDay } from "@/lib/finance/period";
 import { type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
+import { addDays, compareKeys, startOfDayInstant, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
-
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + days);
-  return r;
-}
 
 function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
   return direction === "PAYABLE"
@@ -18,10 +12,14 @@ function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
 }
 
 // "OVERDUE" nunca e uma condicao persistida - vira status=PENDING + dueDate
-// no passado (mesma nocao de "hoje" de period.ts), espelhando
-// deriveBillStatus (bills/status.ts) do lado da query.
-function displayStatusWhere(displayStatus: BillDisplayStatus, now: Date): Prisma.BillWhereInput {
-  const today = startOfDay(now);
+// antes do inicio de "hoje" (00:00 do dia de calendario no fuso da EMPRESA,
+// Etapa F3b), espelhando deriveBillStatus (bills/status.ts) do lado da query.
+export function startOfBusinessToday(clock: BusinessClock): Date {
+  return startOfDayInstant(todayKey(clock), clock.timeZone);
+}
+
+function displayStatusWhere(displayStatus: BillDisplayStatus, clock: BusinessClock): Prisma.BillWhereInput {
+  const today = startOfBusinessToday(clock);
   switch (displayStatus) {
     case "PENDING":
       return { status: "PENDING", dueDate: { gte: today } };
@@ -60,7 +58,7 @@ export type BillListItem = Prisma.BillGetPayload<{
 export async function listBills(
   businessId: string,
   filters: BillFilters,
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<{ items: BillListItem[]; total: number; page: number; pageSize: number }> {
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
@@ -78,7 +76,7 @@ export async function listBills(
   const where: Prisma.BillWhereInput = {
     businessId,
     ...directionWhere(filters.direction),
-    ...(filters.displayStatus ? displayStatusWhere(filters.displayStatus, now) : {}),
+    ...(filters.displayStatus ? displayStatusWhere(filters.displayStatus, clock) : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     ...(filters.dueRange ? { dueDate: { gte: filters.dueRange.start, lt: filters.dueRange.end } } : {}),
     ...amountFilter,
@@ -144,14 +142,16 @@ export type BillSummary = {
 // dependem do periodo selecionado - uma conta vencida continua vencida
 // independente do filtro de periodo aplicado na tabela); so totalPaidAmount
 // e recortado por `paidRange`, do mesmo jeito que o resto do financeiro usa
-// PeriodKey para "quanto foi pago/recebido nesse periodo".
+// PeriodKey para "quanto foi pago/recebido nesse periodo". Vencido / vence
+// hoje / proximos 7 e 30 dias comparam DIAS DE CALENDARIO no fuso da empresa
+// (dueDate convertido para a data do fuso; "hoje" = todayKey(clock)).
 export async function getBillSummary(
   businessId: string,
   direction: BillDirection,
   paidRange: { start: Date; end: Date },
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<BillSummary> {
-  const today = startOfDay(now);
+  const today = todayKey(clock);
   const tomorrow = addDays(today, 1);
   const next7End = addDays(today, 7);
   const next30End = addDays(today, 30);
@@ -184,23 +184,24 @@ export async function getBillSummary(
 
   for (const bill of openBills) {
     totalOpenAmount = totalOpenAmount.plus(bill.amount);
-    const due = startOfDay(bill.dueDate);
+    const due = toDateKey(bill.dueDate, clock.timeZone);
+    const notOverdue = compareKeys(due, today) >= 0;
 
-    if (due.getTime() < today.getTime()) {
+    if (!notOverdue) {
       totalOverdueAmount = totalOverdueAmount.plus(bill.amount);
     } else {
       totalPendingAmount = totalPendingAmount.plus(bill.amount);
     }
 
-    if (due.getTime() >= today.getTime() && due.getTime() < tomorrow.getTime()) {
+    if (notOverdue && compareKeys(due, tomorrow) < 0) {
       dueTodayAmount = dueTodayAmount.plus(bill.amount);
       dueTodayCount += 1;
     }
-    if (due.getTime() >= today.getTime() && due.getTime() < next7End.getTime()) {
+    if (notOverdue && compareKeys(due, next7End) < 0) {
       dueNext7Amount = dueNext7Amount.plus(bill.amount);
       dueNext7Count += 1;
     }
-    if (due.getTime() >= today.getTime() && due.getTime() < next30End.getTime()) {
+    if (notOverdue && compareKeys(due, next30End) < 0) {
       dueNext30Amount = dueNext30Amount.plus(bill.amount);
       dueNext30Count += 1;
     }
@@ -235,9 +236,9 @@ export async function getOverdueAmountForDueRange(
   businessId: string,
   direction: BillDirection,
   dueRange: { start: Date; end: Date },
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<Prisma.Decimal> {
-  const today = startOfDay(now);
+  const today = todayKey(clock);
   const bills = await prisma.bill.findMany({
     where: {
       businessId,
@@ -249,7 +250,7 @@ export async function getOverdueAmountForDueRange(
   });
 
   return bills
-    .filter((b) => startOfDay(b.dueDate).getTime() < today.getTime())
+    .filter((b) => compareKeys(toDateKey(b.dueDate, clock.timeZone), today) < 0)
     .reduce((total, b) => total.plus(b.amount), new Decimal(0));
 }
 
@@ -265,11 +266,11 @@ export type ForecastBalance = {
 // Reaproveita getBillSummary para as duas direcoes em vez de duplicar a
 // query de soma - paidRange vazio (start===end) porque so o total EM ABERTO
 // interessa aqui, nunca o que ja foi pago/recebido.
-export async function getForecastBalance(businessId: string, now: Date = new Date()): Promise<ForecastBalance> {
-  const emptyRange = { start: now, end: now };
+export async function getForecastBalance(businessId: string, clock: BusinessClock): Promise<ForecastBalance> {
+  const emptyRange = { start: clock.now, end: clock.now };
   const [payable, receivable] = await Promise.all([
-    getBillSummary(businessId, "PAYABLE", emptyRange, now),
-    getBillSummary(businessId, "RECEIVABLE", emptyRange, now),
+    getBillSummary(businessId, "PAYABLE", emptyRange, clock),
+    getBillSummary(businessId, "RECEIVABLE", emptyRange, clock),
   ]);
 
   return {

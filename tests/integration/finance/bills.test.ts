@@ -12,6 +12,7 @@ import {
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { getBillSummary } from "@/lib/finance/bills/queries";
+import { processClock } from "../../helpers/processClock";
 
 describe("contas a pagar/receber (Etapa 5)", () => {
   let userId: string;
@@ -378,8 +379,8 @@ describe("contas a pagar/receber (Etapa 5)", () => {
 
     const now = new Date(2026, 0, 15); // materializa com horizonte de 90 dias a partir daqui
     const [r1, r2] = await Promise.all([
-      materializeRecurringBills(businessId, now),
-      materializeRecurringBills(businessId, now),
+      materializeRecurringBills(businessId, processClock(now)),
+      materializeRecurringBills(businessId, processClock(now)),
     ]);
 
     const bills = await prisma.bill.findMany({ where: { recurringBillId: molde.value.id } });
@@ -393,7 +394,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(entries).toBe(0);
 
     // Rodar de novo não duplica.
-    const r3 = await materializeRecurringBills(businessId, now);
+    const r3 = await materializeRecurringBills(businessId, processClock(now));
     expect(r3.created).toBe(0);
   });
 
@@ -413,7 +414,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(overdue.ok && future.ok).toBe(true);
 
     const now = new Date(2026, 5, 1);
-    const summary = await getBillSummary(businessId, "PAYABLE", { start: now, end: now }, now);
+    const summary = await getBillSummary(businessId, "PAYABLE", { start: now, end: now }, processClock(now));
     expect(summary.totalOverdueAmount.toNumber()).toBe(100);
     expect(summary.totalPendingAmount.toNumber()).toBe(250);
     expect(summary.totalOpenAmount.toNumber()).toBe(350);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
 import { calculateSaleTotals, deriveSalePaymentStatus, splitEqualInstallments } from "@/lib/sales/calculations";
+import { PROCESS_TZ, processClock } from "../../helpers/processClock";
 
 const { Decimal } = Prisma;
 
@@ -53,7 +54,7 @@ describe("deriveSalePaymentStatus", () => {
   const future = new Date(2026, 5, 30);
 
   it("sem parcelas (venda ainda em rascunho) => NAO_PAGA", () => {
-    expect(deriveSalePaymentStatus([], today)).toBe("NAO_PAGA");
+    expect(deriveSalePaymentStatus([], processClock(today))).toBe("NAO_PAGA");
   });
 
   it("todas as parcelas PAID => PAGA", () => {
@@ -63,7 +64,7 @@ describe("deriveSalePaymentStatus", () => {
           { status: "PAID", dueDate: past },
           { status: "PAID", dueDate: future },
         ],
-        today
+        processClock(today)
       )
     ).toBe("PAGA");
   });
@@ -76,20 +77,20 @@ describe("deriveSalePaymentStatus", () => {
           { status: "PENDING", dueDate: future },
           { status: "PENDING", dueDate: future },
         ],
-        today
+        processClock(today)
       )
     ).toBe("PARCIAL");
   });
 
   it("nenhuma paga, uma vencida => ATRASADA", () => {
     expect(
-      deriveSalePaymentStatus([{ status: "PENDING", dueDate: past }], today)
+      deriveSalePaymentStatus([{ status: "PENDING", dueDate: past }], processClock(today))
     ).toBe("ATRASADA");
   });
 
   it("nenhuma paga, todas com vencimento futuro => NAO_PAGA", () => {
     expect(
-      deriveSalePaymentStatus([{ status: "PENDING", dueDate: future }], today)
+      deriveSalePaymentStatus([{ status: "PENDING", dueDate: future }], processClock(today))
     ).toBe("NAO_PAGA");
   });
 
@@ -100,7 +101,7 @@ describe("deriveSalePaymentStatus", () => {
           { status: "PAID", dueDate: past },
           { status: "PENDING", dueDate: past },
         ],
-        today
+        processClock(today)
       )
     ).toBe("PARCIAL");
   });
@@ -112,7 +113,7 @@ describe("deriveSalePaymentStatus", () => {
           { status: "CANCELLED", dueDate: past },
           { status: "PAID", dueDate: future },
         ],
-        today
+        processClock(today)
       )
     ).toBe("PAGA");
   });
@@ -120,14 +121,14 @@ describe("deriveSalePaymentStatus", () => {
 
 describe("splitEqualInstallments", () => {
   it("divide igualmente quando o total é múltiplo exato da quantidade de parcelas", () => {
-    const result = splitEqualInstallments(new Decimal(300), 3, new Date(2026, 0, 10), 30, "BRL");
+    const result = splitEqualInstallments(new Decimal(300), 3, new Date(2026, 0, 10), 30, "BRL", PROCESS_TZ);
     expect(result).toHaveLength(3);
     expect(result.every((r) => r.amount.toString() === "100")).toBe(true);
     expect(result[1].dueDate.getDate()).toBe(9); // 10/jan + 30 dias
   });
 
   it("coloca o resto da divisão na última parcela (BRL, 2 casas decimais)", () => {
-    const result = splitEqualInstallments(new Decimal(100), 3, new Date(2026, 0, 1), 30, "BRL");
+    const result = splitEqualInstallments(new Decimal(100), 3, new Date(2026, 0, 1), 30, "BRL", PROCESS_TZ);
     expect(result[0].amount.toString()).toBe("33.33");
     expect(result[1].amount.toString()).toBe("33.33");
     expect(result[2].amount.toString()).toBe("33.34");
@@ -136,13 +137,13 @@ describe("splitEqualInstallments", () => {
   });
 
   it("JPY nunca gera parcela com casas decimais", () => {
-    const result = splitEqualInstallments(new Decimal(1000), 3, new Date(2026, 0, 1), 30, "JPY");
+    const result = splitEqualInstallments(new Decimal(1000), 3, new Date(2026, 0, 1), 30, "JPY", PROCESS_TZ);
     expect(result[0].amount.toString()).toBe("333");
     expect(result[1].amount.toString()).toBe("333");
     expect(result[2].amount.toString()).toBe("334");
   });
 
   it("count <= 0 retorna array vazio", () => {
-    expect(splitEqualInstallments(new Decimal(100), 0, new Date(), 30, "BRL")).toEqual([]);
+    expect(splitEqualInstallments(new Decimal(100), 0, new Date(), 30, "BRL", PROCESS_TZ)).toEqual([]);
   });
 });

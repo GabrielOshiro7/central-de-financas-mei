@@ -119,11 +119,10 @@ export async function getDashboardData(
   periodLabel: string,
   filters: DashboardFilters,
   // Relogio da empresa (fuso + agora): periodos, series e insights sao
-  // resolvidos no fuso dela (Etapa F3a). Os getters de contas/vendas ainda
-  // recebem so o instante (F3b).
+  // resolvidos no fuso dela (Etapa F3a); contas e vendas tambem (F3b).
   clock: BusinessClock
 ): Promise<DashboardData> {
-  const { now, timeZone } = clock;
+  const { timeZone } = clock;
   const range = resolvePeriodRange(filters.period, clock, filters.customRange);
   const comparisonRange = resolveComparisonRange(filters.comparison, range);
 
@@ -164,12 +163,12 @@ export async function getDashboardData(
     // (bills/queries.ts), nenhum calculo novo aqui. `range` so importa pro
     // "total pago/recebido no periodo"; vencido/hoje/proximos dias refletem
     // sempre o estado atual, independente do periodo selecionado.
-    getBillSummary(businessId, "PAYABLE", range, now),
-    getBillSummary(businessId, "RECEIVABLE", range, now),
-    getForecastBalance(businessId, now),
+    getBillSummary(businessId, "PAYABLE", range, clock),
+    getBillSummary(businessId, "RECEIVABLE", range, clock),
+    getForecastBalance(businessId, clock),
     // Secao comercial (Etapa 6) - reaproveita getSalesSummary/getTopClients
     // (sales/queries.ts) tal como estao, nenhum calculo novo aqui.
-    getSalesSummary(businessId, range, now),
+    getSalesSummary(businessId, range, clock),
     getTopClients(businessId, range, 5),
     // Insights (Etapa 7) - le o MESMO getInsightsForBusiness usado pela
     // pagina /insights, nunca chama IA (withAI so acontece atras do botao

@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { businessToday, businessTodayDayOfMonth } from "./helpers/businessDate";
 
 // Criação contextual no Financeiro: cada aba de tipo (Receitas/Custos/
 // Despesas) tem o próprio botão, que abre o modal com o tipo fixo; Recorrentes
@@ -13,15 +14,11 @@ function uniqueEmail(prefix = "criacao") {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
 }
 
-// Data LOCAL (não toISOString, que é UTC): o servidor agrupa "Este mês" e
-// materializa recorrências no horário local, então usar o dia em UTC faria o
-// teste falhar entre 00:00 e 09:00 de Tóquio.
+// Dia de hoje no fuso da empresa de teste (Asia/Tokyo): o servidor agrupa
+// "Este mês" e materializa recorrências no fuso da empresa, então nem o dia
+// UTC (toISOString) nem o fuso do processo do Playwright servem aqui.
 function todayLocal(): { iso: string; day: number } {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return { iso: `${y}-${m}-${d}`, day: now.getDate() };
+  return { iso: businessToday(), day: businessTodayDayOfMonth() };
 }
 
 async function registerAndOnboard(page: Page, name: string) {

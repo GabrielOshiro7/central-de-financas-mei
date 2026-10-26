@@ -9,6 +9,7 @@ import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { SaleBillsTable, type SaleBillRow } from "@/components/vendas/SaleBillsTable";
 import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
 import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
+import { clockFor } from "@/lib/time/zoned";
 
 function formatDateDisplay(d: Date): string {
   return d.toLocaleDateString("pt-BR");
@@ -28,15 +29,16 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const sale = await getSaleById(business.id, id);
   if (!sale) notFound();
 
-  const now = new Date();
+  // Vencido / atrasado no fuso da empresa (Etapa F3b).
+  const clock = clockFor(business);
   const currency = business.currency;
-  const paymentStatus = deriveSalePaymentStatus(sale.bills, now);
+  const paymentStatus = deriveSalePaymentStatus(sale.bills, clock);
 
   const billRows: SaleBillRow[] = sale.bills.map((bill) => ({
     id: bill.id,
     dueDateDisplay: formatDateDisplay(bill.dueDate),
     amount: bill.amount.toString(),
-    displayStatus: deriveBillStatus(bill, now),
+    displayStatus: deriveBillStatus(bill, clock),
     paidAtDisplay: bill.paidAt ? formatDateDisplay(bill.paidAt) : null,
   }));
 

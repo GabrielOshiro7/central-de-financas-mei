@@ -105,7 +105,7 @@ export async function computeIndicatorSnapshot(
   currency: Currency,
   clock: BusinessClock
 ): Promise<IndicatorSnapshot> {
-  const { now, timeZone } = clock;
+  const { timeZone } = clock;
   const { current, previousClipped, isPartial } = resolveInsightPeriods(clock);
 
   const [
@@ -122,12 +122,12 @@ export async function computeIndicatorSnapshot(
     hasFinancialEntriesBefore(businessId, current.start),
     getFinancialSummaryForRange(businessId, current),
     getFinancialSummaryForRange(businessId, previousClipped),
-    getSalesSummary(businessId, current, now),
-    getSalesSummary(businessId, previousClipped, now),
+    getSalesSummary(businessId, current, clock),
+    getSalesSummary(businessId, previousClipped, clock),
     getTopClients(businessId, current, 1000),
     getTopClients(businessId, previousClipped, 1000),
-    getOverdueAmountForDueRange(businessId, "RECEIVABLE", current, now),
-    getOverdueAmountForDueRange(businessId, "RECEIVABLE", previousClipped, now),
+    getOverdueAmountForDueRange(businessId, "RECEIVABLE", current, clock),
+    getOverdueAmountForDueRange(businessId, "RECEIVABLE", previousClipped, clock),
   ]);
 
   const topClient = currentTopClients[0] ?? null;

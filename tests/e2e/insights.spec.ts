@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { businessToday, businessFirstOfPreviousMonth } from "./helpers/businessDate";
 
 const PASSWORD = "SenhaValida123";
 
@@ -8,15 +9,9 @@ function uniqueEmail(prefix = "insights") {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
 }
 
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
+// Datas no fuso da empresa de teste (não no fuso do processo).
 function todayIso() {
-  return formatDateInput(new Date());
+  return businessToday();
 }
 
 // Dia 1 do mês anterior - sempre cai dentro do range recortado que os
@@ -24,8 +19,7 @@ function todayIso() {
 // anterior e vai até o mesmo dia-do-mês de hoje), então funciona
 // independente de em que dia do mês o teste rodar.
 function firstOfPreviousMonthIso() {
-  const now = new Date();
-  return formatDateInput(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  return businessFirstOfPreviousMonth();
 }
 
 async function register(page: Page, name: string, email: string) {

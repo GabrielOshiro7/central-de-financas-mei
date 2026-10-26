@@ -8,6 +8,7 @@ import { createSale, confirmSale, updateSale, updateSaleNotes, cancelSale, type 
 import { settleBill } from "@/lib/finance/bills/mutations";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { getSalesSummary } from "@/lib/sales/queries";
+import { processClock } from "../../helpers/processClock";
 
 const { Decimal } = Prisma;
 
@@ -316,7 +317,7 @@ describe("vendas (Etapa 6)", () => {
   });
 
   it("Cenário 5 - período sem vendas: indicadores retornam zero sem erro", async () => {
-    const summary = await getSalesSummary(businessId, { start: new Date(2020, 0, 1), end: new Date(2020, 1, 1) });
+    const summary = await getSalesSummary(businessId, { start: new Date(2020, 0, 1), end: new Date(2020, 1, 1) }, processClock());
     expect(summary.salesCount).toBe(0);
     expect(summary.totalRevenue.toNumber()).toBe(0);
     expect(summary.averageTicket).toBeNull();

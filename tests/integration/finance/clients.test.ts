@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { createClient, updateClient, setClientActive, assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 import { listClients, listVisibleClients, getClientCommercialSummary, getClientFinancialSummary } from "@/lib/clients/queries";
+import { processClock } from "../../helpers/processClock";
 
 describe("clientes (Etapa 6)", () => {
   let userId: string;
@@ -116,7 +117,7 @@ describe("clientes (Etapa 6)", () => {
     expect(commercial.averageTicket).toBeNull();
     expect(commercial.firstPurchaseAt).toBeNull();
 
-    const financial = await getClientFinancialSummary(businessId, created.value.id);
+    const financial = await getClientFinancialSummary(businessId, created.value.id, processClock());
     expect(financial.totalOpenAmount.toNumber()).toBe(0);
     expect(financial.totalOverdueAmount.toNumber()).toBe(0);
     expect(financial.totalReceivedAmount.toNumber()).toBe(0);

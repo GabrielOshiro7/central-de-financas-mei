@@ -54,7 +54,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   // recorrencias ativas ate agora antes de qualquer leitura financeira desta
   // pagina - nunca via cron/job em background.
   await materializeRecurringEntries(business.id, user.id);
-  await materializeRecurringBills(business.id);
+  const clock = clockFor(business);
+  await materializeRecurringBills(business.id, clock);
   const searchParams = await props.searchParams;
 
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;
@@ -80,7 +81,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     currency,
     periodLabel,
     { period: effectivePeriod, customRange, comparison },
-    clockFor(business)
+    clock
   );
 
   const headerPeriodLabel = `${periodLabel} (${formatDateRange(data.range.start, data.range.end)})`;

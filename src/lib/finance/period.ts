@@ -25,10 +25,6 @@ import {
   type TimeZone,
 } from "@/lib/time/zoned";
 
-// Legado (vencimento/vendas/clientes - F3b): reexportado sem mudanca para nao
-// alterar esses chamadores nesta etapa. Ver src/lib/finance/legacyLocalDay.ts.
-export { startOfDay } from "@/lib/finance/legacyLocalDay";
-
 export type PeriodKey =
   | "TODAY"
   | "THIS_MONTH"

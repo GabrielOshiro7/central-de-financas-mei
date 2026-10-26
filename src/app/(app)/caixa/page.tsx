@@ -24,9 +24,9 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
   // lancamentos recorrentes e as contas confirmadas precisam estar
   // materializados antes de qualquer leitura de FinancialEntry aqui.
   await materializeRecurringEntries(business.id, user.id);
-  await materializeRecurringBills(business.id);
+  const clock = clockFor(business);
+  await materializeRecurringBills(business.id, clock);
 
-  const now = new Date();
   const searchParams = await props.searchParams;
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;
   const period: PeriodKey = periodParam && VALID_PERIODS.has(periodParam) ? (periodParam as PeriodKey) : DEFAULT_CASH_PERIOD;
@@ -38,8 +38,8 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
 
   const [current, monthlySeries, forecast] = await Promise.all([
     getCurrentCashBalance(business.id, business),
-    getMonthlyCashSeries(business.id, business, now),
-    getForecastBalance(business.id, now),
+    getMonthlyCashSeries(business.id, business, clock),
+    getForecastBalance(business.id, clock),
   ]);
 
   // Estado vazio REAL (mesmo padrao do dashboard): nenhum lancamento E nenhum
@@ -56,7 +56,7 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
   // O filtro de periodo SO recorta quais meses da serie ja calculada
   // aparecem no grafico - o card de saldo atual (current, acima) nunca muda
   // com ele, sempre "ate hoje" (secao "INTERFACE" da Etapa 5.1).
-  const range = resolvePeriodRange(effectivePeriod, clockFor(business, now), customRange);
+  const range = resolvePeriodRange(effectivePeriod, clock, customRange);
   const visibleMonthKeys = new Set(range.months.map((m) => `${m.year}-${m.month}`));
   const visibleSeries = monthlySeries.filter((p) => visibleMonthKeys.has(`${p.year}-${p.month}`));
 

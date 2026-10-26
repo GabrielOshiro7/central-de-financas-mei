@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
+import { businessToday } from "./helpers/businessDate";
 
 // Lote 3 do audit de UX: abaixo de 768px cada linha de tabela vira um card
 // (CSS puro em .rtable, src/app/globals.css). Os specs de desktop continuam
@@ -11,13 +12,9 @@ test.use({ viewport: { width: 390, height: 844 } });
 
 const PASSWORD = "SenhaValida123";
 
+// Data no fuso da empresa de teste (não no fuso do processo).
 function isoDate(daysFromToday = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromToday);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return businessToday(daysFromToday);
 }
 
 async function ok(response: Awaited<ReturnType<APIRequestContext["post"]>>, what: string) {

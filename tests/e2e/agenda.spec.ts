@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { businessDateTimeInput } from "./helpers/businessDate";
 
 const PASSWORD = "SenhaValida123";
 
@@ -36,14 +37,12 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-// "YYYY-MM-DDTHH:mm" de um instante no passado (30 min atrás) - suficiente
-// pra nao depender de fuso especifico neste teste (so precisa ser um
-// horario aceitavel pro formulario, a logica de fuso de Toquio em si ja e
-// coberta pelos testes unitarios/integracao de src/lib/agenda).
+// "YYYY-MM-DDTHH:mm" de 30 min atrás no relógio da empresa de teste
+// (Asia/Tokyo) - o formulário interpreta o campo nesse fuso, então montar o
+// valor com o fuso do processo do Playwright quebraria fora de Tóquio. A
+// lógica de fuso em si é coberta pelos testes unitários/integração.
 function pastDateTimeInputValue(): string {
-  const d = new Date(Date.now() - 30 * 60 * 1000);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return businessDateTimeInput(-30 * 60 * 1000);
 }
 
 test.describe("Etapa 8 - agenda", () => {

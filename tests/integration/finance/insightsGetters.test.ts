@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getOverdueAmountForDueRange } from "@/lib/finance/bills/queries";
 import { hasFinancialEntriesBefore } from "@/lib/finance/queries";
+import { processClock } from "../../helpers/processClock";
 
 // Getters novos adicionados para a Etapa 7 (Insights) - testados isoladamente
 // aqui, antes do modulo insights/ existir, seguindo o mesmo esqueleto de
@@ -88,12 +89,12 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
         ],
       });
 
-      const total = await getOverdueAmountForDueRange(businessId, "RECEIVABLE", septRange, now);
+      const total = await getOverdueAmountForDueRange(businessId, "RECEIVABLE", septRange, processClock(now));
       expect(total.toString()).toBe("300");
     });
 
     it("retorna zero quando não há nenhuma bill vencida no range", async () => {
-      const total = await getOverdueAmountForDueRange(businessId, "RECEIVABLE", septRange, now);
+      const total = await getOverdueAmountForDueRange(businessId, "RECEIVABLE", septRange, processClock(now));
       expect(total.toString()).toBe("0");
     });
   });

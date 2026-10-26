@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { recurringBillSchema } from "@/lib/finance/bills/schema";
 import { updateRecurringBill, deleteRecurringBill } from "@/lib/finance/bills/mutations";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
+import { clockFor } from "@/lib/time/zoned";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/financeiro/bills/recurring/[id]">) {
   const user = await getCurrentUser();
@@ -53,7 +54,7 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
     );
   }
 
-  await materializeRecurringBills(business.id);
+  await materializeRecurringBills(business.id, clockFor(business));
 
   return NextResponse.json({ id: result.value.id });
 }

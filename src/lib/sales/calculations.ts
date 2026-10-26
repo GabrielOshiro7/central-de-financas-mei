@@ -1,6 +1,14 @@
 import { Prisma, type BillStatus, type Currency, type SaleDiscountType } from "@prisma/client";
 import { isIntegerCurrency } from "@/lib/money";
-import { startOfDay } from "@/lib/finance/period";
+import {
+  addDays,
+  compareKeys,
+  startOfDayInstant,
+  toDateKey,
+  todayKey,
+  type BusinessClock,
+  type TimeZone,
+} from "@/lib/time/zoned";
 
 type Decimal = Prisma.Decimal;
 const { Decimal } = Prisma;
@@ -60,9 +68,11 @@ export type SalePaymentStatus = "NAO_PAGA" | "PARCIAL" | "PAGA" | "ATRASADA";
 // como paga nem como pendente). PARCIAL tem prioridade sobre ATRASADA:
 // se ja entrou algum dinheiro, "parcial" e mais informativo pro usuario do
 // que "atrasada", mesmo que uma das parcelas restantes esteja vencida.
+// "Vencida" = dia de calendario do vencimento antes de "hoje" no fuso da
+// empresa (Etapa F3b), mesma regra de deriveBillStatus.
 export function deriveSalePaymentStatus(
   bills: { status: BillStatus; dueDate: Date }[],
-  now: Date = new Date()
+  clock: BusinessClock
 ): SalePaymentStatus {
   const active = bills.filter((b) => b.status !== "CANCELLED");
   if (active.length === 0) return "NAO_PAGA";
@@ -71,8 +81,10 @@ export function deriveSalePaymentStatus(
   if (paidCount === active.length) return "PAGA";
   if (paidCount > 0) return "PARCIAL";
 
-  const today = startOfDay(now);
-  const hasOverdue = active.some((b) => b.status === "PENDING" && startOfDay(b.dueDate).getTime() < today.getTime());
+  const today = todayKey(clock);
+  const hasOverdue = active.some(
+    (b) => b.status === "PENDING" && compareKeys(toDateKey(b.dueDate, clock.timeZone), today) < 0
+  );
   return hasOverdue ? "ATRASADA" : "NAO_PAGA";
 }
 
@@ -83,12 +95,6 @@ export const SALE_PAYMENT_STATUS_LABELS: Record<SalePaymentStatus, string> = {
   ATRASADA: "Atrasada",
 };
 
-function addDays(d: Date, days: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + days);
-  return r;
-}
-
 export type InstallmentPreview = { dueDate: Date; amount: Decimal };
 
 // Helper de PREVIA para o formulario (o usuario ainda pode ajustar cada
@@ -96,13 +102,15 @@ export type InstallmentPreview = { dueDate: Date; amount: Decimal };
 // count/intervalo, so valida que a SOMA das parcelas enviadas bate com
 // `total` (ver saleSchema). Ultima parcela absorve o resto da divisao
 // (nunca uma segunda regra de arredondamento distinta de isIntegerCurrency -
-// mesma moeda/precisao de money.ts).
+// mesma moeda/precisao de money.ts). Os vencimentos avancam por DIAS DE
+// CALENDARIO no fuso dado (00:00 de cada dia), nunca pelo fuso do processo.
 export function splitEqualInstallments(
   total: Decimal,
   count: number,
   firstDueDate: Date,
   intervalDays: number,
-  currency: Currency
+  currency: Currency,
+  timeZone: TimeZone
 ): InstallmentPreview[] {
   if (count <= 0) return [];
 
@@ -114,6 +122,6 @@ export function splitEqualInstallments(
 
   return amounts.map((amount, index) => ({
     amount,
-    dueDate: addDays(firstDueDate, intervalDays * index),
+    dueDate: startOfDayInstant(addDays(toDateKey(firstDueDate, timeZone), intervalDays * index), timeZone),
   }));
 }

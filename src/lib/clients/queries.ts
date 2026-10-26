@@ -1,6 +1,6 @@
 import { Prisma, type SaleStatus, type BillStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { startOfDay } from "@/lib/finance/period";
+import { compareKeys, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -179,13 +179,18 @@ export type ClientFinancialSummary = {
 // escopada por cliente (via sale.clientId) em vez de direcao - RECEIVABLE e
 // implicito aqui porque toda Bill gerada por uma venda usa uma categoria
 // REVENUE (ver generateSaleBills).
-export async function getClientFinancialSummary(businessId: string, clientId: string): Promise<ClientFinancialSummary> {
+// Vencido = dia de calendario antes de "hoje" no fuso da empresa (F3b).
+export async function getClientFinancialSummary(
+  businessId: string,
+  clientId: string,
+  clock: BusinessClock
+): Promise<ClientFinancialSummary> {
   const bills = await prisma.bill.findMany({
     where: { businessId, sale: { clientId } },
     select: { amount: true, status: true, dueDate: true },
   });
 
-  const today = startOfDay(new Date());
+  const today = todayKey(clock);
   let totalOpenAmount = new Decimal(0);
   let totalOverdueAmount = new Decimal(0);
   let totalReceivedAmount = new Decimal(0);
@@ -194,7 +199,7 @@ export async function getClientFinancialSummary(businessId: string, clientId: st
     if (bill.status === "PAID") {
       totalReceivedAmount = totalReceivedAmount.plus(bill.amount);
     } else if (bill.status === "PENDING") {
-      if (startOfDay(bill.dueDate).getTime() < today.getTime()) {
+      if (compareKeys(toDateKey(bill.dueDate, clock.timeZone), today) < 0) {
         totalOverdueAmount = totalOverdueAmount.plus(bill.amount);
       } else {
         totalOpenAmount = totalOpenAmount.plus(bill.amount);

@@ -47,12 +47,11 @@ describe("src/lib/agenda nunca usa data/hora local do host", () => {
   }
 });
 
-// Etapa F3a: os arquivos de periodo/dashboard/insights passaram a usar o fuso
-// da empresa (src/lib/time/zoned.ts). A mesma guarda vale para eles, mais
-// um pouco: tambem setDate/setMonth/setFullYear, toLocale* (sempre sem
-// timeZone aqui) e `new Date(ano, mes, ...)` (construtor local). Comentarios
-// sao ignorados. src/lib/finance/legacyLocalDay.ts e o legado declarado da
-// F3b e fica de fora de proposito.
+// Etapas F3a/F3b: os arquivos de periodo/dashboard/insights (F3a) e de
+// vencimento/vendas/clientes/caixa (F3b) passaram a usar o fuso da empresa
+// (src/lib/time/zoned.ts). A mesma guarda vale para eles, mais um pouco:
+// tambem setDate/setMonth/setFullYear, toLocale* (sempre sem timeZone aqui)
+// e `new Date(ano, mes, ...)` (construtor local). Comentarios sao ignorados.
 const F3A_FILES = [
   "src/lib/finance/period.ts",
   "src/lib/finance/queries.ts",
@@ -60,6 +59,15 @@ const F3A_FILES = [
   "src/lib/insights/snapshot.ts",
   "src/lib/insights/queries.ts",
   "src/lib/insights/mutations.ts",
+  // F3b
+  "src/lib/finance/bills/status.ts",
+  "src/lib/finance/bills/queries.ts",
+  "src/lib/finance/bills/occurrences.ts",
+  "src/lib/finance/bills/materialize.ts",
+  "src/lib/finance/cash/queries.ts",
+  "src/lib/sales/calculations.ts",
+  "src/lib/sales/queries.ts",
+  "src/lib/clients/queries.ts",
 ];
 const F3A_FORBIDDEN = [
   ...FORBIDDEN_PATTERNS,
@@ -71,7 +79,7 @@ const F3A_FORBIDDEN = [
   { name: 'new Date("YYYY-MM-DD")', pattern: /new Date\(\s*["'`]/ },
 ];
 
-describe("arquivos da F3a nunca usam data/hora local do host", () => {
+describe("arquivos da F3a/F3b nunca usam data/hora local do host", () => {
   for (const relative of F3A_FILES) {
     it(`${relative} nao usa getters/setters locais, toLocale* nem construtor local`, () => {
       const code = readFileSync(join(process.cwd(), relative), "utf8")

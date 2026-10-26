@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { businessToday } from "./helpers/businessDate";
 
 // Os demais specs usam fillMoney (um unico evento `input`). Este exercita o
 // caminho de DIGITACAO REAL no navegador: tecla a tecla, backspace, clique no
@@ -40,9 +41,9 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
+// Dia de hoje no fuso da empresa de teste (não no fuso do processo).
 function todayIso() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return businessToday();
 }
 
 test.describe("MoneyInput - digitação real no navegador", () => {

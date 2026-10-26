@@ -2,8 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { summarizeEntries } from "@/lib/finance/calculations";
 import { calculateAccumulatedBalance } from "@/lib/finance/cash/calculations";
-// Legado ate a F3b (caixa ainda no fuso do processo) - ver legacyLocalDay.ts.
-import { legacyLocalMonthsBetween as monthsBetween } from "@/lib/finance/legacyLocalDay";
+import { monthsBetween } from "@/lib/finance/period";
+import { monthRange, zonedParts, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -84,17 +84,21 @@ export type CashMonthlyPoint = {
 // os lancamentos qualificados de uma vez, o agrupamento por mes e a soma
 // corrida acontecem em memoria - nunca uma query por mes. Reaproveita
 // monthsBetween (period.ts) para a lista de meses civis, mesma convencao de
-// "mes" usada no resto do financeiro/dashboard.
+// "mes" usada no resto do financeiro/dashboard. Meses no fuso da EMPRESA
+// (Etapa F3b): o mes de "agora" e cada lancamento sao resolvidos em
+// clock.timeZone, nunca no fuso do processo.
 export async function getMonthlyCashSeries(
   businessId: string,
   business: BusinessOpeningBalance,
-  now: Date = new Date()
+  clock: BusinessClock
 ): Promise<CashMonthlyPoint[]> {
   const effective = await resolveEffectiveOpeningBalance(businessId, business);
   if (!effective) return [];
 
-  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const months = monthsBetween(effective.date, rangeEnd);
+  const { timeZone } = clock;
+  const current = zonedParts(clock.now, timeZone);
+  const rangeEnd = monthRange(current.year, current.month, timeZone).end;
+  const months = monthsBetween(effective.date, rangeEnd, timeZone);
   if (months.length === 0) return [];
 
   const entries = await prisma.financialEntry.findMany({
@@ -102,11 +106,16 @@ export async function getMonthlyCashSeries(
     select: { type: true, amount: true, occurredAt: true },
   });
 
+  const byMonth = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    const { year, month } = zonedParts(entry.occurredAt, timeZone);
+    const key = `${year}-${month - 1}`;
+    byMonth.set(key, [...(byMonth.get(key) ?? []), entry]);
+  }
+
   let running = effective.amount;
   return months.map(({ year, month }) => {
-    const monthEntries = entries.filter(
-      (e) => e.occurredAt.getFullYear() === year && e.occurredAt.getMonth() === month
-    );
+    const monthEntries = byMonth.get(`${year}-${month}`) ?? [];
     const { netProfit } = summarizeEntries(monthEntries);
     running = running.plus(netProfit);
     return { year, month, label: MONTH_LABELS[month], balance: running };
