@@ -4,9 +4,9 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { appointmentInputSchema } from "@/lib/agenda/schema";
 import { createAppointment } from "@/lib/agenda/mutations";
 import { listAppointmentsForRange } from "@/lib/agenda/queries";
-import { todayRangeTokyo, weekRangeTokyo, parseTokyoDateTimeInput } from "@/lib/agenda/time";
+import { todayRange, agendaWeekRange, parseAgendaDateTimeInput } from "@/lib/agenda/time";
 
-// Listar por intervalo (hoje/semana, sempre em Toquio - ver time.ts). A
+// Listar por intervalo (hoje/semana, no fuso da empresa - ver time.ts). A
 // pagina /agenda (incremento 5) consulta listAppointmentsForRange direto
 // (Server Component, mesmo padrao do resto do app - ver vendas/page.tsx),
 // entao esta rota GET existe principalmente pra refresh client-side e
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const view = new URL(request.url).searchParams.get("view");
   const now = new Date();
-  const { start, end } = view === "week" ? weekRangeTokyo(now) : todayRangeTokyo(now);
+  const { start, end } = view === "week" ? agendaWeekRange(now, business.timezone) : todayRange(now, business.timezone);
 
   const appointments = await listAppointmentsForRange(business.id, start, end);
   return NextResponse.json({ appointments });
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const data = parsed.data;
   const result = await createAppointment(business.id, {
     clientId: data.clientId,
-    startAt: parseTokyoDateTimeInput(data.startAt),
+    startAt: parseAgendaDateTimeInput(data.startAt, business.timezone),
     services: data.services,
     notes: data.notes || null,
     allowOverlap: data.allowOverlap,

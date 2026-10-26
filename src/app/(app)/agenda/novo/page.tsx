@@ -55,6 +55,7 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
         initialClientId={clientIdParam}
         initialServiceIds={initialServiceIds}
         initialStartAt={initialStartAt}
+        timeZone={business.timezone}
       />
     </div>
   );

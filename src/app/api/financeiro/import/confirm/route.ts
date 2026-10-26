@@ -51,6 +51,7 @@ export async function POST(request: Request) {
     business.id,
     user.id,
     business.currency,
+    business.timezone,
     parsed.data.rows,
     parsed.data.duplicateAction,
     parsed.data.categoryDecisions

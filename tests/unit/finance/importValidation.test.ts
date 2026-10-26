@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Category } from "@prisma/client";
 import { validateImportRow } from "@/lib/finance/importValidation";
 import { normalizeCategoryName } from "@/lib/finance/categoryName";
+import { PROCESS_TZ } from "../../helpers/processClock";
 
 function makeCategory(overrides: Partial<Category>): Category {
   const name = overrides.name ?? "Venda de produtos";
@@ -31,7 +32,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda balcão", valor: "50000", observacao: "" },
       2,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.type).toBe("REVENUE");
@@ -45,7 +47,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "CUSTO", categoria: "  mercadoria  ", descricao: "Compra", valor: "100", observacao: "" },
       2,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.categoryId).toBe("cost-1");
@@ -57,7 +60,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "despesa", categoria: "Agua", descricao: "Conta", valor: "80", observacao: "" },
       2,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.categoryId).toBe("exp-2");
@@ -69,7 +73,8 @@ describe("validateImportRow", () => {
       { data: "05/09/2026", tipo: "despesa", categoria: "Aluguel", descricao: "Aluguel", valor: "1000", observacao: "" },
       2,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.occurredAt).toEqual(new Date(2026, 8, 5));
@@ -80,7 +85,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda", valor: "abc", observacao: "" },
       3,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Valor inválido.");
   });
@@ -90,7 +96,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda", valor: "0", observacao: "" },
       3,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("O valor precisa ser maior que zero.");
   });
@@ -103,7 +110,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Categoria Inexistente", descricao: "Venda", valor: "100", observacao: "" },
       4,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.categoryStatus).toBe("new");
@@ -117,7 +125,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "", descricao: "Venda", valor: "100", observacao: "" },
       4,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Categoria obrigatória.");
     expect(row.categoryStatus).toBe("missing");
@@ -128,7 +137,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "   ", descricao: "Venda", valor: "100", observacao: "" },
       4,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Categoria obrigatória.");
     expect(row.categoryStatus).toBe("missing");
@@ -139,7 +149,8 @@ describe("validateImportRow", () => {
       { data: "31/02/2026", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda", valor: "100", observacao: "" },
       5,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Data inválida.");
   });
@@ -149,7 +160,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "lucro", categoria: "Venda de produtos", descricao: "Venda", valor: "100", observacao: "" },
       6,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Tipo inválido.");
   });
@@ -159,7 +171,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda", valor: "320.50", observacao: "" },
       7,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors).toEqual([]);
     expect(row.amount).toBe(320.5);
@@ -170,7 +183,8 @@ describe("validateImportRow", () => {
       { data: "2026-09-01", tipo: "receita", categoria: "Venda de produtos", descricao: "Venda", valor: "100.50", observacao: "" },
       7,
       categories,
-      "JPY"
+      "JPY",
+      PROCESS_TZ
     );
     expect(row.errors).toContain("Valores em iene não têm casas decimais.");
   });
@@ -180,7 +194,8 @@ describe("validateImportRow", () => {
       { data: "", tipo: "", categoria: "", descricao: "", valor: "", observacao: "" },
       8,
       categories,
-      "BRL"
+      "BRL",
+      PROCESS_TZ
     );
     expect(row.errors.length).toBeGreaterThan(1);
   });

@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { resolveSaleDateFromAppointment } from "@/lib/agenda/calculations";
 
+// Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
+// usava o fuso fixo AGENDA_TIMEZONE = "Asia/Tokyo" - mesmo valor.
+const BUSINESS_TZ = "Asia/Tokyo";
+
 describe("resolveSaleDateFromAppointment - equivalência byte-a-byte com venda manual", () => {
   it("produz o mesmo instante que uma venda manual criada no mesmo dia calendário de Tóquio", () => {
     const startAt = new Date("2026-01-31T14:30:00Z"); // 23:30 de 31/jan em Toquio
-    const agendaSaleDate = resolveSaleDateFromAppointment(startAt);
+    const agendaSaleDate = resolveSaleDateFromAppointment(startAt, BUSINESS_TZ);
 
     // O que SaleForm manda (input type="date") + o que api/vendas/route.ts
     // faz com isso (`new Date(data.saleDate)`) - reproduzido aqui, nao
@@ -19,7 +23,7 @@ describe("resolveSaleDateFromAppointment - equivalência byte-a-byte com venda m
 
   it("virada de meia-noite de Toquio: instante as 15:30Z (00:30 de 1/fev em Toquio) gera o mesmo saleDate que uma venda manual do dia 1/fev, NUNCA do dia 31/jan", () => {
     const startAt = new Date("2026-01-31T15:30:00Z");
-    const agendaSaleDate = resolveSaleDateFromAppointment(startAt);
+    const agendaSaleDate = resolveSaleDateFromAppointment(startAt, BUSINESS_TZ);
 
     const manualSaleDateForFeb1 = new Date("2026-02-01");
     expect(agendaSaleDate.getTime()).toBe(manualSaleDateForFeb1.getTime());
@@ -30,7 +34,7 @@ describe("resolveSaleDateFromAppointment - equivalência byte-a-byte com venda m
 
   it("NUNCA usa Date.UTC/aritmética direta do instante - reconstrução alternativa (Tóquio meia-noite real) produziria um resultado DIFERENTE", () => {
     const startAt = new Date("2026-01-31T14:30:00Z");
-    const agendaSaleDate = resolveSaleDateFromAppointment(startAt);
+    const agendaSaleDate = resolveSaleDateFromAppointment(startAt, BUSINESS_TZ);
 
     // Meia-noite REAL de Toquio do dia 31/jan (o instante que Date.UTC(...)
     // com offset fixo produziria) e 2026-01-30T15:00:00.000Z - DIFERENTE do

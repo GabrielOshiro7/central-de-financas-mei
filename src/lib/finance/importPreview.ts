@@ -3,6 +3,7 @@ import { parseCsvBuffer, parseXlsxBuffer } from "@/lib/finance/importParsing";
 import { validateImportRow, type ValidatedImportRow } from "@/lib/finance/importValidation";
 import { markPotentialDuplicates } from "@/lib/finance/duplicates";
 import { listVisibleCategories } from "@/lib/finance/categories";
+import type { TimeZone } from "@/lib/time/zoned";
 
 export type ImportFormat = "csv" | "xlsx";
 
@@ -61,6 +62,7 @@ export function groupNewCategories(rows: ValidatedImportRow[]): NewCategoryGroup
 export async function previewImport(
   businessId: string,
   currency: Currency,
+  timeZone: TimeZone,
   buffer: Buffer,
   format: ImportFormat
 ): Promise<PreviewImportResult> {
@@ -71,9 +73,9 @@ export async function previewImport(
 
   const categories = await listVisibleCategories(businessId);
   const validated = parsed.rows.map((row, index) =>
-    validateImportRow(row, index + 2, categories, currency)
+    validateImportRow(row, index + 2, categories, currency, timeZone)
   );
-  const withDuplicates = await markPotentialDuplicates(businessId, validated);
+  const withDuplicates = await markPotentialDuplicates(businessId, validated, timeZone);
 
   return {
     ok: true,

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await previewImport(business.id, business.currency, buffer, format);
+  const result = await previewImport(business.id, business.currency, business.timezone, buffer, format);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });

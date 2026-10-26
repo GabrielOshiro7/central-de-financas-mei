@@ -5,6 +5,7 @@ import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 // internamente pra validar categoryId (mesma funcao reaproveitada, ver
 // completeAppointment abaixo).
 import { createSale, type CreateSaleInput } from "@/lib/sales/mutations";
+import type { TimeZone } from "@/lib/time/zoned";
 import {
   canTransition,
   computeEndAt,
@@ -70,7 +71,7 @@ export type AppointmentServiceInput = { productId: string };
 
 export type AppointmentMutationInput = {
   clientId: string;
-  startAt: Date; // ja convertido de Toquio pra UTC pelo chamador (rota), via parseTokyoDateTimeInput
+  startAt: Date; // ja convertido do fuso da empresa pra instante pelo chamador (rota), via parseAgendaDateTimeInput
   services: AppointmentServiceInput[];
   notes?: string | null;
   allowOverlap?: boolean;
@@ -279,7 +280,10 @@ export async function completeAppointment(
   businessId: string,
   userId: string,
   appointmentId: string,
-  input: CompleteAppointmentInput
+  input: CompleteAppointmentInput,
+  // Fuso da empresa (Business.timezone, Etapa F3c) - define o dia do
+  // atendimento usado como saleDate.
+  timeZone: TimeZone
 ): Promise<MutationResult<CompleteAppointmentResult>> {
   const now = new Date();
 
@@ -306,10 +310,10 @@ export async function completeAppointment(
         const appointment = await tx.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
 
         // Diretriz aprovada (Etapa 8, incremento 3): saleDate/paidAt à vista
-        // usam o dia do ATENDIMENTO (startAt) em Toquio, nunca `now`/
+        // usam o dia do ATENDIMENTO (startAt) no fuso da empresa, nunca `now`/
         // completedAt - cobre corretamente o registro retroativo (dono
         // conclui dias depois de o servico ter sido prestado).
-        const saleDate = resolveSaleDateFromAppointment(appointment.startAt);
+        const saleDate = resolveSaleDateFromAppointment(appointment.startAt, timeZone);
 
         const saleInput: CreateSaleInput = {
           clientRequestId: `agenda:${appointmentId}`,

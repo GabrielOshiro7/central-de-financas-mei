@@ -7,6 +7,10 @@ import { getAppointmentById, getLastUsedCompletionCategoryId } from "@/lib/agend
 import { resolveSaleDateFromAppointment } from "@/lib/agenda/calculations";
 import { createSale } from "@/lib/sales/mutations";
 
+// Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
+// usava o fuso fixo AGENDA_TIMEZONE = "Asia/Tokyo" - mesmo valor.
+const BUSINESS_TZ = "Asia/Tokyo";
+
 describe("agenda - concluir atendimento", () => {
   let userId: string;
   let businessId: string;
@@ -85,7 +89,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: revenueCategoryId,
       items: [{ productId: serviceId, description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-01", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -95,7 +99,7 @@ describe("agenda - concluir atendimento", () => {
     expect(sale.bills).toHaveLength(1);
     expect(sale.bills[0].status).toBe("PAID");
 
-    const expectedSaleDate = resolveSaleDateFromAppointment(startAt);
+    const expectedSaleDate = resolveSaleDateFromAppointment(startAt, BUSINESS_TZ);
     expect(sale.saleDate.getTime()).toBe(expectedSaleDate.getTime());
     // Requisito explícito: Bill.paidAt é o MESMO instante de saleDate, nunca
     // "agora"/completedAt.
@@ -121,7 +125,7 @@ describe("agenda - concluir atendimento", () => {
         { dueDate: "2026-06-15", amount: 50 },
         { dueDate: "2026-07-01", amount: 50 },
       ],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -140,7 +144,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: revenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-03", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(completed.ok).toBe(true);
     if (!completed.ok) return;
     const saleFromAgenda = await prisma.sale.findUniqueOrThrow({ where: { id: completed.value.saleId } });
@@ -174,8 +178,8 @@ describe("agenda - concluir atendimento", () => {
       installments: [{ dueDate: "2026-06-04", amount: 50, paidNow: true }],
     };
 
-    const first = await completeAppointment(businessId, userId, id, input);
-    const second = await completeAppointment(businessId, userId, id, input);
+    const first = await completeAppointment(businessId, userId, id, input, BUSINESS_TZ);
+    const second = await completeAppointment(businessId, userId, id, input, BUSINESS_TZ);
 
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
@@ -197,8 +201,8 @@ describe("agenda - concluir atendimento", () => {
     };
 
     const [resultA, resultB] = await Promise.all([
-      completeAppointment(businessId, userId, id, input),
-      completeAppointment(businessId, userId, id, input),
+      completeAppointment(businessId, userId, id, input, BUSINESS_TZ),
+      completeAppointment(businessId, userId, id, input, BUSINESS_TZ),
     ]);
 
     expect(resultA.ok).toBe(true);
@@ -220,7 +224,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: revenueCategoryId,
       items: [{ productId: serviceId, description: "Corte (promoção)", quantity: 1, unitPrice: 35 }], // defaultPrice do Product é 50
       installments: [{ dueDate: "2026-06-06", amount: 35, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -235,7 +239,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: otherBusinessRevenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-07", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(false);
 
     const appointment = await getAppointmentById(businessId, id);
@@ -249,7 +253,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: inactiveCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-08", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(false);
   });
 
@@ -259,7 +263,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: expenseCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-09", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(false);
   });
 
@@ -271,7 +275,7 @@ describe("agenda - concluir atendimento", () => {
       categoryId: revenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-06-10", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(result.ok).toBe(false);
 
     const salesForAppointment = await prisma.sale.findMany({ where: { businessId, clientRequestId: `agenda:${id}` } });
@@ -305,7 +309,7 @@ describe("agenda - concluir atendimento", () => {
         categoryId: revenueCategoryId,
         items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
         installments: [{ dueDate: "2026-06-11", amount: 50, paidNow: true }],
-      });
+      }, BUSINESS_TZ);
       expect(completed.ok).toBe(true);
 
       const after = await getLastUsedCompletionCategoryId(freshBusiness.id);

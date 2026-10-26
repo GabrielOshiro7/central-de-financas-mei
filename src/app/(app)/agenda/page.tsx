@@ -2,12 +2,11 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { AppointmentStatus } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
-import { formatTokyoDateLong, formatTokyoMonthYear } from "@/lib/agenda/time";
+import { agendaDateKey, formatAgendaDateLong, formatAgendaMonthYear } from "@/lib/agenda/time";
 import { listAppointmentsForRange, listAppointmentsForMonth, getLastUsedCompletionCategoryId } from "@/lib/agenda/queries";
 import {
-  tokyoDateKey,
-  tokyoMonthRange,
-  tokyoDayRange,
+  agendaMonthRange,
+  agendaDayRange,
   buildMonthGrid,
   groupAppointmentsByDay,
   hasVisibleAppointment,
@@ -89,9 +88,11 @@ function NewAppointmentShortcut({ dateKey }: { dateKey: string }) {
 export default async function AgendaPage(props: PageProps<"/agenda">) {
   const searchParams = await props.searchParams;
   const { business } = await requireOnboardedUser();
+  // Fuso da empresa ja carregada (Etapa F3c; antes fixo em Asia/Tokyo).
+  const timeZone = business.timezone;
 
   const now = new Date();
-  const todayKey = tokyoDateKey(now);
+  const todayKey = agendaDateKey(now, timeZone);
   const todayYear = Number(todayKey.slice(0, 4));
   const todayMonth = Number(todayKey.slice(5, 7));
 
@@ -131,7 +132,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
   ]);
   const revenueCategoryOptions = revenueCategories.map((c) => ({ id: c.id, name: c.name }));
 
-  const monthLabel = capitalize(formatTokyoMonthYear(tokyoMonthRange(year, month).start));
+  const monthLabel = capitalize(formatAgendaMonthYear(agendaMonthRange(year, month, timeZone).start, timeZone));
 
   function tabHref(tab: View): string {
     const params = new URLSearchParams();
@@ -148,11 +149,11 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
   let content: ReactNode;
 
   if (view === "day") {
-    const { start, end } = tokyoDayRange(dayTabKey);
+    const { start, end } = agendaDayRange(dayTabKey, timeZone);
     const appointments = await listAppointmentsForRange(business.id, start, end);
     const items = toListItems(appointments);
-    const previousHref = `/agenda?view=day&day=${tokyoDateKey(new Date(start.getTime() - 1))}`;
-    const nextHref = `/agenda?view=day&day=${tokyoDateKey(end)}`;
+    const previousHref = `/agenda?view=day&day=${agendaDateKey(new Date(start.getTime() - 1), timeZone)}`;
+    const nextHref = `/agenda?view=day&day=${agendaDateKey(end, timeZone)}`;
     const emptyMessage = dayTabKey === todayKey ? "Nenhum agendamento para hoje." : "Nenhum agendamento neste dia.";
 
     content = (
@@ -162,7 +163,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             ‹ Anterior
           </Link>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatTokyoDateLong(start)}</h2>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatAgendaDateLong(start, timeZone)}</h2>
             {dayTabKey !== todayKey && (
               <Link href={`/agenda?view=day&day=${todayKey}`} className="border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
                 Hoje
@@ -173,14 +174,14 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             Próximo ›
           </Link>
         </div>
-        <AppointmentSimpleList items={items} emptyMessage={emptyMessage} currency={business.currency} revenueCategories={revenueCategoryOptions} defaultCategoryId={defaultCategoryId} />
+        <AppointmentSimpleList items={items} emptyMessage={emptyMessage} currency={business.currency} revenueCategories={revenueCategoryOptions} defaultCategoryId={defaultCategoryId} timeZone={timeZone} />
       </div>
     );
   } else {
     // Calendario e Mes compartilham a mesma consulta (o mes inteiro) - a
     // diferenca e so como o resultado e apresentado.
-    const monthAppointments = await listAppointmentsForMonth(business.id, year, month);
-    const grouped = groupAppointmentsByDay(monthAppointments);
+    const monthAppointments = await listAppointmentsForMonth(business.id, year, month, timeZone);
+    const grouped = groupAppointmentsByDay(monthAppointments, timeZone);
 
     if (view === "month") {
       const items = toListItems(monthAppointments);
@@ -197,11 +198,12 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             currency={business.currency}
             revenueCategories={revenueCategoryOptions}
             defaultCategoryId={defaultCategoryId}
+            timeZone={timeZone}
           />
         </div>
       );
     } else {
-      const weeks: (CalendarDayCell | null)[][] = buildMonthGrid(year, month).map((week) =>
+      const weeks: (CalendarDayCell | null)[][] = buildMonthGrid(year, month, timeZone).map((week) =>
         week.map((cell) => {
           if (!cell) return null;
           const dayAppointments = grouped.get(cell.dateKey) ?? [];
@@ -210,7 +212,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             dayNumber: Number(cell.dateKey.slice(8, 10)),
             hasAppointment: hasVisibleAppointment(dayAppointments),
             appointmentCount: dayAppointments.length,
-            fullDateLabel: formatTokyoDateLong(cell.date),
+            fullDateLabel: formatAgendaDateLong(cell.date, timeZone),
           };
         })
       );
@@ -234,7 +236,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
           <div className="flex flex-col gap-4">
             {calendarSelectedKey ? (
               <>
-                <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatTokyoDateLong(tokyoDayRange(calendarSelectedKey).start)}</h2>
+                <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatAgendaDateLong(agendaDayRange(calendarSelectedKey, timeZone).start, timeZone)}</h2>
                 {selectedItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
                     <p>Nenhum agendamento neste dia.</p>
@@ -247,6 +249,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
                     currency={business.currency}
                     revenueCategories={revenueCategoryOptions}
                     defaultCategoryId={defaultCategoryId}
+                    timeZone={timeZone}
                   />
                 )}
               </>

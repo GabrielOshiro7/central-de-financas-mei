@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
-import { formatTokyoDateLong, formatTokyoTime } from "@/lib/agenda/time";
+import { formatAgendaDateLong, formatAgendaTime } from "@/lib/agenda/time";
 import { groupAppointmentsByDay } from "@/lib/agenda/calendar";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 import { AppointmentActions } from "@/components/agenda/AppointmentActions";
@@ -36,18 +36,21 @@ export function AppointmentRow({
   currency,
   revenueCategories,
   defaultCategoryId,
+  timeZone,
 }: {
   item: AppointmentListItem;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
+  // Fuso da empresa (Etapa F3c) - horarios exibidos nele.
+  timeZone: string;
 }) {
   return (
     <li className="flex flex-col gap-3 border border-gray-200 p-4 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
-            {formatTokyoTime(item.startAt)}–{formatTokyoTime(item.endAt)}
+            {formatAgendaTime(item.startAt, timeZone)}–{formatAgendaTime(item.endAt, timeZone)}
           </span>
           <AppointmentStatusBadge status={item.status} />
         </div>
@@ -94,12 +97,14 @@ export function AppointmentSimpleList({
   currency,
   revenueCategories,
   defaultCategoryId,
+  timeZone,
 }: {
   items: AppointmentListItem[];
   emptyMessage: string;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
+  timeZone: string;
 }) {
   if (items.length === 0) {
     return <EmptyState message={emptyMessage} />;
@@ -108,14 +113,14 @@ export function AppointmentSimpleList({
   return (
     <ul className="flex flex-col gap-2">
       {items.map((item) => (
-        <AppointmentRow key={item.id} item={item} currency={currency} revenueCategories={revenueCategories} defaultCategoryId={defaultCategoryId} />
+        <AppointmentRow key={item.id} item={item} currency={currency} revenueCategories={revenueCategories} defaultCategoryId={defaultCategoryId} timeZone={timeZone} />
       ))}
     </ul>
   );
 }
 
 // Lista agrupada por dia (sem grade, sem arrastar e soltar) - usada pela aba
-// Mes (redesign). Agrupamento pelo dia calendario de Toquio de cada
+// Mes (redesign). Agrupamento pelo dia calendario (no fuso da empresa) de cada
 // agendamento (groupAppointmentsByDay, calendar.ts).
 export function AppointmentGroupedList({
   items,
@@ -123,25 +128,27 @@ export function AppointmentGroupedList({
   currency,
   revenueCategories,
   defaultCategoryId,
+  timeZone,
 }: {
   items: AppointmentListItem[];
   emptyMessage: string;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
+  timeZone: string;
 }) {
   if (items.length === 0) {
     return <EmptyState message={emptyMessage} />;
   }
 
-  const groups = groupAppointmentsByDay(items);
+  const groups = groupAppointmentsByDay(items, timeZone);
   const orderedKeys = [...groups.keys()].sort();
 
   return (
     <div className="flex flex-col gap-6">
       {orderedKeys.map((key) => (
         <div key={key} className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{formatTokyoDateLong(groups.get(key)![0].startAt)}</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{formatAgendaDateLong(groups.get(key)![0].startAt, timeZone)}</h3>
           <ul className="flex flex-col gap-2">
             {groups.get(key)!.map((item) => (
               <AppointmentRow
@@ -150,6 +157,7 @@ export function AppointmentGroupedList({
                 currency={currency}
                 revenueCategories={revenueCategories}
                 defaultCategoryId={defaultCategoryId}
+                timeZone={timeZone}
               />
             ))}
           </ul>

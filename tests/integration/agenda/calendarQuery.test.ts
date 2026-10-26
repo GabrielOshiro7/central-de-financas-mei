@@ -5,6 +5,10 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAppointment } from "@/lib/agenda/mutations";
 import { listAppointmentsForMonth } from "@/lib/agenda/queries";
 
+// Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
+// usava o fuso fixo AGENDA_TIMEZONE = "Asia/Tokyo" - mesmo valor.
+const BUSINESS_TZ = "Asia/Tokyo";
+
 // Consulta do mes do redesign do Calendario (Etapa Agenda-calendario) -
 // mesmo estilo de setup/teardown de isolation.test.ts: businessId/userId
 // proprios por arquivo (sufixo Date.now()), teardown explicito, nenhuma
@@ -65,7 +69,7 @@ describe("agenda - consulta do mes (listAppointmentsForMonth)", () => {
     expect(resultA.ok).toBe(true);
     expect(resultB.ok).toBe(true);
 
-    const monthForA = await listAppointmentsForMonth(businessAId, 2026, 8);
+    const monthForA = await listAppointmentsForMonth(businessAId, 2026, 8, BUSINESS_TZ);
     expect(monthForA.map((a) => a.businessId)).toEqual([businessAId]);
     if (resultB.ok) {
       expect(monthForA.find((a) => a.id === resultB.value.id)).toBeUndefined();
@@ -97,7 +101,7 @@ describe("agenda - consulta do mes (listAppointmentsForMonth)", () => {
     expect(inAugust.ok).toBe(true);
     expect(inSeptember.ok).toBe(true);
 
-    const august = await listAppointmentsForMonth(businessAId, 2026, 8);
+    const august = await listAppointmentsForMonth(businessAId, 2026, 8, BUSINESS_TZ);
     const augustIds = august.map((a) => a.id);
 
     if (inAugust.ok) expect(augustIds).toContain(inAugust.value.id);

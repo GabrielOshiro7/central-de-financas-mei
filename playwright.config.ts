@@ -33,7 +33,9 @@ export default defineConfig({
     // de login/cadastro) de qualquer uso anterior, o que gerou falhas
     // intermitentes e dificeis de diagnosticar nos testes.
     reuseExistingServer: false,
-    timeout: 60_000,
+    // Compilacao a frio do `next dev` (pasta .next-test vazia): 23,6 s medidos
+    // com a maquina ociosa, e ja passou de 60 s sob carga (F3b). 180 s da folga.
+    timeout: 180_000,
     env: {
       DISABLE_RATE_LIMIT: "1",
       // Explicitos: variaveis do processo vencem o .env que o `next dev` le.

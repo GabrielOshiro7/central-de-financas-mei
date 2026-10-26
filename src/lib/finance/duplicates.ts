@@ -1,9 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ValidatedImportRow } from "@/lib/finance/importValidation";
-
-function sameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
+import { addDays, startOfDayInstant, toDateKey, type TimeZone } from "@/lib/time/zoned";
 
 function normalizeDescription(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -14,30 +11,36 @@ function normalizeDescription(value: string): string {
 // como chave de identificacao (secao 14). So compara contra importacoes
 // anteriores, nao contra lancamentos manuais - reimportar o mesmo arquivo e o
 // cenario que essa checagem protege.
+//
+// Etapa F3c: "mesma data" = mesmo dia de calendario no FUSO DA EMPRESA (antes:
+// getters locais, fuso do processo), e a janela da consulta cobre os dias
+// inteiros nesse fuso.
 export async function markPotentialDuplicates(
   businessId: string,
-  rows: ValidatedImportRow[]
+  rows: ValidatedImportRow[],
+  timeZone: TimeZone
 ): Promise<ValidatedImportRow[]> {
   const validRows = rows.filter((r) => r.errors.length === 0 && r.occurredAt);
   if (validRows.length === 0) return rows;
 
-  const dates = validRows.map((r) => r.occurredAt as Date);
-  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
-  maxDate.setDate(maxDate.getDate() + 1);
+  const keys = validRows.map((r) => toDateKey(r.occurredAt as Date, timeZone)).sort();
+  const start = startOfDayInstant(keys[0], timeZone);
+  const end = startOfDayInstant(addDays(keys[keys.length - 1], 1), timeZone);
 
   const existing = await prisma.financialEntry.findMany({
-    where: { businessId, source: "IMPORT", occurredAt: { gte: minDate, lt: maxDate } },
+    where: { businessId, source: "IMPORT", occurredAt: { gte: start, lt: end } },
     select: { type: true, occurredAt: true, description: true, amount: true },
   });
+  const existingWithKey = existing.map((e) => ({ ...e, dateKey: toDateKey(e.occurredAt, timeZone) }));
 
   return rows.map((row) => {
     if (row.errors.length > 0 || !row.occurredAt || row.amount === null) return row;
 
-    const isDuplicate = existing.some(
+    const rowKey = toDateKey(row.occurredAt, timeZone);
+    const isDuplicate = existingWithKey.some(
       (e) =>
         e.type === row.type &&
-        sameDay(e.occurredAt, row.occurredAt as Date) &&
+        e.dateKey === rowKey &&
         normalizeDescription(e.description) === normalizeDescription(row.description) &&
         e.amount.toNumber() === row.amount
     );

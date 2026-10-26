@@ -5,6 +5,7 @@ import { confirmImport, type ImportRowInput, type CategoryDecision } from "@/lib
 import { parseCsvBuffer, parseXlsxBuffer } from "@/lib/finance/importParsing";
 import { generateXlsxTemplate } from "@/lib/finance/templates";
 import { normalizeCategoryName } from "@/lib/finance/categoryName";
+import { PROCESS_TZ } from "../../helpers/processClock";
 
 describe("importação de lançamentos financeiros", () => {
   let userId: string;
@@ -47,7 +48,7 @@ describe("importação de lançamentos financeiros", () => {
     if (!parsed.ok) return;
 
     const rows: ImportRowInput[] = parsed.rows.map((r, i) => ({ rowNumber: i + 2, ...r }) as ImportRowInput);
-    const result = await confirmImport(businessId, userId, "BRL", rows, "import_anyway");
+    const result = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, rows, "import_anyway");
 
     expect(result.inserted).toBe(1);
     expect(result.failed).toHaveLength(0);
@@ -64,7 +65,7 @@ describe("importação de lançamentos financeiros", () => {
     if (!parsed.ok) return;
 
     const rows: ImportRowInput[] = parsed.rows.map((r, i) => ({ rowNumber: i + 2, ...r }) as ImportRowInput);
-    const result = await confirmImport(businessId, userId, "BRL", rows, "import_anyway");
+    const result = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, rows, "import_anyway");
 
     expect(result.inserted).toBe(3); // as 3 linhas de exemplo do template
     expect(result.failed).toHaveLength(0);
@@ -78,7 +79,7 @@ describe("importação de lançamentos financeiros", () => {
       row({ rowNumber: 4, categoria: "" }), // categoria vazia continua bloqueando (Etapa 3.1, item 3)
     ];
 
-    const result = await confirmImport(businessId, userId, "BRL", rows, "import_anyway");
+    const result = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, rows, "import_anyway");
 
     expect(result.inserted).toBe(1);
     expect(result.failed).toHaveLength(2);
@@ -100,10 +101,10 @@ describe("importação de lançamentos financeiros", () => {
   it("sinaliza como duplicado ao reimportar o mesmo lançamento, e não insere de novo quando a ação é 'skip'", async () => {
     const original = row({ rowNumber: 2, descricao: "Lançamento repetido", valor: "999" });
 
-    const first = await confirmImport(businessId, userId, "BRL", [original], "import_anyway");
+    const first = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, [original], "import_anyway");
     expect(first.inserted).toBe(1);
 
-    const second = await confirmImport(businessId, userId, "BRL", [original], "skip");
+    const second = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, [original], "skip");
     expect(second.inserted).toBe(0);
     expect(second.skippedDuplicates).toBe(1);
 
@@ -116,8 +117,8 @@ describe("importação de lançamentos financeiros", () => {
   it("permite importar mesmo assim quando o usuário opta por 'import_anyway'", async () => {
     const original = row({ rowNumber: 2, descricao: "Lançamento repetido de propósito", valor: "111" });
 
-    await confirmImport(businessId, userId, "BRL", [original], "import_anyway");
-    const second = await confirmImport(businessId, userId, "BRL", [original], "import_anyway");
+    await confirmImport(businessId, userId, "BRL", PROCESS_TZ, [original], "import_anyway");
+    const second = await confirmImport(businessId, userId, "BRL", PROCESS_TZ, [original], "import_anyway");
 
     expect(second.inserted).toBe(1);
 
@@ -135,6 +136,7 @@ describe("importação de lançamentos financeiros", () => {
       businessId,
       userId,
       "BRL",
+      PROCESS_TZ,
       [row({ rowNumber: 2, tipo: "custo", categoria: categoryName, descricao: "Abastecimento", valor: "150" })],
       "import_anyway"
     );
@@ -168,6 +170,7 @@ describe("importação de lançamentos financeiros", () => {
       businessId,
       userId,
       "BRL",
+      PROCESS_TZ,
       [row({ rowNumber, tipo: "despesa", categoria: "Salario", descricao: "Pagamento", valor: "2000" })],
       "import_anyway",
       decisions
@@ -186,6 +189,7 @@ describe("importação de lançamentos financeiros", () => {
       businessId,
       userId,
       "BRL",
+      PROCESS_TZ,
       [
         row({ rowNumber: 2, tipo: "custo", categoria: categoryName, descricao: "Corrida 1", valor: "20" }),
         row({ rowNumber: 3, tipo: "custo", categoria: categoryName.toUpperCase(), descricao: "Corrida 2", valor: "25" }),
@@ -215,6 +219,7 @@ describe("importação de lançamentos financeiros", () => {
       businessId,
       userId,
       "BRL",
+      PROCESS_TZ,
       [row({ rowNumber: 2, categoria: "   ", descricao: "Sem categoria" })],
       "import_anyway"
     );
@@ -241,6 +246,7 @@ describe("importação de lançamentos financeiros", () => {
       businessId,
       userId,
       "BRL",
+      PROCESS_TZ,
       [
         row({ rowNumber: 2, tipo: "custo", categoria: newCategoryName, descricao: "Linha que deveria ser desfeita", valor: "50" }),
         // 13 digitos antes da virgula: estoura Decimal(14,2), que permite no

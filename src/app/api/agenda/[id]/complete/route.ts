@@ -28,17 +28,23 @@ export async function POST(request: Request, context: RouteContext<"/api/agenda/
   }
 
   const data = parsed.data;
-  const result = await completeAppointment(business.id, user.id, id, {
-    categoryId: data.categoryId,
-    items: data.items.map((item) => ({
-      productId: item.productId || null,
-      description: item.description,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-    })),
-    paymentMethod: data.paymentMethod || null,
-    installments: data.installments,
-  });
+  const result = await completeAppointment(
+    business.id,
+    user.id,
+    id,
+    {
+      categoryId: data.categoryId,
+      items: data.items.map((item) => ({
+        productId: item.productId || null,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      })),
+      paymentMethod: data.paymentMethod || null,
+      installments: data.installments,
+    },
+    business.timezone
+  );
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });

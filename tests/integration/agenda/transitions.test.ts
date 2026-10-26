@@ -6,6 +6,10 @@ import { createAppointment, changeAppointmentStatus, completeAppointment } from 
 import { getAppointmentById } from "@/lib/agenda/queries";
 import { cancelSale } from "@/lib/sales/mutations";
 
+// Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
+// usava o fuso fixo AGENDA_TIMEZONE = "Asia/Tokyo" - mesmo valor.
+const BUSINESS_TZ = "Asia/Tokyo";
+
 describe("agenda - transições de status", () => {
   let userId: string;
   let businessId: string;
@@ -63,7 +67,7 @@ describe("agenda - transições de status", () => {
       categoryId: revenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-05-02", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(completed.ok).toBe(true);
 
     const result = await changeAppointmentStatus(businessId, id, "CANCELADO");
@@ -116,7 +120,7 @@ describe("agenda - transições de status", () => {
       categoryId: revenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-05-10", amount: 50, paidNow: true }],
-    });
+    }, BUSINESS_TZ);
     expect(completed.ok).toBe(true);
 
     const result = await changeAppointmentStatus(businessId, id, "AGENDADO");
@@ -150,7 +154,7 @@ describe("agenda - transições de status", () => {
       categoryId: revenueCategoryId,
       items: [{ description: "Corte", quantity: 1, unitPrice: 50 }],
       installments: [{ dueDate: "2026-05-12", amount: 50, paidNow: false }], // a prazo - Bill PENDING, cancelável
-    });
+    }, BUSINESS_TZ);
     expect(completed.ok).toBe(true);
     if (!completed.ok) return;
 

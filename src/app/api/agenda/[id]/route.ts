@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { appointmentInputSchema } from "@/lib/agenda/schema";
 import { updateAppointment } from "@/lib/agenda/mutations";
-import { parseTokyoDateTimeInput } from "@/lib/agenda/time";
+import { parseAgendaDateTimeInput } from "@/lib/agenda/time";
 
 // Editar/remarcar - so em AGENDADO/CONFIRMADO (ver updateMany condicional em
 // updateAppointment, mutations.ts). Sem DELETE de proposito (agendamento
@@ -30,7 +30,7 @@ export async function PATCH(request: Request, context: RouteContext<"/api/agenda
   const data = parsed.data;
   const result = await updateAppointment(business.id, id, {
     clientId: data.clientId,
-    startAt: parseTokyoDateTimeInput(data.startAt),
+    startAt: parseAgendaDateTimeInput(data.startAt, business.timezone),
     services: data.services,
     notes: data.notes || null,
     allowOverlap: data.allowOverlap,

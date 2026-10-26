@@ -1,5 +1,6 @@
 import type { AppointmentStatus } from "@prisma/client";
-import { formatTokyoDateKey } from "@/lib/agenda/time";
+import { agendaDateKey } from "@/lib/agenda/time";
+import type { TimeZone } from "@/lib/time/zoned";
 
 // Tabela EXPLICITA de pares permitidos (nunca uma funcao "generica" com
 // regras soltas) - cada aresta e uma decisao deliberada da Etapa 8, testada
@@ -38,7 +39,7 @@ export function canTransition(from: AppointmentStatus, to: AppointmentStatus, ct
 
   // "Faltou" so pode ser marcado se o horario do agendamento ja passou -
   // comparacao de instante-para-instante, fuso-agnostica (nao precisa de
-  // Asia/Tokyo aqui, so os limites de calendario do time.ts precisam).
+  // fuso aqui, so os limites de calendario do time.ts precisam).
   if (to === "FALTOU" && ctx.startAt.getTime() > now.getTime()) {
     return { ok: false, error: "Só é possível marcar falta depois do horário do agendamento." };
   }
@@ -86,7 +87,8 @@ export function detectOverlap(
 // uma string "YYYY-MM-DD" (input type="date") que a API converte com
 // `new Date(string)` (meia-noite UTC dessa string - ver saleDate em
 // api/vendas/route.ts). Aqui fazemos EXATAMENTE o mesmo: formata o dia
-// calendario de Toquio como string e passa pelo mesmo `new Date(string)` -
+// calendario NO FUSO DA EMPRESA (Etapa F3c; antes fixo em Toquio) como
+// string e passa pelo mesmo `new Date(string)` -
 // NUNCA Date.UTC(...)/aritmetica calculada direto do instante de startAt ou
 // completedAt, que produziria um resultado DIFERENTE (ver teste de
 // comparacao em tests/unit/agenda/saleDateConversion.test.ts). Bill.paidAt
@@ -94,6 +96,6 @@ export function detectOverlap(
 // decisao aprovada da Etapa 8, incremento 3): o pagamento e datado do dia do
 // atendimento, nao do dia em que o dono efetivamente clicou em "Concluir"
 // (registro retroativo).
-export function resolveSaleDateFromAppointment(startAt: Date): Date {
-  return new Date(formatTokyoDateKey(startAt));
+export function resolveSaleDateFromAppointment(startAt: Date, timeZone: TimeZone): Date {
+  return new Date(agendaDateKey(startAt, timeZone));
 }

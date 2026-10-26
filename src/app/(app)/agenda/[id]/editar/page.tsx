@@ -4,7 +4,7 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { getAppointmentById } from "@/lib/agenda/queries";
 import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
-import { formatTokyoDateKey, formatTokyoTime } from "@/lib/agenda/time";
+import { agendaDateKey, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentForm } from "@/components/agenda/AppointmentForm";
 
 export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[id]/editar">) {
@@ -20,7 +20,7 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
   ]);
 
   const editable = appointment.status === "AGENDADO" || appointment.status === "CONFIRMADO";
-  const initialStartAt = `${formatTokyoDateKey(appointment.startAt)}T${formatTokyoTime(appointment.startAt)}`;
+  const initialStartAt = `${agendaDateKey(appointment.startAt, business.timezone)}T${formatAgendaTime(appointment.startAt, business.timezone)}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +51,7 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
           initialServiceIds={appointment.services.map((s) => s.productId).filter((sid): sid is string => Boolean(sid))}
           initialStartAt={initialStartAt}
           initialNotes={appointment.notes ?? ""}
+          timeZone={business.timezone}
         />
       )}
     </div>

@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createTransaction } from "@/lib/finance/mutations";
 import { confirmImport, type ImportRowInput } from "@/lib/finance/importConfirm";
 import { updateBusinessProfile, type BusinessEditInput } from "@/lib/onboarding/businessMutations";
+import { PROCESS_TZ } from "../../helpers/processClock";
 
 const { Decimal } = Prisma;
 
@@ -67,6 +68,7 @@ describe("moeda e precisao decimal (Etapa 3.1)", () => {
       brlBusinessId,
       brlUserId,
       "BRL",
+      PROCESS_TZ,
       [importRow({ rowNumber: 2, descricao: "Venda com centavos", valor: "320.50" })],
       "import_anyway"
     );
@@ -87,6 +89,7 @@ describe("moeda e precisao decimal (Etapa 3.1)", () => {
       jpyBusinessId,
       jpyUserId,
       "JPY",
+      PROCESS_TZ,
       [importRow({ rowNumber: 2, descricao: "Venda inválida em iene", valor: "320.50" })],
       "import_anyway"
     );
@@ -100,6 +103,7 @@ describe("moeda e precisao decimal (Etapa 3.1)", () => {
       jpyBusinessId,
       jpyUserId,
       "JPY",
+      PROCESS_TZ,
       [importRow({ rowNumber: 2, descricao: "Venda válida em iene", valor: "3200" })],
       "import_anyway"
     );

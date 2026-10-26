@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
 import { computeEndAt } from "@/lib/agenda/calculations";
-import { formatTokyoTime } from "@/lib/agenda/time";
+import { formatAgendaTime, parseAgendaDateTimeInput } from "@/lib/agenda/time";
 
 const primaryButtonClass =
   "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
@@ -30,6 +30,7 @@ export function AppointmentForm({
   initialServiceIds,
   initialStartAt,
   initialNotes,
+  timeZone,
 }: {
   mode: "create" | "edit";
   appointmentId?: string;
@@ -39,11 +40,13 @@ export function AppointmentForm({
   currency: Currency | null;
   initialClientId?: string;
   initialServiceIds?: string[];
-  // "YYYY-MM-DDTHH:mm" já no fuso de Tóquio (ver formatTokyoDateKey +
-  // formatTokyoTime na página que monta esse valor) - nunca calculado com
+  // "YYYY-MM-DDTHH:mm" já no fuso da empresa (ver agendaDateKey +
+  // formatAgendaTime na página que monta esse valor) - nunca calculado com
   // fuso local do navegador.
   initialStartAt?: string;
   initialNotes?: string;
+  // Fuso da empresa (Business.timezone, Etapa F3c; antes fixo em Tóquio).
+  timeZone: string;
 }) {
   const router = useRouter();
 
@@ -88,15 +91,15 @@ export function AppointmentForm({
     if (!match) return null;
     // Preview local ao componente - so pra mostrar o horario de fim
     // calculado, nao usado pra persistir nada (o backend recalcula do zero
-    // via parseTokyoDateTimeInput + computeEndAt).
-    const [, year, month, day, hour, minute] = match;
-    const startAtUtcGuess = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)) - 9 * 60 * 60 * 1000);
+    // via parseAgendaDateTimeInput + computeEndAt). Etapa F3c: mesma
+    // conversao do backend, no fuso da empresa (antes: offset fixo de -9h).
+    const startAt = parseAgendaDateTimeInput(startAtInput, timeZone);
     const endAt = computeEndAt(
-      startAtUtcGuess,
+      startAt,
       selectedServices.map((s) => ({ durationMinutesSnapshot: s.durationMinutes }))
     );
-    return formatTokyoTime(endAt);
-  }, [startAtInput, selectedServices]);
+    return formatAgendaTime(endAt, timeZone);
+  }, [startAtInput, selectedServices, timeZone]);
 
   async function createClientInline() {
     if (!newClientName.trim()) return;

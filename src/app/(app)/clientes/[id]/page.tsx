@@ -8,7 +8,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SALE_STATUS_LABELS } from "@/lib/sales/options";
 import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bills/status";
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
-import { formatTokyoDate, formatTokyoTime } from "@/lib/agenda/time";
+import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 import { clockFor } from "@/lib/time/zoned";
 
@@ -189,7 +189,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                 <div className="flex flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-gray-900 dark:text-neutral-100">
-                      {formatTokyoDate(appointment.startAt)} às {formatTokyoTime(appointment.startAt)}
+                      {formatAgendaDate(appointment.startAt, business.timezone)} às {formatAgendaTime(appointment.startAt, business.timezone)}
                     </span>
                     <AppointmentStatusBadge status={appointment.status} />
                   </div>

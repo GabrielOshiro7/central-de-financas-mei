@@ -3,6 +3,7 @@ import { isIntegerCurrency } from "@/lib/money";
 import { normalizeCategoryName } from "@/lib/finance/categories";
 import { parseImportEntryType } from "@/lib/finance/options";
 import type { RawImportRow } from "@/lib/finance/importParsing";
+import { isDateKey, startOfDayInstant, zonedInstant, type TimeZone } from "@/lib/time/zoned";
 
 // "existing": nome bateu (tolerante a maiuscula/espaco/acento) com uma
 // categoria ja visivel para a empresa - categoryId preenchido.
@@ -36,23 +37,30 @@ export type ValidatedImportRow = {
 // Tenta ISO (aaaa-mm-dd) e o formato comum de planilha BR (dd/mm/aaaa).
 // Excel/CSV as vezes tambem manda a data-hora completa - so usamos a parte
 // da data.
-function parseFlexibleDate(raw: string): Date | null {
+//
+// Etapa F3c: a data e interpretada no FUSO DA EMPRESA (00:00 do dia no fuso
+// dela), nunca no do processo. Antes era `new Date(ano, mes, dia)`, 00:00 no
+// fuso do PROCESSO: para empresa em Asia/Tokyo com o servidor em Asia/Tokyo
+// o instante gravado e exatamente o mesmo de antes (a representacao gravada
+// so muda na F6).
+function parseFlexibleDate(raw: string, timeZone: TimeZone): Date | null {
   const value = raw.trim();
   if (!value) return null;
 
   const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoMatch) {
     const [, y, m, d] = isoMatch;
-    const date = new Date(Number(y), Number(m) - 1, Number(d));
-    return Number.isNaN(date.getTime()) ? null : date;
+    // Mesmo comportamento de antes para componentes fora do intervalo: eles
+    // normalizam (ex.: 2026-02-31 vira 03/03), como no construtor do Date.
+    return zonedInstant(timeZone, Number(y), Number(m), Number(d));
   }
 
   const brMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (brMatch) {
     const [, d, m, y] = brMatch;
-    const date = new Date(Number(y), Number(m) - 1, Number(d));
-    if (date.getMonth() !== Number(m) - 1) return null; // ex.: 31/02 nao existe
-    return date;
+    const key = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    if (!isDateKey(key)) return null; // ex.: 31/02 nao existe
+    return startOfDayInstant(key, timeZone);
   }
 
   return null;
@@ -85,14 +93,15 @@ export function validateImportRow(
   raw: RawImportRow,
   rowNumber: number,
   categories: Category[],
-  currency: Currency
+  currency: Currency,
+  timeZone: TimeZone
 ): ValidatedImportRow {
   const errors: string[] = [];
 
   const type = parseImportEntryType(raw.tipo ?? "");
   if (!type) errors.push("Tipo inválido.");
 
-  const occurredAt = parseFlexibleDate(raw.data ?? "");
+  const occurredAt = parseFlexibleDate(raw.data ?? "", timeZone);
   if (!occurredAt) errors.push("Data inválida.");
 
   const description = (raw.descricao ?? "").trim();

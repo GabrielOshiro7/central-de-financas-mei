@@ -1,6 +1,7 @@
 import { parse } from "csv-parse/sync";
 import ExcelJS from "exceljs";
 import { stripDiacritics } from "@/lib/text";
+import { toDateKey } from "@/lib/time/zoned";
 
 // Limites concretos da secao 26 do prompt da Etapa 3.
 export const MAX_IMPORT_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
@@ -122,7 +123,12 @@ export async function parseXlsxBuffer(buffer: Buffer): Promise<ParseResult> {
 
 function cellToString(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return "";
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  // Celula de data do Excel: o ExcelJS devolve a data/hora da planilha (que
+  // nao tem fuso) nos componentes UTC do Date - o dia de calendario e o
+  // dia UTC, de proposito, e NAO o do fuso da empresa (Etapa F3c). Mesmo
+  // resultado do toISOString().slice(0, 10) de antes; o dia e depois
+  // interpretado no fuso da empresa em importValidation.ts.
+  if (value instanceof Date) return toDateKey(value, "UTC");
   if (typeof value === "object" && "text" in value) return String((value as { text: unknown }).text ?? "");
   if (typeof value === "object" && "result" in value) return String((value as { result: unknown }).result ?? "");
   return String(value);

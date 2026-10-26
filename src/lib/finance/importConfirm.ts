@@ -4,6 +4,7 @@ import { listVisibleCategories, findOrCreateCategoryInTx } from "@/lib/finance/c
 import { validateImportRow, type ValidatedImportRow } from "@/lib/finance/importValidation";
 import { markPotentialDuplicates } from "@/lib/finance/duplicates";
 import { groupNewCategories } from "@/lib/finance/importPreview";
+import type { TimeZone } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -49,6 +50,7 @@ export async function confirmImport(
   businessId: string,
   userId: string,
   currency: Currency,
+  timeZone: TimeZone,
   rowsInput: ImportRowInput[],
   duplicateAction: DuplicateAction,
   categoryDecisions: CategoryDecision[] = []
@@ -56,10 +58,10 @@ export async function confirmImport(
   const categories = await listVisibleCategories(businessId);
 
   const validated: ValidatedImportRow[] = rowsInput.map(({ rowNumber, ...raw }) =>
-    validateImportRow(raw, rowNumber, categories, currency)
+    validateImportRow(raw, rowNumber, categories, currency, timeZone)
   );
 
-  const withDuplicateFlags = await markPotentialDuplicates(businessId, validated);
+  const withDuplicateFlags = await markPotentialDuplicates(businessId, validated, timeZone);
 
   const failed = withDuplicateFlags
     .filter((r) => r.errors.length > 0)

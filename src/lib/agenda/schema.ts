@@ -31,7 +31,7 @@ export function parseMonthParam(value: unknown): { year: number; month: number }
 }
 
 // Devolve a própria string "YYYY-MM-DD" (já é o formato usado como chave em
-// toda a Agenda - tokyoDateKey/formatTokyoDateKey) em vez de um Date, para
+// toda a Agenda - agendaDateKey) em vez de um Date, para
 // quem chama nunca precisar reconstruir o instante a partir de um fuso
 // errado.
 export function parseDayParam(value: unknown): string | null {
@@ -52,7 +52,7 @@ const appointmentStatusForCreateValues = ["AGENDADO", "CONFIRMADO", "CONCLUIDO",
 
 // Payload comum de criar/editar (remarcar) - startAt no formato de
 // <input type="datetime-local"> ("YYYY-MM-DDTHH:mm"), SEMPRE interpretado
-// como horario de Toquio (ver parseTokyoDateTimeInput em time.ts), nunca o
+// no fuso da empresa (ver parseAgendaDateTimeInput em time.ts), nunca o
 // fuso do navegador/servidor. `allowOverlap` so importa quando o backend ja
 // devolveu uma lista de conflitos numa tentativa anterior (aviso, nao
 // bloqueio - ver detectOverlap em calculations.ts).
