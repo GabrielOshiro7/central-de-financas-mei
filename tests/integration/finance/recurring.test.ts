@@ -11,6 +11,7 @@ import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize
 import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { updateBusinessProfile, type BusinessEditInput } from "@/lib/onboarding/businessMutations";
+import { PROCESS_TZ } from "../../helpers/processClock";
 
 function sumAmounts(items: { amount: { toNumber: () => number } }[]): number {
   return items.reduce((total, item) => total + item.amount.toNumber(), 0);
@@ -43,7 +44,12 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
     userId = user.id;
 
     const business = await prisma.business.create({
-      data: { userId, name: "Empresa Recorrência", currency: "BRL" },
+      // Fuso da empresa = fuso do processo (mesma convencao de
+      // tests/helpers/processClock.ts): este arquivo monta datas e periodos com
+      // o construtor local do Date. Desde a F5 a materializacao usa o fuso da
+      // EMPRESA, entao os dois precisam coincidir para o contrato continuar o
+      // mesmo em qualquer TZ da matriz.
+      data: { userId, name: "Empresa Recorrência", currency: "BRL", timezone: PROCESS_TZ },
     });
     businessId = business.id;
   });
@@ -95,7 +101,8 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
     const uptoDate = new Date(2026, 8, 30);
     const expectedCount = generateOccurrencesForEntry(
       { frequency: "MONTHLY", dayOfWeek: null, dayOfMonth: 5, yearMonth: null, startDate: new Date(2025, 0, 1), endDate: null },
-      uptoDate
+      uptoDate,
+      PROCESS_TZ // fuso da empresa criada acima
     ).length;
 
     const [r1, r2] = await Promise.all([

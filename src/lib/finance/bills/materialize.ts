@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateBillOccurrences } from "@/lib/finance/bills/occurrences";
-import type { BusinessClock } from "@/lib/time/zoned";
+import { dateKeyToDbDate, startOfDayInstant, type BusinessClock } from "@/lib/time/zoned";
 
 // Diferente de materializeRecurringEntries (Etapa 4.1), que so materializa
 // ate "agora" (um RecurringEntry vira dinheiro automaticamente na data,
@@ -46,13 +46,17 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
       clock.timeZone
     );
 
-    for (const dueDate of occurrences) {
+    for (const day of occurrences) {
       rows.push({
         businessId,
         categoryId: entry.categoryId,
         description: entry.description,
         amount: entry.amount,
-        dueDate,
+        // Vencimento novo = 00:00 do dia no fuso da empresa (mesma
+        // representacao das contas ja geradas); a chave de idempotencia e o
+        // dia de calendario (Etapa F5).
+        dueDate: startOfDayInstant(day, clock.timeZone),
+        occurrenceDate: dateKeyToDbDate(day),
         documentNumber: entry.documentNumber,
         counterpartyName: entry.counterpartyName,
         paymentMethod: entry.paymentMethod,
@@ -67,9 +71,10 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
   if (rows.length === 0) return { created: 0 };
 
   // Idempotencia/concorrencia: createMany + skipDuplicates contra o
-  // @@unique([recurringBillId, dueDate]) - duas leituras concorrentes (ex.:
-  // duas abas) tentando materializar a mesma ocorrencia terminam sem erro
-  // visivel e sem duplicata, mesma tecnica de materializeRecurringEntries.
+  // @@unique([recurringBillId, occurrenceDate]) (dia de calendario, Etapa
+  // F5) - duas leituras concorrentes (ex.: duas abas), ou com o processo em
+  // fusos diferentes, tentando materializar a mesma ocorrencia terminam sem
+  // erro visivel e sem duplicata, mesma tecnica de materializeRecurringEntries.
   const result = await prisma.bill.createMany({ data: rows, skipDuplicates: true });
   return { created: result.count };
 }

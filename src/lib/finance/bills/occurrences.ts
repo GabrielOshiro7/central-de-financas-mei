@@ -1,6 +1,6 @@
 import type { RecurringBillFrequency } from "@prisma/client";
 import { firstOccurrence, nextOccurrence, type RecurrenceRule } from "@/lib/finance/recurring/occurrences";
-import { compareKeys, toDateKey, type TimeZone } from "@/lib/time/zoned";
+import { compareKeys, toDateKey, type DateKey, type TimeZone } from "@/lib/time/zoned";
 
 // Reaproveita INTEGRALMENTE o motor puro de datas de
 // src/lib/finance/recurring/occurrences.ts (firstOccurrence/nextOccurrence,
@@ -52,7 +52,7 @@ function toBaseRuleAndStep(entry: RecurringBillLike): { base: RecurrenceRule; st
 // BIWEEKLY/QUARTERLY/SEMIANNUAL "pulam" ocorrencias da base sem duplicar a
 // aritmetica de datas (cada chamada individual continua sendo a mesma funcao
 // pura ja testada em recurringOccurrences.test.ts).
-function advanceBySteps(base: RecurrenceRule, from: Date, step: number): Date {
+function advanceBySteps(base: RecurrenceRule, from: DateKey, step: number): DateKey {
   let current = from;
   for (let i = 0; i < step; i += 1) {
     current = nextOccurrence(base, current);
@@ -60,23 +60,22 @@ function advanceBySteps(base: RecurrenceRule, from: Date, step: number): Date {
   return current;
 }
 
-// Mesma forma de generateOccurrences (recurring/occurrences.ts): todas as
-// datas entre a primeira ocorrencia valida e `uptoDate` (inclusive),
-// respeitando endDate. Pura - quem materializa (bills/materialize.ts) e que
-// transforma essas datas em Bill reais. O LIMITE (uptoDate/endDate) e
-// comparado por dia de calendario no fuso da empresa (Etapa F3b); as datas
-// das ocorrencias em si ainda vem do motor de recurring/occurrences.ts, que
-// passa a operar em datas de calendario na F5.
-export function generateBillOccurrences(entry: RecurringBillLike, uptoDate: Date, timeZone: TimeZone): Date[] {
+// Mesma forma de generateOccurrences (recurring/occurrences.ts): todos os
+// DIAS de calendario (DateKey) entre a primeira ocorrencia valida e
+// `uptoDate` (inclusive), respeitando endDate. Pura - quem materializa
+// (bills/materialize.ts) e que transforma esses dias em Bill reais. Os
+// instantes do molde (startDate/endDate) e o limite viram dia de calendario
+// no fuso da empresa (F3b/F5); o resto e aritmetica pura de calendario.
+export function generateBillOccurrences(entry: RecurringBillLike, uptoDate: Date, timeZone: TimeZone): DateKey[] {
   const { base, step } = toBaseRuleAndStep(entry);
 
   const upto = toDateKey(uptoDate, timeZone);
   const cappedEnd = entry.endDate ? toDateKey(entry.endDate, timeZone) : null;
   const effectiveEnd = cappedEnd && compareKeys(cappedEnd, upto) < 0 ? cappedEnd : upto;
 
-  const dates: Date[] = [];
-  let current: Date | null = firstOccurrence(base, entry.startDate);
-  while (current !== null && compareKeys(toDateKey(current, timeZone), effectiveEnd) <= 0) {
+  const dates: DateKey[] = [];
+  let current = firstOccurrence(base, toDateKey(entry.startDate, timeZone));
+  while (compareKeys(current, effectiveEnd) <= 0) {
     dates.push(current);
     current = advanceBySteps(base, current, step);
   }

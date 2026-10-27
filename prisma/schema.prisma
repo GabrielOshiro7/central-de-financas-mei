@@ -311,6 +311,11 @@ model FinancialEntry {
   recurringEntryId String?         @map("recurring_entry_id")
   recurringEntry   RecurringEntry? @relation(fields: [recurringEntryId], references: [id], onDelete: SetNull)
 
+  // Dia de calendario da ocorrencia do molde (Etapa F5): identidade da
+  // ocorrencia ("a parcela de 20/10"), no fuso da empresa. Preenchido so nas
+  // linhas geradas por um RecurringEntry - null em manual/importado/Bill.
+  occurrenceDate DateTime? @db.Date @map("occurrence_date")
+
   // Preenchido quando este lancamento nasceu da confirmacao de pagamento/
   // recebimento de uma Bill (Etapa 5) - null para todo lancamento manual/
   // importado/RECURRING. @unique (nao composto, diferente de
@@ -323,12 +328,13 @@ model FinancialEntry {
   billId String? @unique @map("bill_id")
   bill   Bill?   @relation(fields: [billId], references: [id], onDelete: SetNull)
 
-  // Chave de idempotencia da materializacao (secao "MATERIALIZACAO" da Etapa
-  // 4.1): NULL e tratado como distinto pelo Postgres, entao essa constraint
-  // nunca restringe lancamentos manuais/importados entre si - so impede que
-  // o MESMO molde gere duas linhas para a MESMA data de ocorrencia, mesmo
-  // sob duas materializacoes concorrentes (ver materializeRecurringEntries).
-  @@unique([recurringEntryId, occurredAt])
+  // Chave de idempotencia da materializacao (Etapa 4.1; por DIA desde a F5):
+  // NULL e tratado como distinto pelo Postgres, entao essa constraint nunca
+  // restringe lancamentos manuais/importados entre si - so impede que o
+  // MESMO molde gere duas linhas para o MESMO dia de ocorrencia, mesmo sob
+  // duas materializacoes concorrentes ou com o processo em fusos diferentes
+  // (ver materializeRecurringEntries).
+  @@unique([recurringEntryId, occurrenceDate])
   @@index([businessId, occurredAt])
   @@index([businessId, type])
   @@index([categoryId])
@@ -425,6 +431,10 @@ model Bill {
   recurringBillId String?        @map("recurring_bill_id")
   recurringBill   RecurringBill? @relation(fields: [recurringBillId], references: [id], onDelete: SetNull)
 
+  // Dia de calendario da ocorrencia do molde (Etapa F5, mesmo padrao de
+  // FinancialEntry.occurrenceDate). Null em toda conta avulsa/parcela.
+  occurrenceDate DateTime? @db.Date @map("occurrence_date")
+
   // Preenchido quando esta Bill representa UMA PARCELA de uma Sale (Etapa 6)
   // - a venda a vista tambem passa por aqui (uma unica Bill, ja PAID). NAO
   // e @unique: uma Sale a prazo gera varias Bills (uma por parcela), ao
@@ -435,8 +445,8 @@ model Bill {
   sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: SetNull)
 
   // Chave de idempotencia da materializacao de recorrencia - mesmo padrao de
-  // FinancialEntry @@unique([recurringEntryId, occurredAt]).
-  @@unique([recurringBillId, dueDate])
+  // FinancialEntry @@unique([recurringEntryId, occurrenceDate]).
+  @@unique([recurringBillId, occurrenceDate])
   @@index([businessId, status])
   @@index([businessId, dueDate])
   @@index([categoryId])

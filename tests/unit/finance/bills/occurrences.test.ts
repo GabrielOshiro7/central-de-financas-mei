@@ -21,7 +21,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2026, 1, 2),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 5), new Date(2026, 0, 12), new Date(2026, 0, 19), new Date(2026, 0, 26), new Date(2026, 1, 2)]);
+    expect(dates).toEqual(["2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26", "2026-02-02"]);
   });
 
   it("BIWEEKLY: pula uma ocorrência semanal a cada vez (espaçamento de 14 dias)", () => {
@@ -30,7 +30,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2026, 1, 2),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 5), new Date(2026, 0, 19), new Date(2026, 1, 2)]);
+    expect(dates).toEqual(["2026-01-05", "2026-01-19", "2026-02-02"]);
   });
 
   it("MONTHLY: step 1, uma ocorrência por mês", () => {
@@ -40,10 +40,10 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       PROCESS_TZ
     );
     expect(dates).toEqual([
-      new Date(2026, 0, 10),
-      new Date(2026, 1, 10),
-      new Date(2026, 2, 10),
-      new Date(2026, 3, 10),
+      "2026-01-10",
+      "2026-02-10",
+      "2026-03-10",
+      "2026-04-10",
     ]);
   });
 
@@ -53,7 +53,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2026, 11, 31),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 10), new Date(2026, 3, 10), new Date(2026, 6, 10), new Date(2026, 9, 10)]);
+    expect(dates).toEqual(["2026-01-10", "2026-04-10", "2026-07-10", "2026-10-10"]);
   });
 
   it("SEMIANNUAL: pula 6 ocorrências mensais por vez (a cada 6 meses)", () => {
@@ -62,7 +62,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2027, 11, 31),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 10), new Date(2026, 6, 10), new Date(2027, 0, 10), new Date(2027, 6, 10)]);
+    expect(dates).toEqual(["2026-01-10", "2026-07-10", "2027-01-10", "2027-07-10"]);
   });
 
   it("YEARLY: step 1, uma ocorrência por ano", () => {
@@ -71,7 +71,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2028, 11, 31),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 5, 15), new Date(2027, 5, 15), new Date(2028, 5, 15)]);
+    expect(dates).toEqual(["2026-06-15", "2027-06-15", "2028-06-15"]);
   });
 
   it("QUARTERLY: clamp de dayOfMonth 31 em meses menores continua funcionando (herdado de occurrences.ts)", () => {
@@ -81,7 +81,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       PROCESS_TZ
     );
     // jan(31), abr(30 - clamp), jul(31)
-    expect(dates).toEqual([new Date(2026, 0, 31), new Date(2026, 3, 30), new Date(2026, 6, 31)]);
+    expect(dates).toEqual(["2026-01-31", "2026-04-30", "2026-07-31"]);
   });
 
   it("respeita endDate (inclusive): para a partir da ocorrência seguinte a ela", () => {
@@ -90,7 +90,7 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2026, 11, 31),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 1), new Date(2026, 1, 1), new Date(2026, 2, 1)]);
+    expect(dates).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
   });
 
   it("nunca gera além de uptoDate", () => {
@@ -99,6 +99,6 @@ describe("generateBillOccurrences - reaproveita recurring/occurrences.ts, so mud
       new Date(2026, 2, 15),
       PROCESS_TZ
     );
-    expect(dates).toEqual([new Date(2026, 0, 1), new Date(2026, 1, 1), new Date(2026, 2, 1)]);
+    expect(dates).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
   });
 });

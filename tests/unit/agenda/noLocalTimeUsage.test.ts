@@ -154,3 +154,47 @@ describe("src/app e src/components nunca usam data/hora local do processo/navega
     });
   }
 });
+
+// Etapa F5: a mesma guarda vale para TODO src/lib, varrido recursivamente
+// (substitui na pratica a lista explicita F3A_FILES acima, que fica como
+// historico). Desde a F5 nenhuma regra de negocio decide dia/mes/hora com o
+// fuso do processo - inclusive o motor de recorrencias
+// (src/lib/finance/recurring/occurrences.ts), que passou a operar so em
+// DateKey.
+//
+// Excecoes justificadas (caminho relativo -> motivo).
+const LIB_EXCEPTIONS: Record<string, string> = {
+  "src/lib/time/zoned.ts":
+    "o proprio utilitario: usa Intl.DateTimeFormat com timeZone explicito e Date.UTC/getters UTC - verificado por tests/unit/time/zoned.test.ts",
+};
+
+describe("todo src/lib nunca usa data/hora local do processo (F5)", () => {
+  const files = listTsFiles(join(process.cwd(), "src", "lib")).map((file) =>
+    file.slice(process.cwd().length + 1).replace(/\\/g, "/")
+  );
+
+  it("encontrou arquivos para verificar (a guarda nao pode virar um no-op silencioso)", () => {
+    expect(files.length).toBeGreaterThan(60);
+    expect(files).toContain("src/lib/finance/recurring/occurrences.ts");
+    expect(files).toContain("src/lib/finance/bills/occurrences.ts");
+    expect(files).toContain("src/lib/finance/period.ts");
+    expect(files).toContain("src/lib/agenda/time.ts");
+  });
+
+  it("toda excecao aponta para um arquivo que existe", () => {
+    for (const relative of Object.keys(LIB_EXCEPTIONS)) expect(files).toContain(relative);
+  });
+
+  for (const relative of files) {
+    if (relative in LIB_EXCEPTIONS) continue;
+    it(`${relative} nao usa getters/setters locais, toLocale*, construtor local nem Intl.DateTimeFormat`, () => {
+      const code = readFileSync(join(process.cwd(), relative), "utf8")
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("//"))
+        .join("\n");
+      for (const { name, pattern } of UI_FORBIDDEN) {
+        expect(code, `${relative} usa ${name}`).not.toMatch(pattern);
+      }
+    });
+  }
+});

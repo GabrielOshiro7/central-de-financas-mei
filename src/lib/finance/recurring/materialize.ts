@@ -1,28 +1,37 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
+import { getBusinessClock } from "@/lib/time/businessClock";
+import { addDays, dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/time/zoned";
 
 // Materializacao preguicosa (secao "MATERIALIZACAO" da Etapa 4.1): chamada a
 // cada leitura de dados financeiros (Receitas/Custos/Despesas, Caixa,
 // dashboard), nunca por cron/job em background. Gera FinancialEntry
 // REAIS pras ocorrencias entre a primeira ocorrencia valida de cada molde
-// ativo e `uptoDate` (nunca alem de "agora" - o chamador nunca deve passar
-// uma data futura).
+// ativo e o dia de `now` no fuso da empresa (nunca alem de "agora" - o
+// chamador nunca deve passar uma data futura).
 //
-// Idempotencia/concorrencia: usa createMany + skipDuplicates (nunca create()
-// em loop, que lancaria erro em violacao de constraint). A constraint UNIQUE
-// (recurringEntryId, occurredAt) em FinancialEntry garante que duas chamadas
-// simultaneas (ex.: duas abas carregando o dashboard ao mesmo tempo) tentando
-// inserir a MESMA ocorrencia terminam sem erro visivel e sem duplicata - a
-// segunda chamada so tem suas linhas ja existentes ignoradas pelo
-// skipDuplicates.
+// Idempotencia/concorrencia (Etapa F5): usa createMany + skipDuplicates
+// (nunca create() em loop, que lancaria erro em violacao de constraint)
+// contra a UNIQUE (recurringEntryId, occurrenceDate) - o DIA DE CALENDARIO da
+// ocorrencia, nao o instante. Duas chamadas simultaneas (ex.: duas abas) ou
+// duas chamadas com o processo em fusos diferentes geram a MESMA chave para
+// o mesmo dia; a segunda so tem suas linhas ignoradas pelo skipDuplicates.
+//
+// occurredAt de uma ocorrencia NOVA = 00:00 do dia no fuso da empresa
+// (startOfDayInstant), a mesma representacao das ocorrencias ja gravadas
+// (geradas com o host em JST) - entao toDateKey(occurredAt, fuso) == dia e
+// as consultas por periodo (F3) continuam iguais. A troca para @db.Date e a F6.
 export async function materializeRecurringEntries(
   businessId: string,
   userId: string,
-  uptoDate: Date = new Date()
+  now: Date = new Date()
 ): Promise<{ created: number }> {
+  const clock = await getBusinessClock(businessId, now);
+  const today = todayKey(clock);
+
   const activeEntries = await prisma.recurringEntry.findMany({
-    where: { businessId, isActive: true, startDate: { lte: uptoDate } },
+    where: { businessId, isActive: true, startDate: { lt: startOfDayInstant(addDays(today, 1), clock.timeZone) } },
   });
 
   if (activeEntries.length === 0) return { created: 0 };
@@ -38,10 +47,11 @@ export async function materializeRecurringEntries(
         startDate: entry.startDate,
         endDate: entry.endDate,
       },
-      uptoDate
+      clock.now,
+      clock.timeZone
     );
 
-    for (const occurredAt of occurrences) {
+    for (const day of occurrences) {
       rows.push({
         businessId,
         userId,
@@ -49,7 +59,8 @@ export async function materializeRecurringEntries(
         categoryId: entry.categoryId,
         description: entry.description,
         amount: entry.amount,
-        occurredAt,
+        occurredAt: startOfDayInstant(day, clock.timeZone),
+        occurrenceDate: dateKeyToDbDate(day),
         source: "RECURRING",
         recurringEntryId: entry.id,
       });

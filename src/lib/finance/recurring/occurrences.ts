@@ -1,8 +1,22 @@
 import type { RecurrenceFrequency } from "@prisma/client";
+import {
+  addDays,
+  compareKeys,
+  lastDayOfMonth,
+  parseDateKey,
+  toDateKey,
+  weekdayOf,
+  type DateKey,
+  type TimeZone,
+} from "@/lib/time/zoned";
 
-// Fuso horario: mesma convencao ja documentada em src/lib/finance/period.ts -
-// Date local do processo Node, sem TZ explicito. Nao resolvido aqui (decisao
-// de escopo ja tomada na Etapa 4).
+// Motor de ocorrencias (Etapa F5): opera SO em dias de calendario (DateKey,
+// "YYYY-MM-DD"), sem instante e sem fuso - aritmetica pura de calendario via
+// src/lib/time/zoned.ts. O fuso so entra na borda (generateOccurrencesForEntry):
+// startDate/endDate/"ate quando" gravados como instantes viram o dia de
+// calendario no fuso da EMPRESA. Assim a mesma regra gera exatamente os
+// mesmos dias com o processo em qualquer TZ - a causa das duplicatas da
+// Academia Gabriel (servidor em UTC gerando "meia-noite" em outro instante).
 
 export type RecurrenceRule =
   | { frequency: "WEEKLY"; dayOfWeek: number } // 0=domingo..6=sabado
@@ -42,76 +56,58 @@ export function toRecurrenceRule(entry: RecurringEntryLike): RecurrenceRule {
   }
 }
 
-function startOfDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-function lastDayOfMonth(year: number, month: number): number {
-  // Dia 0 do mes seguinte = ultimo dia do mes atual (truque padrao de Date).
-  return new Date(year, month + 1, 0).getDate();
+function keyOf(year: number, month: number, day: number): DateKey {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 // MONTHLY (e a parte "dia do mes" de YEARLY): dayOfMonth 29/30/31 num mes que
 // nao tem esse dia usa o ULTIMO DIA daquele mes (secao "MONTHLY" da Etapa
-// 4.1) - nunca rola pro mes seguinte.
-function clampDayOfMonth(year: number, month: number, dayOfMonth: number): number {
-  return Math.min(dayOfMonth, lastDayOfMonth(year, month));
-}
-
-function monthlyDateInMonth(year: number, month: number, dayOfMonth: number): Date {
-  return new Date(year, month, clampDayOfMonth(year, month, dayOfMonth));
+// 4.1) - nunca rola pro mes seguinte. `month` aqui e 1-12.
+function monthlyKeyInMonth(year: number, month: number, dayOfMonth: number): DateKey {
+  return keyOf(year, month, Math.min(dayOfMonth, lastDayOfMonth(year, month)));
 }
 
 // YEARLY: fica SEMPRE no mes `yearMonth`, mesmo com dayOfMonth=29 (fevereiro)
 // num ano nao bissexto (vira 28/fev). Isso e DELIBERADAMENTE diferente da
-// normalizacao nativa de `Date` usada em period.ts pras janelas de
-// COMPARACAO (SAME_PERIOD_LAST_YEAR por dia), que deixa 29/fev "rolar" pra
-// 1/mar quando o ano de destino nao e bissexto - la e so um deslocamento de
-// datas pra comparar periodos, aqui e um LANCAMENTO FINANCEIRO REAL, que
-// precisa contar no mes certo (fevereiro) pra nao distorcer em qual mes
-// aquele valor aparece no dashboard/relatorios.
-function yearlyDateInYear(year: number, yearMonth: number, dayOfMonth: number): Date {
-  return new Date(year, yearMonth, clampDayOfMonth(year, yearMonth, dayOfMonth));
+// normalizacao usada em period.ts pras janelas de COMPARACAO
+// (SAME_PERIOD_LAST_YEAR por dia), que deixa 29/fev "rolar" pra 1/mar quando
+// o ano de destino nao e bissexto - la e so um deslocamento de datas pra
+// comparar periodos, aqui e um LANCAMENTO FINANCEIRO REAL, que precisa contar
+// no mes certo (fevereiro) pra nao distorcer em qual mes aquele valor aparece
+// no dashboard/relatorios. `yearMonth` e 0-11 (como gravado no molde).
+function yearlyKeyInYear(year: number, yearMonth: number, dayOfMonth: number): DateKey {
+  return monthlyKeyInMonth(year, yearMonth + 1, dayOfMonth);
 }
 
+// `month` 1-12; devolve o mes `delta` meses depois (delta pode cruzar anos).
 function addMonths(year: number, month: number, delta: number): { year: number; month: number } {
-  const total = month + delta;
-  const y = year + Math.floor(total / 12);
-  const m = ((total % 12) + 12) % 12;
-  return { year: y, month: m };
-}
-
-// Proximo dia (a partir de `from`, inclusive) cujo getDay() seja `dayOfWeek`.
-function nextWeeklyOnOrAfter(from: Date, dayOfWeek: number): Date {
-  const start = startOfDay(from);
-  const diff = (dayOfWeek - start.getDay() + 7) % 7;
-  const d = new Date(start);
-  d.setDate(d.getDate() + diff);
-  return d;
+  const total = year * 12 + (month - 1) + delta;
+  return { year: Math.floor(total / 12), month: (total % 12) + 1 };
 }
 
 // Regra de primeira ocorrencia (secao "REGRA DE PRIMEIRA OCORRENCIA" da
 // Etapa 4.1): NUNCA anterior ao startDate. Se a data calculada pela regra de
 // dia ja tiver passado dentro do periodo corrente (semana/mes/ano de
 // startDate), avanca pro periodo seguinte.
-export function firstOccurrence(rule: RecurrenceRule, startDate: Date): Date {
-  const start = startOfDay(startDate);
+export function firstOccurrence(rule: RecurrenceRule, startDate: DateKey): DateKey {
+  const { year, month } = parseDateKey(startDate);
 
   switch (rule.frequency) {
     case "WEEKLY":
-      return nextWeeklyOnOrAfter(start, rule.dayOfWeek);
+      // Proximo dia (a partir de startDate, inclusive) com esse dia da semana.
+      return addDays(startDate, (rule.dayOfWeek - weekdayOf(startDate) + 7) % 7);
 
     case "MONTHLY": {
-      const candidate = monthlyDateInMonth(start.getFullYear(), start.getMonth(), rule.dayOfMonth);
-      if (candidate.getTime() >= start.getTime()) return candidate;
-      const { year, month } = addMonths(start.getFullYear(), start.getMonth(), 1);
-      return monthlyDateInMonth(year, month, rule.dayOfMonth);
+      const candidate = monthlyKeyInMonth(year, month, rule.dayOfMonth);
+      if (compareKeys(candidate, startDate) >= 0) return candidate;
+      const next = addMonths(year, month, 1);
+      return monthlyKeyInMonth(next.year, next.month, rule.dayOfMonth);
     }
 
     case "YEARLY": {
-      const candidate = yearlyDateInYear(start.getFullYear(), rule.yearMonth, rule.dayOfMonth);
-      if (candidate.getTime() >= start.getTime()) return candidate;
-      return yearlyDateInYear(start.getFullYear() + 1, rule.yearMonth, rule.dayOfMonth);
+      const candidate = yearlyKeyInYear(year, rule.yearMonth, rule.dayOfMonth);
+      if (compareKeys(candidate, startDate) >= 0) return candidate;
+      return yearlyKeyInYear(year + 1, rule.yearMonth, rule.dayOfMonth);
     }
 
     default: {
@@ -124,19 +120,17 @@ export function firstOccurrence(rule: RecurrenceRule, startDate: Date): Date {
 // Ocorrencia seguinte a `previous` (que deve ser, ela mesma, uma ocorrencia
 // valida da regra - normalmente o resultado de firstOccurrence ou de uma
 // chamada anterior a nextOccurrence).
-export function nextOccurrence(rule: RecurrenceRule, previous: Date): Date {
+export function nextOccurrence(rule: RecurrenceRule, previous: DateKey): DateKey {
+  const { year, month } = parseDateKey(previous);
   switch (rule.frequency) {
-    case "WEEKLY": {
-      const d = new Date(previous);
-      d.setDate(d.getDate() + 7);
-      return d;
-    }
+    case "WEEKLY":
+      return addDays(previous, 7);
     case "MONTHLY": {
-      const { year, month } = addMonths(previous.getFullYear(), previous.getMonth(), 1);
-      return monthlyDateInMonth(year, month, rule.dayOfMonth);
+      const next = addMonths(year, month, 1);
+      return monthlyKeyInMonth(next.year, next.month, rule.dayOfMonth);
     }
     case "YEARLY":
-      return yearlyDateInYear(previous.getFullYear() + 1, rule.yearMonth, rule.dayOfMonth);
+      return yearlyKeyInYear(year + 1, rule.yearMonth, rule.dayOfMonth);
     default: {
       const exhaustiveCheck: never = rule;
       throw new Error(`Frequência não tratada: ${JSON.stringify(exhaustiveCheck)}`);
@@ -144,32 +138,37 @@ export function nextOccurrence(rule: RecurrenceRule, previous: Date): Date {
   }
 }
 
-// Todas as datas de ocorrencia entre a primeira ocorrencia valida (relativa
+// Todos os dias de ocorrencia entre a primeira ocorrencia valida (relativa
 // a startDate) e `uptoDate` (inclusive), respeitando endDate (inclusive,
 // interrompe a geracao a partir da ocorrencia SEGUINTE a ela) quando
 // definido. Pura - nao toca o banco; materializeRecurringEntries (materialize.ts)
-// e quem transforma essas datas em FinancialEntry reais.
+// e quem transforma esses dias em FinancialEntry reais.
 export function generateOccurrences(params: {
   rule: RecurrenceRule;
-  startDate: Date;
-  uptoDate: Date;
-  endDate?: Date | null;
-}): Date[] {
+  startDate: DateKey;
+  uptoDate: DateKey;
+  endDate?: DateKey | null;
+}): DateKey[] {
   const { rule, startDate, uptoDate, endDate } = params;
-  const upto = startOfDay(uptoDate);
-  const cappedEnd = endDate ? startOfDay(endDate) : null;
-  const effectiveEnd = cappedEnd && cappedEnd.getTime() < upto.getTime() ? cappedEnd : upto;
+  const effectiveEnd = endDate && compareKeys(endDate, uptoDate) < 0 ? endDate : uptoDate;
 
-  const dates: Date[] = [];
-  let current: Date | null = firstOccurrence(rule, startDate);
-  while (current !== null && current.getTime() <= effectiveEnd.getTime()) {
+  const dates: DateKey[] = [];
+  let current = firstOccurrence(rule, startDate);
+  while (compareKeys(current, effectiveEnd) <= 0) {
     dates.push(current);
     current = nextOccurrence(rule, current);
   }
   return dates;
 }
 
-export function generateOccurrencesForEntry(entry: RecurringEntryLike, uptoDate: Date): Date[] {
+// Borda com o banco: startDate/endDate do molde e o "ate quando" sao
+// instantes; viram dias de calendario no fuso da empresa.
+export function generateOccurrencesForEntry(entry: RecurringEntryLike, uptoDate: Date, timeZone: TimeZone): DateKey[] {
   const rule = toRecurrenceRule(entry);
-  return generateOccurrences({ rule, startDate: entry.startDate, uptoDate, endDate: entry.endDate });
+  return generateOccurrences({
+    rule,
+    startDate: toDateKey(entry.startDate, timeZone),
+    uptoDate: toDateKey(uptoDate, timeZone),
+    endDate: entry.endDate ? toDateKey(entry.endDate, timeZone) : null,
+  });
 }
