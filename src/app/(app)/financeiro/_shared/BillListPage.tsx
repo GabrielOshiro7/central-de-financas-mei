@@ -13,21 +13,10 @@ import { BillSummaryCards } from "@/components/financeiro/BillSummaryCards";
 import { RecurringBillTable, type RecurringBillRow } from "@/components/financeiro/RecurringBillTable";
 import { NewBillButton } from "@/components/financeiro/NewBillButton";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { addDays, clockFor, startOfDayInstant, todayKey } from "@/lib/time/zoned";
+import { addDays, clockFor, formatZonedDate, startOfDayInstant, toDateKey, todayKey } from "@/lib/time/zoned";
 
 const VALID_STATUSES = new Set<string>(["PENDING", "OVERDUE", "PAID", "CANCELLED"]);
 const VALID_DUE = new Set<string>(DUE_SOON_OPTIONS.map((o) => o.value));
-
-function formatDateDisplay(d: Date): string {
-  return d.toLocaleDateString("pt-BR");
-}
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -104,12 +93,12 @@ export async function BillListPage({
     counterpartyName: item.counterpartyName ?? "",
     categoryId: item.categoryId,
     categoryName: item.category.name,
-    dueDateDisplay: formatDateDisplay(item.dueDate),
-    dueDateInput: formatDateInput(item.dueDate),
-    issueDateInput: item.issueDate ? formatDateInput(item.issueDate) : "",
+    dueDateDisplay: formatZonedDate(item.dueDate, clock.timeZone),
+    dueDateInput: toDateKey(item.dueDate, clock.timeZone),
+    issueDateInput: item.issueDate ? toDateKey(item.issueDate, clock.timeZone) : "",
     amount: item.amount.toString(),
     displayStatus: deriveBillStatus(item, clock),
-    paidAtDisplay: item.paidAt ? formatDateDisplay(item.paidAt) : null,
+    paidAtDisplay: item.paidAt ? formatZonedDate(item.paidAt, clock.timeZone) : null,
     documentNumber: item.documentNumber ?? "",
     paymentMethod: item.paymentMethod ?? "",
     bankAccount: item.bankAccount ?? "",
@@ -128,10 +117,10 @@ export async function BillListPage({
     dayOfWeek: entry.dayOfWeek,
     dayOfMonth: entry.dayOfMonth,
     yearMonth: entry.yearMonth,
-    startDateDisplay: formatDateDisplay(entry.startDate),
-    startDateInput: formatDateInput(entry.startDate),
-    endDateDisplay: entry.endDate ? formatDateDisplay(entry.endDate) : null,
-    endDateInput: entry.endDate ? formatDateInput(entry.endDate) : "",
+    startDateDisplay: formatZonedDate(entry.startDate, clock.timeZone),
+    startDateInput: toDateKey(entry.startDate, clock.timeZone),
+    endDateDisplay: entry.endDate ? formatZonedDate(entry.endDate, clock.timeZone) : null,
+    endDateInput: entry.endDate ? toDateKey(entry.endDate, clock.timeZone) : "",
     documentNumber: entry.documentNumber ?? "",
     counterpartyName: entry.counterpartyName ?? "",
     paymentMethod: entry.paymentMethod ?? "",
@@ -148,19 +137,19 @@ export async function BillListPage({
           <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{title}</h1>
           <InfoTooltip text={helpText} />
         </div>
-        {hasAnyEver && <NewBillButton direction={direction} categories={categories} currency={business.currency} />}
+        {hasAnyEver && <NewBillButton direction={direction} categories={categories} currency={business.currency} todayKey={todayKey(clock)} />}
       </div>
 
       {!hasAnyEver ? (
         <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
           <p>{direction === "PAYABLE" ? "Nenhuma conta a pagar cadastrada." : "Nenhuma conta a receber cadastrada."}</p>
-          <NewBillButton direction={direction} categories={categories} currency={business.currency} />
+          <NewBillButton direction={direction} categories={categories} currency={business.currency} todayKey={todayKey(clock)} />
         </div>
       ) : (
         <>
           <BillSummaryCards direction={direction} summary={summary} currency={business.currency} />
           <BillFiltersBar direction={direction} categories={categories} />
-          <BillTable rows={rows} direction={direction} categories={categories} currency={business.currency} />
+          <BillTable rows={rows} direction={direction} categories={categories} currency={business.currency} todayKey={todayKey(clock)} />
           <RecurringBillTable
             rows={recurringRows}
             direction={direction}

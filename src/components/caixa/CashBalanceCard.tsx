@@ -3,6 +3,7 @@ import type { Currency } from "@prisma/client";
 import { AlertTriangle } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import type { CashBalance } from "@/lib/finance/cash/queries";
+import { formatZonedDate } from "@/lib/time/zoned";
 
 // Regra fundamental da Etapa 5.1: este numero e uma APROXIMACAO baseada nos
 // lancamentos registrados (Receita - Custo - Despesa), NUNCA o saldo
@@ -11,7 +12,8 @@ import type { CashBalance } from "@/lib/finance/cash/queries";
 // abaixo e permanente (texto sempre visivel, nao um icone de tooltip) e
 // nunca deve ser removido nem reduzido a um ⓘ escondido - e o requisito mais
 // importante desta etapa.
-export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currency: Currency }) {
+// `timeZone`: fuso da empresa - a data do saldo inicial e exibida nele (Etapa F4).
+export function CashBalanceCard({ cash, currency, timeZone }: { cash: CashBalance; currency: Currency; timeZone: string }) {
   return (
     <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="text-sm text-gray-500 dark:text-neutral-400">Caixa atual (histórico e realizado)</p>
@@ -32,7 +34,7 @@ export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currenc
         <div className="mt-4 border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300">
           <p>
             Saldo inicial não configurado — este valor assume saldo zero na data do primeiro lançamento (
-            {cash.asOfDate.toLocaleDateString("pt-BR")}).
+            {formatZonedDate(cash.asOfDate, timeZone)}).
           </p>
           <Link href="/configuracoes#empresa" className="mt-1 inline-block font-medium underline">
             Configurar saldo inicial
@@ -45,7 +47,7 @@ export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currenc
           href="/configuracoes#empresa"
           className="mt-4 inline-block text-xs font-medium text-gray-500 underline dark:text-neutral-400"
         >
-          Editar saldo inicial (configurado em {cash.asOfDate.toLocaleDateString("pt-BR")})
+          Editar saldo inicial (configurado em {formatZonedDate(cash.asOfDate, timeZone)})
         </Link>
       )}
     </div>

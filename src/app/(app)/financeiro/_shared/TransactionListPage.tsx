@@ -15,21 +15,10 @@ import { TransactionTable, type TransactionRow } from "@/components/financeiro/T
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
 import { NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { clockFor } from "@/lib/time/zoned";
+import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_SOURCES = new Set<string>(["MANUAL", "IMPORT"]);
-
-function formatDateDisplay(d: Date): string {
-  return d.toLocaleDateString("pt-BR");
-}
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -69,7 +58,10 @@ export async function TransactionListPage({
   const sourceParam = paramString(searchParams, "source");
   const source = sourceParam && VALID_SOURCES.has(sourceParam) ? (sourceParam as EntrySource) : undefined;
 
-  const range = resolvePeriodRange(effectivePeriod, clockFor(business), customRange);
+  // Periodo, datas exibidas e "hoje" do formulario no fuso da empresa (F3a/F4).
+  const clock = clockFor(business);
+  const today = todayKey(clock);
+  const range = resolvePeriodRange(effectivePeriod, clock, customRange);
 
   const [{ items }, categories] = await Promise.all([
     listTransactions(business.id, { type, categoryId, source, range, pageSize: 100 }),
@@ -82,8 +74,8 @@ export async function TransactionListPage({
   const rows: TransactionRow[] = items.map((item) => ({
     id: item.id,
     type: item.type,
-    occurredAtDisplay: formatDateDisplay(item.occurredAt),
-    occurredAtInput: formatDateInput(item.occurredAt),
+    occurredAtDisplay: formatZonedDate(item.occurredAt, clock.timeZone),
+    occurredAtInput: toDateKey(item.occurredAt, clock.timeZone),
     description: item.description,
     categoryId: item.categoryId,
     categoryName: item.category.name,
@@ -108,10 +100,11 @@ export async function TransactionListPage({
             defaultType={type}
             lockType
             className="grow"
+            todayKey={today}
           />
         }
       />
-      <TransactionTable rows={rows} categories={modalCategories} currency={business.currency} />
+      <TransactionTable rows={rows} categories={modalCategories} currency={business.currency} todayKey={today} />
     </div>
   );
 }

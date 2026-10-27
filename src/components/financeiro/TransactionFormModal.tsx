@@ -23,14 +23,6 @@ export type TransactionFormInitial = {
 
 const NEW_CATEGORY_VALUE = "__new__";
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 export function TransactionFormModal({
   open,
   onClose,
@@ -41,6 +33,7 @@ export function TransactionFormModal({
   lockRecurring = false,
   initial,
   onSaved,
+  todayKey,
 }: {
   open: boolean;
   onClose: () => void;
@@ -57,6 +50,9 @@ export function TransactionFormModal({
   lockRecurring?: boolean;
   initial?: TransactionFormInitial | null;
   onSaved?: () => void;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const router = useRouter();
   const titleId = useId();
@@ -66,7 +62,7 @@ export function TransactionFormModal({
   const recurringLocked = lockRecurring && !isEditing;
 
   const [type, setType] = useState<FinancialEntryType>(initial?.type ?? defaultType ?? "REVENUE");
-  const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ?? todayInputValue());
+  const [occurredAt, setOccurredAt] = useState(initial?.occurredAt ?? todayKey);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [amount, setAmount] = useState(initial?.amount ?? "");
@@ -103,11 +99,11 @@ export function TransactionFormModal({
         ? NEW_ENTRY_LABELS[type]
         : "Novo lançamento";
 
-  const showPastStartDateWarning = isRecurring && occurredAt < todayInputValue();
+  const showPastStartDateWarning = isRecurring && occurredAt < todayKey;
 
   function reset() {
     setType(defaultType ?? "REVENUE");
-    setOccurredAt(todayInputValue());
+    setOccurredAt(todayKey);
     setDescription("");
     setCategoryId("");
     setAmount("");

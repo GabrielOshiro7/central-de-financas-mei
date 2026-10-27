@@ -32,7 +32,7 @@ import { CategoryBreakdownChart } from "@/components/financeiro/CategoryBreakdow
 import { BillsForecastPanel } from "@/components/dashboard/BillsForecastPanel";
 import { CommercialPanel } from "@/components/dashboard/CommercialPanel";
 import { InsightsSummaryPanel } from "@/components/dashboard/InsightsSummaryPanel";
-import { clockFor } from "@/lib/time/zoned";
+import { clockFor, formatInstant } from "@/lib/time/zoned";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_COMPARISONS = new Set<string>(COMPARISON_OPTIONS.map((o) => o.value));
@@ -74,7 +74,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   const currency = business.currency ?? "BRL";
   const businessName = business.name ?? "Minha empresa";
-  const lastUpdatedLabel = `hoje às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  const lastUpdatedLabel = `hoje às ${formatInstant(clock.now, clock.timeZone, { hour: "2-digit", minute: "2-digit" })}`;
 
   const data = await getDashboardData(
     business.id,
@@ -84,7 +84,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     clock
   );
 
-  const headerPeriodLabel = `${periodLabel} (${formatDateRange(data.range.start, data.range.end)})`;
+  const headerPeriodLabel = `${periodLabel} (${formatDateRange(data.range.start, data.range.end, clock.timeZone)})`;
 
   // Estado vazio REAL (secao 27): a empresa nunca lancou nada em nenhum
   // periodo - diferente de "este periodo especifico esta vazio", que os

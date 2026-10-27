@@ -8,13 +8,7 @@ import {
 } from "@/lib/onboarding/options";
 import { EmpresaForm } from "./EmpresaForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { toDateKey } from "@/lib/time/zoned";
 
 // Secao "Empresa" dentro de Configuracoes (Etapa 5.1) - antes era a pagina
 // de nivel principal /empresa; movida pra ca, mesmo formulario/comportamento,
@@ -70,7 +64,7 @@ export async function EmpresaSection({ business }: { business: Business }) {
       <OpeningBalanceForm
         data={{
           openingBalance: business.openingBalance.toString(),
-          openingBalanceDate: business.openingBalanceDate ? formatDateInput(business.openingBalanceDate) : "",
+          openingBalanceDate: business.openingBalanceDate ? toDateKey(business.openingBalanceDate, business.timezone) : "",
         }}
         currency={business.currency}
       />

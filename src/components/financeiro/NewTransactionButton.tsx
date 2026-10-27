@@ -17,6 +17,7 @@ export function NewTransactionButton({
   lockType = false,
   lockRecurring = false,
   className = "",
+  todayKey,
 }: {
   label: string;
   categories: CategoryOption[];
@@ -25,6 +26,9 @@ export function NewTransactionButton({
   lockType?: boolean;
   lockRecurring?: boolean;
   className?: string;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -47,6 +51,7 @@ export function NewTransactionButton({
             defaultType={defaultType}
             lockType={lockType}
             lockRecurring={lockRecurring}
+            todayKey={todayKey}
           />,
           document.body
         )}

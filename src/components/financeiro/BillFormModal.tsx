@@ -31,14 +31,6 @@ export type BillFormInitial = {
   notes: string;
 };
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 const COUNTERPARTY_LABEL: Record<BillDirection, string> = {
   PAYABLE: "Fornecedor",
   RECEIVABLE: "Cliente",
@@ -56,12 +48,16 @@ export function BillFormModal({
   currency,
   initial,
   onSaved,
+  todayKey,
 }: {
   open: boolean;
   onClose: () => void;
   direction: BillDirection;
   categories: BillCategoryOption[];
   currency: Currency | null;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
   initial?: BillFormInitial | null;
   onSaved?: () => void;
 }) {
@@ -73,7 +69,7 @@ export function BillFormModal({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [amount, setAmount] = useState(initial?.amount ?? "");
   const [issueDate, setIssueDate] = useState(initial?.issueDate ?? "");
-  const [dueDate, setDueDate] = useState(initial?.dueDate ?? todayInputValue());
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? todayKey);
   const [documentNumber, setDocumentNumber] = useState(initial?.documentNumber ?? "");
   const [counterpartyName, setCounterpartyName] = useState(initial?.counterpartyName ?? "");
   const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? "");
@@ -102,7 +98,7 @@ export function BillFormModal({
     setDescription("");
     setAmount("");
     setIssueDate("");
-    setDueDate(todayInputValue());
+    setDueDate(todayKey);
     setDocumentNumber("");
     setCounterpartyName("");
     setPaymentMethod("");

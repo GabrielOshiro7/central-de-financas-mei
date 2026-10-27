@@ -25,23 +25,16 @@ const STATUS_BADGE_STYLE: Record<BillDisplayStatus, string> = {
   CANCELLED: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 // Reaproveita EXATAMENTE os endpoints de settle/revert/cancel de Bill ja
 // existentes (Etapa 5) - nao ha nenhuma logica de negocio nova aqui, so uma
 // tabela mais enxuta (sem edicao de categoria/descricao, que nao fazem
 // sentido para uma parcela de venda) chamando os mesmos /api/financeiro/
 // bills/[id]/settle|revert|cancel que a tela de Contas a Receber usa.
-export function SaleBillsTable({ bills, currency }: { bills: SaleBillRow[]; currency: Currency }) {
+// `todayKey`: "hoje" da EMPRESA (DateKey), calculado no servidor (Etapa F4).
+export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillRow[]; currency: Currency; todayKey: string }) {
   const router = useRouter();
   const [settling, setSettling] = useState<SaleBillRow | null>(null);
-  const [settleDate, setSettleDate] = useState(todayInputValue());
+  const [settleDate, setSettleDate] = useState(todayKey);
   const [settlePending, setSettlePending] = useState(false);
   const [settleError, setSettleError] = useState<string | null>(null);
   const [reverting, setReverting] = useState<SaleBillRow | null>(null);
@@ -147,7 +140,7 @@ export function SaleBillsTable({ bills, currency }: { bills: SaleBillRow[]; curr
                         type="button"
                         onClick={() => {
                           setSettling(bill);
-                          setSettleDate(todayInputValue());
+                          setSettleDate(todayKey);
                           setSettleError(null);
                         }}
                         className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"

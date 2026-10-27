@@ -80,6 +80,8 @@ const F3A_FILES = [
   "src/lib/agenda/queries.ts",
   "src/lib/agenda/mutations.ts",
   "src/lib/agenda/schema.ts",
+  // F4 (exibicao no fuso da empresa)
+  "src/lib/finance/format.ts",
 ];
 const F3A_FORBIDDEN = [
   ...FORBIDDEN_PATTERNS,
@@ -99,6 +101,54 @@ describe("arquivos da F3a/F3b/F3c nunca usam data/hora local do host", () => {
         .filter((line) => !line.trim().startsWith("//"))
         .join("\n");
       for (const { name, pattern } of F3A_FORBIDDEN) {
+        expect(code, `${relative} usa ${name}`).not.toMatch(pattern);
+      }
+    });
+  }
+});
+
+// Etapa F4: exibicao e valores iniciais de data no fuso da EMPRESA, nunca no
+// do processo (SSR) nem no do navegador (hidratacao/cliente). Toda pagina
+// (src/app) e todo componente (src/components) formatam datas so via
+// src/lib/time/zoned.ts (formatZonedDate/formatDateKey/formatInstant/
+// toDateKey) e recebem "hoje" do servidor por prop. Proibidos aqui: as
+// mesmas regras da F3 (getters/setters locais, toLocale*, construtor local,
+// new Date("YYYY-MM-DD")) e tambem Intl.DateTimeFormat direto (o fuso
+// explicito e responsabilidade do zoned.ts). Arquivos varridos
+// recursivamente - arquivo novo entra na guarda sem precisar ser listado.
+//
+// Excecoes justificadas (caminho relativo -> motivo). Hoje: nenhuma.
+const UI_EXCEPTIONS: Record<string, string> = {};
+const UI_FORBIDDEN = [
+  ...F3A_FORBIDDEN,
+  ...["getMinutes", "getSeconds", "setMinutes", "setSeconds"].map((name) => ({ name, pattern: new RegExp(`\\.${name}\\s*\\(`) })),
+  { name: "Intl.DateTimeFormat direto", pattern: /Intl\.DateTimeFormat\s*\(/ },
+];
+const UI_DIRS = ["src/app", "src/components"];
+
+describe("src/app e src/components nunca usam data/hora local do processo/navegador (F4)", () => {
+  const files = UI_DIRS.flatMap((dir) => listTsFiles(join(process.cwd(), dir))).map((file) =>
+    file.slice(process.cwd().length + 1).replace(/\\/g, "/")
+  );
+
+  it("encontrou arquivos para verificar (a guarda nao pode virar um no-op silencioso)", () => {
+    expect(files.length).toBeGreaterThan(50);
+    expect(files).toContain("src/components/financeiro/TransactionFormModal.tsx");
+    expect(files).toContain("src/app/(app)/dashboard/page.tsx");
+  });
+
+  it("toda excecao aponta para um arquivo que existe", () => {
+    for (const relative of Object.keys(UI_EXCEPTIONS)) expect(files).toContain(relative);
+  });
+
+  for (const relative of files) {
+    if (relative in UI_EXCEPTIONS) continue;
+    it(`${relative} nao usa getters/setters locais, toLocale*, construtor local nem Intl.DateTimeFormat`, () => {
+      const code = readFileSync(join(process.cwd(), relative), "utf8")
+        .split("\n")
+        .filter((line) => !line.trim().startsWith("//"))
+        .join("\n");
+      for (const { name, pattern } of UI_FORBIDDEN) {
         expect(code, `${relative} usa ${name}`).not.toMatch(pattern);
       }
     });

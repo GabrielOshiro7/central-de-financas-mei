@@ -7,14 +7,6 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
@@ -43,6 +35,7 @@ export function CompleteAppointmentDialog({
   initialItems,
   onClose,
   onCompleted,
+  todayKey,
 }: {
   appointmentId: string;
   currency: Currency;
@@ -51,6 +44,9 @@ export function CompleteAppointmentDialog({
   initialItems: CompleteDialogItem[];
   onClose: () => void;
   onCompleted: (result: { saleId: string; saleNumber: number }) => void;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const router = useRouter();
   const decimals = isIntegerCurrency(currency) ? 0 : 2;
@@ -62,7 +58,7 @@ export function CompleteAppointmentDialog({
   const [paymentMethod, setPaymentMethod] = useState("");
   const [paymentTiming, setPaymentTiming] = useState<"AVISTA" | "APRAZO">("AVISTA");
   const [installments, setInstallments] = useState<{ dueDateInput: string; amount: string }[]>([
-    { dueDateInput: todayInputValue(), amount: "" },
+    { dueDateInput: todayKey, amount: "" },
   ]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +76,7 @@ export function CompleteAppointmentDialog({
   // exibimos um seletor de data no modo a vista.
   function effectiveInstallments(): { dueDateInput: string; amount: string }[] {
     if (paymentTiming === "AVISTA") {
-      return [{ dueDateInput: todayInputValue(), amount: total.toString() }];
+      return [{ dueDateInput: todayKey, amount: total.toString() }];
     }
     return installments;
   }
@@ -88,7 +84,7 @@ export function CompleteAppointmentDialog({
   function setInstallmentCount(count: number) {
     const safeCount = Math.max(1, count);
     const base = round(total / safeCount, decimals);
-    const rows = Array.from({ length: safeCount }, () => ({ dueDateInput: todayInputValue(), amount: base.toString() }));
+    const rows = Array.from({ length: safeCount }, () => ({ dueDateInput: todayKey, amount: base.toString() }));
     const remainder = round(total - base * safeCount, decimals);
     rows[rows.length - 1].amount = round(base + remainder, decimals).toString();
     setInstallments(rows);

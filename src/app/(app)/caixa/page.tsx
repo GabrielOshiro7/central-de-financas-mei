@@ -71,7 +71,7 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
         </p>
       </div>
 
-      <CashBalanceCard cash={current} currency={business.currency} />
+      <CashBalanceCard cash={current} currency={business.currency} timeZone={clock.timeZone} />
 
       <CashForecastNote forecast={forecast} currency={business.currency} />
 

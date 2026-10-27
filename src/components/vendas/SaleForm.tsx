@@ -8,6 +8,7 @@ import { MoneyField, MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS, SALE_DISCOUNT_TYPE_OPTIONS } from "@/lib/sales/options";
+import { addDays, isDateKey } from "@/lib/time/zoned";
 
 // Este componente e "use client" e NUNCA importa nada de @/lib/sales/
 // calculations ou qualquer modulo que importe `Prisma` como VALOR (so
@@ -40,22 +41,9 @@ export type SaleFormInitial = {
   installments: SaleFormInstallment[];
 };
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
+// Soma de dias pura de calendario (zoned.ts), sem fuso nenhum (Etapa F4).
 function addDaysInput(dateInput: string, days: number): string {
-  const [y, m, d] = dateInput.split("-").map(Number);
-  const date = new Date(y, (m || 1) - 1, d || 1);
-  date.setDate(date.getDate() + days);
-  const yy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  return `${yy}-${mm}-${dd}`;
+  return isDateKey(dateInput) ? addDays(dateInput, days) : dateInput;
 }
 
 function round(value: number, decimals: number): number {
@@ -70,6 +58,7 @@ export function SaleForm({
   categories,
   products,
   currency,
+  todayKey,
 }: {
   mode: "create" | "edit";
   initial?: SaleFormInitial;
@@ -77,6 +66,9 @@ export function SaleForm({
   categories: CategoryOption[];
   products: ProductOption[];
   currency: Currency;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const router = useRouter();
   const isEditingConfirmed = mode === "edit" && initial?.status === "CONFIRMED";
@@ -85,7 +77,7 @@ export function SaleForm({
   const [clientRequestId] = useState(() => crypto.randomUUID());
   const [clientId, setClientId] = useState(initial?.clientId ?? "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
-  const [saleDate, setSaleDate] = useState(initial?.saleDateInput ?? todayInputValue());
+  const [saleDate, setSaleDate] = useState(initial?.saleDateInput ?? todayKey);
   // Chave/id de cada linha e SEMPRE derivada do indice no array, nunca de um
   // contador global (`let x = 0; x++`) ou de `crypto.randomUUID()` gerado
   // durante o render: qualquer um dos dois produziria um valor diferente na
@@ -107,7 +99,7 @@ export function SaleForm({
     initial && initial.installments.length > 1 ? "APRAZO" : "AVISTA"
   );
   const [installments, setInstallments] = useState<SaleFormInstallment[]>(
-    () => initial?.installments ?? [{ dueDateInput: todayInputValue(), amount: "" }]
+    () => initial?.installments ?? [{ dueDateInput: todayKey, amount: "" }]
   );
   const [installmentCount, setInstallmentCount] = useState(2);
   const [installmentIntervalDays, setInstallmentIntervalDays] = useState(30);
@@ -204,7 +196,7 @@ export function SaleForm({
   }
 
   function addInstallment() {
-    setInstallments((prev) => [...prev, { dueDateInput: todayInputValue(), amount: "" }]);
+    setInstallments((prev) => [...prev, { dueDateInput: todayKey, amount: "" }]);
   }
 
   function removeInstallment(index: number) {

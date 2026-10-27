@@ -4,6 +4,7 @@ import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { SaleForm } from "@/components/vendas/SaleForm";
+import { clockFor, todayKey } from "@/lib/time/zoned";
 
 export default async function NovaVendaPage() {
   const { business } = await requireOnboardedUser();
@@ -40,6 +41,7 @@ export default async function NovaVendaPage() {
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           products={products.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.defaultPrice?.toString() ?? "" }))}
           currency={business.currency}
+          todayKey={todayKey(clockFor(business))}
         />
       )}
     </div>

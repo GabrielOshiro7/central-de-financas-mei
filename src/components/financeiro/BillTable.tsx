@@ -38,24 +38,20 @@ const STATUS_BADGE_STYLE: Record<BillDisplayStatus, string> = {
   CANCELLED: "bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-neutral-400",
 };
 
-function todayInputValue(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
 export function BillTable({
   rows,
   direction,
   categories,
   currency,
+  todayKey,
 }: {
   rows: BillRow[];
   direction: BillDirection;
   categories: BillCategoryOption[];
   currency: Currency | null;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const router = useRouter();
   const directionLabels = BILL_DIRECTION_LABELS[direction];
@@ -63,7 +59,7 @@ export function BillTable({
 
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [settling, setSettling] = useState<BillRow | null>(null);
-  const [settleDate, setSettleDate] = useState(todayInputValue());
+  const [settleDate, setSettleDate] = useState(todayKey);
   const [settlePending, setSettlePending] = useState(false);
   const [settleError, setSettleError] = useState<string | null>(null);
   const [reverting, setReverting] = useState<BillRow | null>(null);
@@ -190,7 +186,7 @@ export function BillTable({
                         type="button"
                         onClick={() => {
                           setSettling(row);
-                          setSettleDate(todayInputValue());
+                          setSettleDate(todayKey);
                           setSettleError(null);
                         }}
                         className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
@@ -241,6 +237,7 @@ export function BillTable({
           direction={direction}
           categories={categories}
           currency={currency}
+          todayKey={todayKey}
           initial={
             {
               id: editing.id,

@@ -5,20 +5,13 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { RecurringEntryTable, type RecurringEntryRow } from "@/components/financeiro/RecurringEntryTable";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
-
-function formatDateDisplay(d: Date): string {
-  return d.toLocaleDateString("pt-BR");
-}
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function RecurringEntriesPage() {
   const { business } = await requireOnboardedUser();
+  // Datas exibidas e "hoje" dos formularios no fuso da empresa (Etapa F4).
+  const clock = clockFor(business);
+  const timeZone = clock.timeZone;
 
   const [entries, revenueCategories, costCategories, expenseCategories] = await Promise.all([
     listRecurringEntries(business.id),
@@ -45,10 +38,10 @@ export default async function RecurringEntriesPage() {
     dayOfWeek: entry.dayOfWeek,
     dayOfMonth: entry.dayOfMonth,
     yearMonth: entry.yearMonth,
-    startDateDisplay: formatDateDisplay(entry.startDate),
-    startDateInput: formatDateInput(entry.startDate),
-    endDateDisplay: entry.endDate ? formatDateDisplay(entry.endDate) : null,
-    endDateInput: entry.endDate ? formatDateInput(entry.endDate) : "",
+    startDateDisplay: formatZonedDate(entry.startDate, timeZone),
+    startDateInput: toDateKey(entry.startDate, timeZone),
+    endDateDisplay: entry.endDate ? formatZonedDate(entry.endDate, timeZone) : null,
+    endDateInput: entry.endDate ? toDateKey(entry.endDate, timeZone) : "",
     isActive: entry.isActive,
   }));
 
@@ -62,6 +55,7 @@ export default async function RecurringEntriesPage() {
       currency={business.currency}
       lockRecurring
       className="max-sm:w-full"
+      todayKey={todayKey(clock)}
     />
   );
 

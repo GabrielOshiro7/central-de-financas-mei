@@ -7,17 +7,14 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { SaleForm } from "@/components/vendas/SaleForm";
 import { SaleNotesForm } from "@/components/vendas/SaleNotesForm";
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { clockFor, toDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/editar">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();
+  // Datas iniciais dos campos no fuso da empresa (Etapa F4).
+  const clock = clockFor(business);
+  const timeZone = clock.timeZone;
 
   const sale = await getSaleById(business.id, id);
   if (!sale) notFound();
@@ -60,7 +57,7 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
             id: sale.id,
             clientId: sale.clientId,
             categoryId: sale.categoryId,
-            saleDateInput: formatDateInput(sale.saleDate),
+            saleDateInput: toDateKey(sale.saleDate, timeZone),
             items: sale.items.map((item) => ({
               productId: item.productId ?? "",
               description: item.description,
@@ -73,7 +70,7 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
             notes: sale.notes ?? "",
             status: sale.status === "DRAFT" ? "DRAFT" : "CONFIRMED",
             installments: sale.bills.map((bill) => ({
-              dueDateInput: formatDateInput(bill.dueDate),
+              dueDateInput: toDateKey(bill.dueDate, timeZone),
               amount: bill.amount.toString(),
             })),
           }}
@@ -81,6 +78,7 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           products={products.map((p) => ({ id: p.id, name: p.name, defaultPrice: p.defaultPrice?.toString() ?? "" }))}
           currency={business.currency}
+          todayKey={todayKey(clock)}
         />
       )}
     </div>

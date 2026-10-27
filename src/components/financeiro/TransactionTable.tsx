@@ -27,10 +27,14 @@ export function TransactionTable({
   rows,
   categories,
   currency,
+  todayKey,
 }: {
   rows: TransactionRow[];
   categories: CategoryOption[];
   currency: Currency | null;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<TransactionRow | null>(null);
@@ -168,6 +172,7 @@ export function TransactionTable({
           onClose={() => setEditing(null)}
           categories={categories}
           currency={currency}
+          todayKey={todayKey}
           initial={{
             id: editing.id,
             type: editing.type,

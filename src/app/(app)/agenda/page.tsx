@@ -174,7 +174,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             Próximo ›
           </Link>
         </div>
-        <AppointmentSimpleList items={items} emptyMessage={emptyMessage} currency={business.currency} revenueCategories={revenueCategoryOptions} defaultCategoryId={defaultCategoryId} timeZone={timeZone} />
+        <AppointmentSimpleList items={items} emptyMessage={emptyMessage} currency={business.currency} revenueCategories={revenueCategoryOptions} defaultCategoryId={defaultCategoryId} timeZone={timeZone} todayKey={todayKey} />
       </div>
     );
   } else {
@@ -199,6 +199,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             revenueCategories={revenueCategoryOptions}
             defaultCategoryId={defaultCategoryId}
             timeZone={timeZone}
+            todayKey={todayKey}
           />
         </div>
       );
@@ -250,6 +251,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
                     revenueCategories={revenueCategoryOptions}
                     defaultCategoryId={defaultCategoryId}
                     timeZone={timeZone}
+                    todayKey={todayKey}
                   />
                 )}
               </>

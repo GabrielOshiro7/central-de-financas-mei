@@ -10,10 +10,14 @@ export function NewBillButton({
   direction,
   categories,
   currency,
+  todayKey,
 }: {
   direction: BillDirection;
   categories: BillCategoryOption[];
   currency: Currency | null;
+  // "Hoje" da EMPRESA (DateKey "YYYY-MM-DD"), calculado no servidor com o fuso
+  // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
+  todayKey: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -33,6 +37,7 @@ export function NewBillButton({
         direction={direction}
         categories={categories}
         currency={currency}
+        todayKey={todayKey}
       />
     </>
   );

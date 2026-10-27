@@ -9,18 +9,7 @@ import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { SaleBillsTable, type SaleBillRow } from "@/components/vendas/SaleBillsTable";
 import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
 import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
-import { clockFor } from "@/lib/time/zoned";
-
-function formatDateDisplay(d: Date): string {
-  return d.toLocaleDateString("pt-BR");
-}
-
-function formatDateInput(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const { id } = await props.params;
@@ -29,17 +18,17 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const sale = await getSaleById(business.id, id);
   if (!sale) notFound();
 
-  // Vencido / atrasado no fuso da empresa (Etapa F3b).
+  // Vencido / atrasado (F3b), datas exibidas e "hoje" (F4) no fuso da empresa.
   const clock = clockFor(business);
   const currency = business.currency;
   const paymentStatus = deriveSalePaymentStatus(sale.bills, clock);
 
   const billRows: SaleBillRow[] = sale.bills.map((bill) => ({
     id: bill.id,
-    dueDateDisplay: formatDateDisplay(bill.dueDate),
+    dueDateDisplay: formatZonedDate(bill.dueDate, clock.timeZone),
     amount: bill.amount.toString(),
     displayStatus: deriveBillStatus(bill, clock),
-    paidAtDisplay: bill.paidAt ? formatDateDisplay(bill.paidAt) : null,
+    paidAtDisplay: bill.paidAt ? formatZonedDate(bill.paidAt, clock.timeZone) : null,
   }));
 
   return (
@@ -47,7 +36,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Venda #{sale.saleNumber}</h1>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">{formatDateDisplay(sale.saleDate)}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{formatZonedDate(sale.saleDate, clock.timeZone)}</p>
         </div>
         <Link href="/vendas" className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
           ← Voltar para vendas
@@ -68,7 +57,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
       <SaleDetailActions
         saleId={sale.id}
         status={sale.status}
-        saleDateInput={formatDateInput(sale.saleDate)}
+        saleDateInput={toDateKey(sale.saleDate, clock.timeZone)}
         total={sale.total.toString()}
         currency={currency}
         editable={sale.status !== "CANCELLED"}
@@ -146,7 +135,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
         ) : billRows.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-neutral-400">Nenhuma parcela registrada.</p>
         ) : (
-          <SaleBillsTable bills={billRows} currency={currency} />
+          <SaleBillsTable bills={billRows} currency={currency} todayKey={todayKey(clock)} />
         )}
       </section>
 

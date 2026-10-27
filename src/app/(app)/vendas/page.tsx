@@ -9,7 +9,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SaleFilters } from "@/components/vendas/SaleFilters";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
-import { clockFor } from "@/lib/time/zoned";
+import { clockFor, formatZonedDate } from "@/lib/time/zoned";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -48,7 +48,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
     id: sale.id,
     saleNumber: sale.saleNumber,
     clientName: sale.client.name,
-    saleDateDisplay: sale.saleDate.toLocaleDateString("pt-BR"),
+    saleDateDisplay: formatZonedDate(sale.saleDate, clock.timeZone),
     total: sale.total.toString(),
     paymentMethod: sale.paymentMethod ?? "",
     status: sale.status,

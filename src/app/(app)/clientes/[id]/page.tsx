@@ -10,12 +10,12 @@ import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bill
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
-import { clockFor } from "@/lib/time/zoned";
+import { clockFor, formatZonedDate } from "@/lib/time/zoned";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();
-  // Vencido / atrasado no fuso da empresa (Etapa F3b).
+  // Vencido / atrasado (F3b) e datas exibidas (F4) no fuso da empresa.
   const clock = clockFor(business);
 
   const client = await getClientById(business.id, id);
@@ -102,7 +102,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
           />
           <MetricCard
             label="Última compra"
-            value={commercial.lastPurchaseAt ? commercial.lastPurchaseAt.toLocaleDateString("pt-BR") : null}
+            value={commercial.lastPurchaseAt ? formatZonedDate(commercial.lastPurchaseAt, clock.timeZone) : null}
           />
         </div>
       </section>
@@ -143,7 +143,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                       </Link>
                     </td>
                     <td role="cell" data-label="Data" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Data: </span>
-                      {sale.saleDate.toLocaleDateString("pt-BR")}
+                      {formatZonedDate(sale.saleDate, clock.timeZone)}
                     </td>
                     <td role="cell" data-label="Status" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Status: </span>{SALE_STATUS_LABELS[sale.status]}</td>
                     <td role="cell" data-label="Total" className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100 rt-key"><span className="rt-sr">Total: </span>
@@ -155,7 +155,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                           const displayStatus = deriveBillStatus(bill, clock);
                           return (
                             <li key={bill.id} className="flex items-center gap-2">
-                              <span>{bill.dueDate.toLocaleDateString("pt-BR")}</span>
+                              <span>{formatZonedDate(bill.dueDate, clock.timeZone)}</span>
                               <span>{formatMoney(bill.amount, currency)}</span>
                               <span className="text-xs text-gray-500 dark:text-neutral-400">
                                 {BILL_DISPLAY_STATUS_LABELS.RECEIVABLE[displayStatus]}

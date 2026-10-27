@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { formatZonedDate, type TimeZone } from "@/lib/time/zoned";
 
 type Decimal = Prisma.Decimal;
 
@@ -31,9 +32,9 @@ export function formatPercentagePoints(value: Decimal | number | null): string {
 // "01/09/2026 — 30/09/2026" (secao 5 da Etapa 4, label de periodo no
 // cabecalho do dashboard). `end` e sempre o limite EXCLUSIVO usado nas
 // queries (ver period.ts) - subtrai 1ms pra exibir o ultimo dia realmente
-// incluido no periodo, nao o dia seguinte.
-export function formatDateRange(start: Date, end: Date): string {
+// incluido no periodo, nao o dia seguinte. Os dois dias sao os do fuso da
+// empresa (Etapa F4), nunca os do processo.
+export function formatDateRange(start: Date, end: Date, timeZone: TimeZone): string {
   const inclusiveEnd = new Date(end.getTime() - 1);
-  const fmt = (d: Date) => d.toLocaleDateString("pt-BR");
-  return `${fmt(start)} — ${fmt(inclusiveEnd)}`;
+  return `${formatZonedDate(start, timeZone)} — ${formatZonedDate(inclusiveEnd, timeZone)}`;
 }

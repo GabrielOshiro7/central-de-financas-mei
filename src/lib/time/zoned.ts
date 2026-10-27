@@ -289,3 +289,10 @@ export function formatInstant(
 ): string {
   return new Intl.DateTimeFormat(locale, { ...options, timeZone: assertValidTimeZone(timeZone) }).format(instant);
 }
+
+// Dia de calendario de um INSTANTE gravado (timestamp), no fuso dado, em
+// pt-BR ("20/10/2026"). E o equivalente de `toLocaleDateString("pt-BR")`
+// sem depender do fuso do processo/navegador (Etapa F4).
+export function formatZonedDate(instant: Date, timeZone: TimeZone, style: "short" | "long" = "short"): string {
+  return formatDateKey(toDateKey(instant, timeZone), style);
+}

@@ -37,6 +37,7 @@ export function AppointmentRow({
   revenueCategories,
   defaultCategoryId,
   timeZone,
+  todayKey,
 }: {
   item: AppointmentListItem;
   currency: Currency;
@@ -44,6 +45,9 @@ export function AppointmentRow({
   defaultCategoryId: string | null;
   // Fuso da empresa (Etapa F3c) - horarios exibidos nele.
   timeZone: string;
+  // "Hoje" da empresa (DateKey, do servidor) - data inicial das parcelas no
+  // dialogo de conclusao (Etapa F4).
+  todayKey: string;
 }) {
   return (
     <li className="flex flex-col gap-3 border border-gray-200 p-4 dark:border-neutral-800 sm:flex-row sm:items-start sm:justify-between">
@@ -74,6 +78,7 @@ export function AppointmentRow({
         defaultCategoryId={defaultCategoryId}
         completeItems={item.completeItems}
         nextAppointmentHref={nextAppointmentHref(item)}
+        todayKey={todayKey}
       />
     </li>
   );
@@ -98,6 +103,7 @@ export function AppointmentSimpleList({
   revenueCategories,
   defaultCategoryId,
   timeZone,
+  todayKey,
 }: {
   items: AppointmentListItem[];
   emptyMessage: string;
@@ -105,6 +111,7 @@ export function AppointmentSimpleList({
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
   timeZone: string;
+  todayKey: string;
 }) {
   if (items.length === 0) {
     return <EmptyState message={emptyMessage} />;
@@ -113,7 +120,7 @@ export function AppointmentSimpleList({
   return (
     <ul className="flex flex-col gap-2">
       {items.map((item) => (
-        <AppointmentRow key={item.id} item={item} currency={currency} revenueCategories={revenueCategories} defaultCategoryId={defaultCategoryId} timeZone={timeZone} />
+        <AppointmentRow key={item.id} item={item} currency={currency} revenueCategories={revenueCategories} defaultCategoryId={defaultCategoryId} timeZone={timeZone} todayKey={todayKey} />
       ))}
     </ul>
   );
@@ -129,6 +136,7 @@ export function AppointmentGroupedList({
   revenueCategories,
   defaultCategoryId,
   timeZone,
+  todayKey,
 }: {
   items: AppointmentListItem[];
   emptyMessage: string;
@@ -136,6 +144,7 @@ export function AppointmentGroupedList({
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
   timeZone: string;
+  todayKey: string;
 }) {
   if (items.length === 0) {
     return <EmptyState message={emptyMessage} />;
@@ -158,6 +167,7 @@ export function AppointmentGroupedList({
                 revenueCategories={revenueCategories}
                 defaultCategoryId={defaultCategoryId}
                 timeZone={timeZone}
+                todayKey={todayKey}
               />
             ))}
           </ul>

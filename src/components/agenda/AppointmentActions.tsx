@@ -26,6 +26,7 @@ export function AppointmentActions({
   defaultCategoryId,
   completeItems,
   nextAppointmentHref,
+  todayKey,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
@@ -39,6 +40,8 @@ export function AppointmentActions({
   // Link pronto pra "agendar o proximo" (mesmo cliente/servicos) - construido
   // pelo chamador a partir dos dados que ja tem, ver AppointmentList.tsx.
   nextAppointmentHref: string;
+  // "Hoje" da empresa (DateKey, do servidor) para o dialogo de conclusao (F4).
+  todayKey: string;
 }) {
   const router = useRouter();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
@@ -204,6 +207,7 @@ export function AppointmentActions({
           revenueCategories={revenueCategories}
           defaultCategoryId={defaultCategoryId}
           initialItems={completeItems}
+          todayKey={todayKey}
           onClose={() => setCompleting(false)}
           onCompleted={(result) => {
             setCompleting(false);
