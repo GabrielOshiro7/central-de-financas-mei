@@ -151,12 +151,12 @@ export async function getDashboardData(
     topClients,
     insights,
   ] = await Promise.all([
-    getFinancialSummaryForRange(businessId, range),
+    getFinancialSummaryForRange(businessId, range, timeZone),
     fetchSeries(range),
-    getCategoryBreakdown(businessId, range, "COST"),
-    getCategoryBreakdown(businessId, range, "EXPENSE"),
+    getCategoryBreakdown(businessId, range, "COST", timeZone),
+    getCategoryBreakdown(businessId, range, "EXPENSE", timeZone),
     hasAnyFinancialEntriesEver(businessId),
-    comparisonRange ? getFinancialSummaryForRange(businessId, comparisonRange) : Promise.resolve(null),
+    comparisonRange ? getFinancialSummaryForRange(businessId, comparisonRange, timeZone) : Promise.resolve(null),
     comparisonRange ? fetchSeries(comparisonRange) : Promise.resolve(null),
     // Indicadores de Contas a Pagar/Receber (Etapa 5) integrados ao
     // dashboard existente - reaproveita getBillSummary/getForecastBalance

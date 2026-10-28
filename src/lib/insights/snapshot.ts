@@ -119,9 +119,9 @@ export async function computeIndicatorSnapshot(
     currentOverdue,
     previousOverdue,
   ] = await Promise.all([
-    hasFinancialEntriesBefore(businessId, current.start),
-    getFinancialSummaryForRange(businessId, current),
-    getFinancialSummaryForRange(businessId, previousClipped),
+    hasFinancialEntriesBefore(businessId, current.start, timeZone),
+    getFinancialSummaryForRange(businessId, current, timeZone),
+    getFinancialSummaryForRange(businessId, previousClipped, timeZone),
     getSalesSummary(businessId, current, clock),
     getSalesSummary(businessId, previousClipped, clock),
     getTopClients(businessId, current, 1000),

@@ -2,21 +2,22 @@ import { prisma } from "@/lib/db";
 import { computeIndicatorSnapshot } from "@/lib/insights/snapshot";
 import { evaluateSnapshot } from "@/lib/insights/rules";
 import { enrichWithAI } from "@/lib/insights/narrative";
-import type { BusinessClock } from "@/lib/time/zoned";
+import type { BusinessClock, TimeZone } from "@/lib/time/zoned";
+import { dayRangeFilter } from "@/lib/finance/entryDay";
 
 // Fingerprint barato de desatualizacao (aprovado explicitamente antes de
 // codificar esta etapa): COUNT + MAX(updatedAt) de FinancialEntry no range
-// informado, usando o indice ja existente [businessId, occurredAt] - nenhum
-// indice novo necessario. O range cobre TANTO o periodo atual quanto o
+// informado (pelo DIA do lancamento, occurredOn - Etapa F6a-2). O range cobre TANTO o periodo atual quanto o
 // anterior recortado (comparisonPeriodStart ate periodEnd, um unico span
 // continuo) - uma edicao retroativa no mes ja fechado tambem precisa
 // invalidar o cache, nao so uma mudanca no mes corrente.
 export async function computeDataFingerprint(
   businessId: string,
-  range: { start: Date; end: Date }
+  range: { start: Date; end: Date },
+  timeZone: TimeZone
 ): Promise<string> {
   const result = await prisma.financialEntry.aggregate({
-    where: { businessId, occurredAt: { gte: range.start, lt: range.end } },
+    where: { businessId, occurredOn: dayRangeFilter(range, timeZone) },
     _count: { _all: true },
     _max: { updatedAt: true },
   });
@@ -42,10 +43,11 @@ export async function generateInsightsForBusiness(
   const drafts = evaluateSnapshot(snapshot);
   const finalDrafts = opts.withAI ? await Promise.all(drafts.map((draft) => enrichWithAI(draft))) : drafts;
 
-  const fingerprint = await computeDataFingerprint(businessId, {
-    start: snapshot.comparisonPeriodStart,
-    end: snapshot.periodEnd,
-  });
+  const fingerprint = await computeDataFingerprint(
+    businessId,
+    { start: snapshot.comparisonPeriodStart, end: snapshot.periodEnd },
+    clock.timeZone
+  );
 
   const activeMetrics = finalDrafts.map((d) => d.metric);
 

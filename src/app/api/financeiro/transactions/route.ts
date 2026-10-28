@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isDateKey } from "@/lib/time/zoned";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { transactionSchema } from "@/lib/finance/schema";
@@ -26,7 +27,11 @@ export async function POST(request: Request) {
 
   const result = await createTransaction(business.id, user.id, {
     type: parsed.data.type,
-    occurredAt: new Date(parsed.data.occurredAt),
+    // O dia digitado (YYYY-MM-DD) e a fonte do dia (Etapa F6a-2); um valor
+    // com hora, se algum cliente mandar, continua tratado como instante.
+    ...(isDateKey(parsed.data.occurredAt)
+      ? { occurredOn: parsed.data.occurredAt }
+      : { occurredAt: new Date(parsed.data.occurredAt) }),
     description: parsed.data.description,
     categoryId: parsed.data.categoryId,
     amount: parsed.data.amount,

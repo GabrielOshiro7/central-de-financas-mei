@@ -363,12 +363,12 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
     await materializeRecurringEntries(businessId, userId, uptoDate);
 
     const range = { start: new Date(2026, 0, 1), end: new Date(2026, 3, 1) }; // jan-mar/2026
-    const summary = await getFinancialSummaryForRange(businessId, range);
+    const summary = await getFinancialSummaryForRange(businessId, range, PROCESS_TZ);
 
     const [revenueTx, costTx, expenseTx] = await Promise.all([
-      listTransactions(businessId, { type: "REVENUE", range, pageSize: 100 }),
-      listTransactions(businessId, { type: "COST", range, pageSize: 100 }),
-      listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 }),
+      listTransactions(businessId, { type: "REVENUE", range, pageSize: 100 }, PROCESS_TZ),
+      listTransactions(businessId, { type: "COST", range, pageSize: 100 }, PROCESS_TZ),
+      listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 }, PROCESS_TZ),
     ]);
 
     expect(summary.revenue.toNumber()).toBe(sumAmounts(revenueTx.items));

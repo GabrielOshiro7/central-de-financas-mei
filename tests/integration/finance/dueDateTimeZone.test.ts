@@ -130,7 +130,11 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
   it("caixa: a virada de mês segue o fuso da empresa (01:00 JST de 01/11 já é novembro em Tóquio, ainda outubro em UTC)", async () => {
     await prisma.business.update({
       where: { id: businessId },
-      data: { openingBalance: new Prisma.Decimal(1000), openingBalanceDate: new Date("2026-09-30T00:00:00Z") },
+      data: {
+        openingBalance: new Prisma.Decimal(1000),
+        openingBalanceDate: new Date("2026-09-30T00:00:00Z"),
+        openingBalanceOn: dbDateOfInstant(new Date("2026-09-30T00:00:00Z"), "Asia/Tokyo"),
+      },
     });
     await prisma.financialEntry.createMany({
       data: [
@@ -148,7 +152,24 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       [2026, 10, 1150],
     ]);
 
-    const utc = await getMonthlyCashSeries(businessId, business, { now, timeZone: "UTC" });
+    // Mesmos instantes gravados por uma empresa EM UTC (dia no fuso dela).
+    const utcBusiness = await prisma.business.create({
+      data: {
+        userId: (await prisma.user.create({ data: { name: "F3b UTC", email: `f3b-utc-${Date.now()}@example.com`, passwordHash: "x" } })).id,
+        name: "Empresa F3b UTC", currency: "BRL", timezone: "UTC", openingBalance: new Prisma.Decimal(1000),
+        openingBalanceDate: new Date("2026-09-30T00:00:00Z"), openingBalanceOn: dbDateOfInstant(new Date("2026-09-30T00:00:00Z"), "UTC"),
+      },
+    });
+    await prisma.financialEntry.createMany({
+      data: [new Date("2026-10-15T00:00:00Z"), new Date("2026-10-31T16:00:00Z")].map((at, i) => ({
+        businessId: utcBusiness.id, userId: utcBusiness.userId, type: "REVENUE" as const, categoryId: revenueCategoryId,
+        description: i === 0 ? "Outubro" : "01/11 JST", amount: i === 0 ? "50" : "100", occurredAt: at, occurredOn: dbDateOfInstant(at, "UTC"),
+      })),
+    });
+    const utc = await getMonthlyCashSeries(utcBusiness.id, utcBusiness, { now, timeZone: "UTC" });
+    await prisma.financialEntry.deleteMany({ where: { businessId: utcBusiness.id } });
+    await prisma.business.delete({ where: { id: utcBusiness.id } });
+    await prisma.user.delete({ where: { id: utcBusiness.userId } });
     expect(utc.map((p) => [p.year, p.month, p.balance.toNumber()])).toEqual([
       [2026, 8, 1000],
       [2026, 9, 1150],

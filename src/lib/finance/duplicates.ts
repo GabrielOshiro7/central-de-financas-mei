@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ValidatedImportRow } from "@/lib/finance/importValidation";
-import { addDays, startOfDayInstant, toDateKey, type TimeZone } from "@/lib/time/zoned";
+import { addDays, dateKeyToDbDate, dbDateToKey, toDateKey, type TimeZone } from "@/lib/time/zoned";
 
 function normalizeDescription(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
@@ -14,7 +14,9 @@ function normalizeDescription(value: string): string {
 //
 // Etapa F3c: "mesma data" = mesmo dia de calendario no FUSO DA EMPRESA (antes:
 // getters locais, fuso do processo), e a janela da consulta cobre os dias
-// inteiros nesse fuso.
+// inteiros nesse fuso. Etapa F6a-2: o dia do lancamento existente e o
+// occurredOn gravado (sem converter instante); o da linha da planilha e o dia
+// que ela traz (occurredAt da linha = 00:00 desse dia no fuso da empresa).
 export async function markPotentialDuplicates(
   businessId: string,
   rows: ValidatedImportRow[],
@@ -24,14 +26,15 @@ export async function markPotentialDuplicates(
   if (validRows.length === 0) return rows;
 
   const keys = validRows.map((r) => toDateKey(r.occurredAt as Date, timeZone)).sort();
-  const start = startOfDayInstant(keys[0], timeZone);
-  const end = startOfDayInstant(addDays(keys[keys.length - 1], 1), timeZone);
-
   const existing = await prisma.financialEntry.findMany({
-    where: { businessId, source: "IMPORT", occurredAt: { gte: start, lt: end } },
-    select: { type: true, occurredAt: true, description: true, amount: true },
+    where: {
+      businessId,
+      source: "IMPORT",
+      occurredOn: { gte: dateKeyToDbDate(keys[0]), lt: dateKeyToDbDate(addDays(keys[keys.length - 1], 1)) },
+    },
+    select: { type: true, occurredOn: true, description: true, amount: true },
   });
-  const existingWithKey = existing.map((e) => ({ ...e, dateKey: toDateKey(e.occurredAt, timeZone) }));
+  const existingWithKey = existing.map((e) => ({ ...e, dateKey: dbDateToKey(e.occurredOn) }));
 
   return rows.map((row) => {
     if (row.errors.length > 0 || !row.occurredAt || row.amount === null) return row;

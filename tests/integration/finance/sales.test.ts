@@ -336,7 +336,7 @@ describe("vendas (Etapa 6)", () => {
     );
 
     const range = { start: new Date(2026, 5, 1), end: new Date(2026, 6, 1) };
-    const financialSummary = await getFinancialSummaryForRange(businessId, range);
+    const financialSummary = await getFinancialSummaryForRange(businessId, range, "Asia/Tokyo");
 
     const paidBills = await prisma.bill.findMany({
       where: { businessId, status: "PAID", saleId: { not: null } },

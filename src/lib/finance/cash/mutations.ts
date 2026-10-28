@@ -1,13 +1,15 @@
 import { Prisma, type Business } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { dbDateOfInstant } from "@/lib/time/zoned";
+import type { DateKey } from "@/lib/time/zoned";
+import { dayColumns } from "@/lib/finance/entryDay";
 
 const { Decimal } = Prisma;
 
+// Dia do saldo inicial (Etapa F6a-2): "openingBalanceOn" (DateKey digitada -
+// o caminho da rota) ou, sem dia de origem, "openingBalanceDate" (instante).
 export type OpeningBalanceInput = {
   openingBalance: number | string;
-  openingBalanceDate: Date;
-};
+} & ({ openingBalanceOn: DateKey; openingBalanceDate?: undefined } | { openingBalanceDate: Date; openingBalanceOn?: undefined });
 
 export type UpdateOpeningBalanceResult =
   | { ok: true; business: Pick<Business, "id"> }
@@ -24,13 +26,16 @@ export async function updateOpeningBalance(
     return { ok: false, error: "Empresa não encontrada." };
   }
 
+  const day = dayColumns(
+    input.openingBalanceOn !== undefined ? { day: input.openingBalanceOn } : { instant: input.openingBalanceDate },
+    existing.timezone
+  );
   const business = await prisma.business.update({
     where: { userId },
     data: {
       openingBalance: new Decimal(input.openingBalance),
-      openingBalanceDate: input.openingBalanceDate,
-      // Gravacao dupla (F6a-1): mesmo dia, no fuso da empresa.
-      openingBalanceOn: dbDateOfInstant(input.openingBalanceDate, existing.timezone),
+      openingBalanceDate: day.at,
+      openingBalanceOn: day.on,
     },
     select: { id: true },
   });

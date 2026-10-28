@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isDateKey } from "@/lib/time/zoned";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
@@ -35,7 +36,10 @@ export async function POST(request: Request, context: RouteContext<"/api/finance
   }
 
   const paidAt = parsed.data.paidAt ? new Date(parsed.data.paidAt) : new Date();
-  const result = await settleBill(business.id, user.id, id, paidAt);
+  // Data informada (YYYY-MM-DD) = o dia do lancamento (Etapa F6a-2); sem
+  // data, o dia sai do instante do clique.
+  const paidOn = parsed.data.paidAt && isDateKey(parsed.data.paidAt) ? parsed.data.paidAt : undefined;
+  const result = await settleBill(business.id, user.id, id, paidAt, paidOn);
 
   if (!result.ok) {
     return NextResponse.json(

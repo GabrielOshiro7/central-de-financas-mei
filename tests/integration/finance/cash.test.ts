@@ -39,7 +39,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
   beforeEach(async () => {
     await prisma.financialEntry.deleteMany({ where: { businessId } });
     await prisma.bill.deleteMany({ where: { businessId } });
-    await prisma.business.update({ where: { id: businessId }, data: { openingBalance: 0, openingBalanceDate: null } });
+    await prisma.business.update({ where: { id: businessId }, data: { openingBalance: 0, openingBalanceDate: null, openingBalanceOn: null } });
   });
 
   afterAll(async () => {

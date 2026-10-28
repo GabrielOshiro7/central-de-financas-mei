@@ -13,8 +13,9 @@ import { dbDateOfInstant } from "@/lib/time/zoned";
 // sempre passado: mesmo resultado com o processo em UTC, Asia/Tokyo ou
 // America/New_York.
 describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
-  let userId: string;
-  let businessId: string;
+  let businessId: string; // empresa em Asia/Tokyo
+  const businessByTz: Record<string, string> = {};
+  const userIds: string[] = [];
   let revenueCategoryId: string;
 
   // 31/10 16:00Z = 01/11 01:00 em Tóquio = 31/10 13:00 em São Paulo = 31/10 em UTC.
@@ -24,28 +25,33 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
 
   beforeAll(async () => {
     revenueCategoryId = (await prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE" } })).id;
-    const user = await prisma.user.create({
-      data: {
-        name: "Teste F3a",
-        email: `f3a-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`,
-        passwordHash: await hashPassword("SenhaValida123"),
-      },
-    });
-    userId = user.id;
-    businessId = (await prisma.business.create({ data: { userId, name: "Empresa F3a", currency: "BRL" } })).id;
-    await prisma.financialEntry.createMany({
-      data: [
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredAt: NEAR_MONTH_TURN , occurredOn: dbDateOfInstant(NEAR_MONTH_TURN, "Asia/Tokyo")},
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredAt: EARLY_JST , occurredOn: dbDateOfInstant(EARLY_JST, "Asia/Tokyo")},
-      ],
-    });
+    for (const tz of ["Asia/Tokyo", "America/Sao_Paulo", "UTC"]) {
+      const user = await prisma.user.create({
+        data: {
+          name: "Teste F3a",
+          email: `f3a-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`,
+          passwordHash: await hashPassword("SenhaValida123"),
+        },
+      });
+      userIds.push(user.id);
+      const id = (await prisma.business.create({ data: { userId: user.id, name: `Empresa F3a ${tz}`, currency: "BRL", timezone: tz } })).id;
+      businessByTz[tz] = id;
+      await prisma.financialEntry.createMany({
+        data: [
+          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredAt: NEAR_MONTH_TURN, occurredOn: dbDateOfInstant(NEAR_MONTH_TURN, tz) },
+          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredAt: EARLY_JST, occurredOn: dbDateOfInstant(EARLY_JST, tz) },
+        ],
+      });
+    }
+    businessId = businessByTz["Asia/Tokyo"];
   });
 
   afterAll(async () => {
-    await prisma.insight.deleteMany({ where: { businessId } });
-    await prisma.financialEntry.deleteMany({ where: { businessId } });
-    await prisma.business.deleteMany({ where: { id: businessId } });
-    await prisma.user.deleteMany({ where: { id: userId } });
+    const ids = Object.values(businessByTz);
+    await prisma.insight.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.financialEntry.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.business.deleteMany({ where: { id: { in: ids } } });
+    await prisma.user.deleteMany({ where: { id: { in: userIds } } });
   });
 
   it("série mensal: o lançamento de 01/11 01:00 JST cai em novembro para Tóquio e em outubro para São Paulo/UTC", async () => {
@@ -55,7 +61,7 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     expect(tokyo.find((p) => p.month === 9)?.revenue.toNumber()).toBe(7); // outubro (só a madrugada JST)
 
     for (const tz of ["America/Sao_Paulo", "UTC"]) {
-      const series = await getMonthlySeriesForRange(businessId, range, tz);
+      const series = await getMonthlySeriesForRange(businessByTz[tz], range, tz);
       expect(series.find((p) => p.month === 9)?.revenue.toNumber()).toBe(107);
       expect(series.find((p) => p.month === 10)?.revenue.toNumber()).toBe(0);
     }
@@ -70,7 +76,7 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     expect(tokyo.find((p) => p.label === "22/10")?.revenue.toNumber()).toBe(0);
 
     const utcRange = resolvePeriodRange("LAST_7_DAYS", { now: clock.now, timeZone: "UTC" });
-    const utc = await getDailySeriesForRange(businessId, utcRange, "UTC");
+    const utc = await getDailySeriesForRange(businessByTz.UTC, utcRange, "UTC");
     expect(utc.find((p) => p.label === "22/10")?.revenue.toNumber()).toBe(7);
   });
 
@@ -79,7 +85,7 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     const utcClock = { now: NEAR_MONTH_TURN, timeZone: "UTC" };
 
     expect((await getFinancialSummary(businessId, "THIS_MONTH", tokyoClock)).revenue.toNumber()).toBe(100);
-    expect((await getFinancialSummary(businessId, "THIS_MONTH", utcClock)).revenue.toNumber()).toBe(107);
+    expect((await getFinancialSummary(businessByTz.UTC, "THIS_MONTH", utcClock)).revenue.toNumber()).toBe(107);
 
     const filters = { period: "THIS_MONTH" as const, comparison: "PREVIOUS_PERIOD" as const };
     const tokyo = await getDashboardData(businessId, "BRL", "Este mês", filters, tokyoClock);
@@ -88,7 +94,7 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     expect(tokyo.previousSummary?.revenue.toNumber()).toBe(7); // outubro em Tóquio
     expect(tokyo.comparisonRange?.start.toISOString()).toBe("2026-09-30T15:00:00.000Z");
 
-    const utc = await getDashboardData(businessId, "BRL", "Este mês", filters, utcClock);
+    const utc = await getDashboardData(businessByTz.UTC, "BRL", "Este mês", filters, utcClock);
     expect(utc.range.start.toISOString()).toBe("2026-10-01T00:00:00.000Z");
     expect(utc.summary.revenue.toNumber()).toBe(107);
   });
@@ -102,7 +108,7 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     expect(tokyo.revenue).toEqual({ current: expect.anything(), previous: expect.anything() });
     expect(tokyo.revenue.current.toNumber()).toBe(100);
 
-    const utc = await computeIndicatorSnapshot(businessId, "BRL", { now: NEAR_MONTH_TURN, timeZone: "UTC" });
+    const utc = await computeIndicatorSnapshot(businessByTz.UTC, "BRL", { now: NEAR_MONTH_TURN, timeZone: "UTC" });
     expect(utc.periodKey).toBe("2026-10");
     expect(utc.periodLabel).toBe("outubro de 2026");
     expect(utc.revenue.current.toNumber()).toBe(107);

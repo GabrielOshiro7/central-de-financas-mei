@@ -3,17 +3,19 @@ import { prisma } from "@/lib/db";
 import { summarizeEntries } from "@/lib/finance/calculations";
 import { calculateAccumulatedBalance } from "@/lib/finance/cash/calculations";
 import { monthsBetween } from "@/lib/finance/period";
-import { monthRange, zonedParts, type BusinessClock } from "@/lib/time/zoned";
+import { dateKeyToDbDate, dbDateToKey, monthRange, parseDateKey, startOfDayInstant, toDateKey, zonedParts, type BusinessClock, type DateKey } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-type BusinessOpeningBalance = { openingBalance: Prisma.Decimal; openingBalanceDate: Date | null };
+// Etapa F6a-2: a base do caixa e um DIA de calendario (openingBalanceOn / o
+// occurredOn do primeiro lancamento), nunca um instante.
+type BusinessOpeningBalance = { openingBalance: Prisma.Decimal; openingBalanceOn: Date | null };
 
 export type EffectiveOpeningBalance = {
   amount: Prisma.Decimal;
-  date: Date;
+  day: DateKey;
   configured: boolean;
 };
 
@@ -29,23 +31,23 @@ export async function resolveEffectiveOpeningBalance(
   businessId: string,
   business: BusinessOpeningBalance
 ): Promise<EffectiveOpeningBalance | null> {
-  if (business.openingBalanceDate) {
-    return { amount: business.openingBalance, date: business.openingBalanceDate, configured: true };
+  if (business.openingBalanceOn) {
+    return { amount: business.openingBalance, day: dbDateToKey(business.openingBalanceOn), configured: true };
   }
 
   const first = await prisma.financialEntry.findFirst({
     where: { businessId },
-    orderBy: { occurredAt: "asc" },
-    select: { occurredAt: true },
+    orderBy: { occurredOn: "asc" },
+    select: { occurredOn: true },
   });
   if (!first) return null;
 
-  return { amount: new Decimal(0), date: first.occurredAt, configured: false };
+  return { amount: new Decimal(0), day: dbDateToKey(first.occurredOn), configured: false };
 }
 
 export type CashBalance = {
   balance: Prisma.Decimal;
-  asOfDate: Date;
+  asOfDay: DateKey;
   configured: boolean;
 };
 
@@ -62,12 +64,16 @@ export async function getCurrentCashBalance(
   if (!effective) return null;
 
   const entries = await prisma.financialEntry.findMany({
-    where: { businessId, occurredAt: { gt: effective.date } },
-    select: { type: true, amount: true, occurredAt: true },
+    where: { businessId, occurredOn: { gt: dateKeyToDbDate(effective.day) } },
+    select: { type: true, amount: true, occurredOn: true },
   });
 
-  const balance = calculateAccumulatedBalance(effective.amount, effective.date, entries);
-  return { balance, asOfDate: effective.date, configured: effective.configured };
+  const balance = calculateAccumulatedBalance(
+    effective.amount,
+    effective.day,
+    entries.map((e) => ({ type: e.type, amount: e.amount, occurredOn: dbDateToKey(e.occurredOn) }))
+  );
+  return { balance, asOfDay: effective.day, configured: effective.configured };
 }
 
 export type CashMonthlyPoint = {
@@ -98,17 +104,21 @@ export async function getMonthlyCashSeries(
   const { timeZone } = clock;
   const current = zonedParts(clock.now, timeZone);
   const rangeEnd = monthRange(current.year, current.month, timeZone).end;
-  const months = monthsBetween(effective.date, rangeEnd, timeZone);
+  const months = monthsBetween(startOfDayInstant(effective.day, timeZone), rangeEnd, timeZone);
   if (months.length === 0) return [];
 
   const entries = await prisma.financialEntry.findMany({
-    where: { businessId, occurredAt: { gt: effective.date, lt: rangeEnd } },
-    select: { type: true, amount: true, occurredAt: true },
+    where: {
+      businessId,
+      occurredOn: { gt: dateKeyToDbDate(effective.day), lt: dateKeyToDbDate(toDateKey(rangeEnd, timeZone)) },
+    },
+    select: { type: true, amount: true, occurredOn: true },
   });
 
+  // Agrupado pelo mes do DIA gravado (occurredOn).
   const byMonth = new Map<string, typeof entries>();
   for (const entry of entries) {
-    const { year, month } = zonedParts(entry.occurredAt, timeZone);
+    const { year, month } = parseDateKey(dbDateToKey(entry.occurredOn));
     const key = `${year}-${month - 1}`;
     byMonth.set(key, [...(byMonth.get(key) ?? []), entry]);
   }

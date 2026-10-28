@@ -8,7 +8,7 @@ import {
 } from "@/lib/onboarding/options";
 import { EmpresaForm } from "./EmpresaForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
-import { toDateKey } from "@/lib/time/zoned";
+import { dbDateToKey } from "@/lib/time/zoned";
 
 // Secao "Empresa" dentro de Configuracoes (Etapa 5.1) - antes era a pagina
 // de nivel principal /empresa; movida pra ca, mesmo formulario/comportamento,
@@ -64,7 +64,8 @@ export async function EmpresaSection({ business }: { business: Business }) {
       <OpeningBalanceForm
         data={{
           openingBalance: business.openingBalance.toString(),
-          openingBalanceDate: business.openingBalanceDate ? toDateKey(business.openingBalanceDate, business.timezone) : "",
+          // Dia do saldo inicial = openingBalanceOn (Etapa F6a-2), sem conversao de fuso.
+          openingBalanceDate: business.openingBalanceOn ? dbDateToKey(business.openingBalanceOn) : "",
         }}
         currency={business.currency}
       />

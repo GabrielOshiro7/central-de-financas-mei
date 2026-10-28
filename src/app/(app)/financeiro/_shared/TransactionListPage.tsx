@@ -15,7 +15,7 @@ import { TransactionTable, type TransactionRow } from "@/components/financeiro/T
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
 import { NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 const VALID_SOURCES = new Set<string>(["MANUAL", "IMPORT"]);
@@ -64,7 +64,7 @@ export async function TransactionListPage({
   const range = resolvePeriodRange(effectivePeriod, clock, customRange);
 
   const [{ items }, categories] = await Promise.all([
-    listTransactions(business.id, { type, categoryId, source, range, pageSize: 100 }),
+    listTransactions(business.id, { type, categoryId, source, range, pageSize: 100 }, clock.timeZone),
     listVisibleCategories(business.id, type),
   ]);
 
@@ -74,8 +74,9 @@ export async function TransactionListPage({
   const rows: TransactionRow[] = items.map((item) => ({
     id: item.id,
     type: item.type,
-    occurredAtDisplay: formatZonedDate(item.occurredAt, clock.timeZone),
-    occurredAtInput: toDateKey(item.occurredAt, clock.timeZone),
+    // Dia do lancamento = occurredOn (Etapa F6a-2), sem conversao de fuso.
+    occurredAtDisplay: formatDateKey(dbDateToKey(item.occurredOn)),
+    occurredAtInput: dbDateToKey(item.occurredOn),
     description: item.description,
     categoryId: item.categoryId,
     categoryName: item.category.name,

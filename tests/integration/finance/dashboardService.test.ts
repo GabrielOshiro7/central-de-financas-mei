@@ -115,9 +115,9 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
     }, processClock());
 
     const [revenueTx, costTx, expenseTx] = await Promise.all([
-      listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }),
-      listTransactions(businessAId, { type: "COST", range: data.range, pageSize: 100 }),
-      listTransactions(businessAId, { type: "EXPENSE", range: data.range, pageSize: 100 }),
+      listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
+      listTransactions(businessAId, { type: "COST", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
+      listTransactions(businessAId, { type: "EXPENSE", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
     ]);
 
     expect(data.summary.revenue.toNumber()).toBe(sumAmounts(revenueTx.items));

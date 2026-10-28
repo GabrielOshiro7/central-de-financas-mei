@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { summarizeEntries, type FinancialEntryLike } from "@/lib/finance/calculations";
+import { compareKeys, type DateKey } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 type Decimal = Prisma.Decimal;
@@ -13,8 +14,9 @@ type Decimal = Prisma.Decimal;
 //
 // saldo = openingBalance + soma do netProfit (reaproveitado de
 // summarizeEntries, calculations.ts - nao recalculado aqui) de todos os
-// FinancialEntry com occurredAt ESTRITAMENTE POSTERIOR a openingBalanceDate.
-// Lancamentos anteriores OU NA PROPRIA DATA de openingBalanceDate ja estao
+// FinancialEntry cujo DIA (occurredOn, Etapa F6a-2) e ESTRITAMENTE POSTERIOR
+// ao dia do saldo inicial (openingBalanceOn). Lancamentos anteriores OU NO
+// PROPRIO DIA do saldo inicial ja estao
 // embutidos no saldo inicial e NUNCA entram de novo aqui - contar os dois
 // duplicaria valor.
 //
@@ -24,14 +26,14 @@ type Decimal = Prisma.Decimal;
 // e exclusivamente o dominio do "Saldo previsto" (bills/queries.ts,
 // getForecastBalance), um conceito FUTURO/PROJETADO diferente deste, que e
 // HISTORICO/REALIZADO.
-export type CashEntryLike = FinancialEntryLike & { occurredAt: Date };
+export type CashEntryLike = FinancialEntryLike & { occurredOn: DateKey };
 
 export function calculateAccumulatedBalance(
   openingBalance: Decimal,
-  openingBalanceDate: Date,
+  openingBalanceDay: DateKey,
   entries: CashEntryLike[]
 ): Decimal {
-  const qualifying = entries.filter((e) => e.occurredAt.getTime() > openingBalanceDate.getTime());
+  const qualifying = entries.filter((e) => compareKeys(e.occurredOn, openingBalanceDay) > 0);
   const { netProfit } = summarizeEntries(qualifying);
   return openingBalance.plus(netProfit);
 }

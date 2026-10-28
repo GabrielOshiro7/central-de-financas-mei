@@ -359,8 +359,8 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(settled.ok).toBe(true);
 
     const range = { start: new Date(2026, 1, 1), end: new Date(2026, 2, 1) };
-    const summary = await getFinancialSummaryForRange(businessId, range);
-    const { items } = await listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 });
+    const summary = await getFinancialSummaryForRange(businessId, range, "Asia/Tokyo");
+    const { items } = await listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 }, "Asia/Tokyo");
 
     expect(summary.expenses.toNumber()).toBe(700);
     expect(items.some((i) => i.billId === created.value.id)).toBe(true);

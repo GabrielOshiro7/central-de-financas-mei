@@ -27,7 +27,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
     userId = user.id;
 
     const business = await prisma.business.create({
-      data: { userId: user.id, name: "Empresa Teste Diária", currency: "BRL" },
+      data: { userId: user.id, name: "Empresa Teste Diária", currency: "BRL", timezone: PROCESS_TZ },
     });
     businessId = business.id;
   });
@@ -51,7 +51,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
         categoryId: revenueCategoryId,
         description: `Venda dia ${i + 1}`,
         amount: String((i + 1) * 10),
-        occurredAt: day, occurredOn: dbDateOfInstant(day, "Asia/Tokyo"),
+        occurredAt: day, occurredOn: dbDateOfInstant(day, PROCESS_TZ),
       };
     });
     await prisma.financialEntry.createMany({ data: entries });
@@ -65,7 +65,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
     // Consistência cruzada (ADENDO da Etapa 4): a soma da série diária tem
     // que bater exatamente com o valor que os cards do topo mostram para o
     // mesmo período, via getFinancialSummaryForRange.
-    const summary = await getFinancialSummaryForRange(businessId, range);
+    const summary = await getFinancialSummaryForRange(businessId, range, PROCESS_TZ);
     expect(seriesTotal).toBe(summary.revenue.toNumber());
   });
 

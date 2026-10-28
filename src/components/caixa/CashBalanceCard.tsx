@@ -3,7 +3,7 @@ import type { Currency } from "@prisma/client";
 import { AlertTriangle } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import type { CashBalance } from "@/lib/finance/cash/queries";
-import { formatZonedDate } from "@/lib/time/zoned";
+import { formatDateKey } from "@/lib/time/zoned";
 
 // Regra fundamental da Etapa 5.1: este numero e uma APROXIMACAO baseada nos
 // lancamentos registrados (Receita - Custo - Despesa), NUNCA o saldo
@@ -12,8 +12,8 @@ import { formatZonedDate } from "@/lib/time/zoned";
 // abaixo e permanente (texto sempre visivel, nao um icone de tooltip) e
 // nunca deve ser removido nem reduzido a um ⓘ escondido - e o requisito mais
 // importante desta etapa.
-// `timeZone`: fuso da empresa - a data do saldo inicial e exibida nele (Etapa F4).
-export function CashBalanceCard({ cash, currency, timeZone }: { cash: CashBalance; currency: Currency; timeZone: string }) {
+// A data do saldo inicial ja chega como dia de calendario (asOfDay, Etapa F6a-2).
+export function CashBalanceCard({ cash, currency }: { cash: CashBalance; currency: Currency }) {
   return (
     <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <p className="text-sm text-gray-500 dark:text-neutral-400">Caixa atual (histórico e realizado)</p>
@@ -34,7 +34,7 @@ export function CashBalanceCard({ cash, currency, timeZone }: { cash: CashBalanc
         <div className="mt-4 border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/20 dark:text-amber-300">
           <p>
             Saldo inicial não configurado — este valor assume saldo zero na data do primeiro lançamento (
-            {formatZonedDate(cash.asOfDate, timeZone)}).
+            {formatDateKey(cash.asOfDay)}).
           </p>
           <Link href="/configuracoes#empresa" className="mt-1 inline-block font-medium underline">
             Configurar saldo inicial
@@ -47,7 +47,7 @@ export function CashBalanceCard({ cash, currency, timeZone }: { cash: CashBalanc
           href="/configuracoes#empresa"
           className="mt-4 inline-block text-xs font-medium text-gray-500 underline dark:text-neutral-400"
         >
-          Editar saldo inicial (configurado em {formatZonedDate(cash.asOfDate, timeZone)})
+          Editar saldo inicial (configurado em {formatDateKey(cash.asOfDay)})
         </Link>
       )}
     </div>

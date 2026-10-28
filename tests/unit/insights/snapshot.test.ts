@@ -127,7 +127,7 @@ describe("computeIndicatorSnapshot - hasPreviousPeriod desacoplado do recorte", 
     // Confirma a premissa do cenário: o range recortado realmente não pega
     // nenhum lançamento.
     const previousClippedRange = { start: new Date(2026, 7, 1), end: new Date(2026, 7, 4) };
-    const clippedSummary = await getFinancialSummaryForRange(businessId, previousClippedRange);
+    const clippedSummary = await getFinancialSummaryForRange(businessId, previousClippedRange, "Asia/Tokyo");
     expect(clippedSummary.hasAnyEntries).toBe(false);
 
     const snapshot = await computeIndicatorSnapshot(businessId, "BRL", processClock(now));

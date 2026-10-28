@@ -15,15 +15,16 @@ import {
 import {
   addDays,
   compareKeys,
+  dbDateToKey,
   monthRange,
   parseDateKey,
   startOfDayInstant,
   toDateKey,
-  zonedParts,
   type BusinessClock,
   type DateKey,
   type TimeZone,
 } from "@/lib/time/zoned";
+import { beforeDayFilter, dayRangeFilter } from "@/lib/finance/entryDay";
 import type { EntrySource, FinancialEntryType, Prisma } from "@prisma/client";
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -31,12 +32,15 @@ const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "S
 // Sempre recebe o businessId ja resolvido a partir da sessao autenticada no
 // server component/route handler chamador - nunca aceita um id vindo do
 // cliente aqui, para nao abrir brecha de acesso cruzado entre usuarios.
+// Periodo filtrado pelo DIA do lancamento (occurredOn, Etapa F6a-2): os
+// limites do periodo viram dias de calendario no fuso da empresa.
 export async function getFinancialSummaryForRange(
   businessId: string,
-  range: { start: Date; end: Date }
+  range: { start: Date; end: Date },
+  timeZone: TimeZone
 ): Promise<FinancialSummary> {
   const entries = await prisma.financialEntry.findMany({
-    where: { businessId, occurredAt: { gte: range.start, lt: range.end } },
+    where: { businessId, occurredOn: dayRangeFilter(range, timeZone) },
     select: { type: true, amount: true },
   });
 
@@ -50,7 +54,7 @@ export async function getFinancialSummary(
   customRange?: CustomRange
 ): Promise<FinancialSummary> {
   const { start, end } = resolvePeriodRange(period, clock, customRange);
-  return getFinancialSummaryForRange(businessId, { start, end });
+  return getFinancialSummaryForRange(businessId, { start, end }, clock.timeZone);
 }
 
 export type MonthlyPoint = FinancialSummary & {
@@ -82,17 +86,18 @@ export async function getMonthlySeriesForRange(
   const entries = await prisma.financialEntry.findMany({
     where: {
       businessId,
-      occurredAt: {
-        gte: monthRange(first.year, first.month + 1, timeZone).start,
-        lt: monthRange(last.year, last.month + 1, timeZone).end,
-      },
+      occurredOn: dayRangeFilter(
+        { start: monthRange(first.year, first.month + 1, timeZone).start, end: monthRange(last.year, last.month + 1, timeZone).end },
+        timeZone
+      ),
     },
-    select: { type: true, amount: true, occurredAt: true },
+    select: { type: true, amount: true, occurredOn: true },
   });
 
+  // Agrupado pelo mes do DIA gravado (occurredOn) - sem converter instante.
   const byMonth = new Map<string, typeof entries>();
   for (const entry of entries) {
-    const { year, month } = zonedParts(entry.occurredAt, timeZone);
+    const { year, month } = parseDateKey(dbDateToKey(entry.occurredOn));
     const key = `${year}-${month - 1}`;
     byMonth.set(key, [...(byMonth.get(key) ?? []), entry]);
   }
@@ -134,13 +139,14 @@ export async function getDailySeriesForRange(
   timeZone: TimeZone
 ): Promise<DailyPoint[]> {
   const entries = await prisma.financialEntry.findMany({
-    where: { businessId, occurredAt: { gte: range.start, lt: range.end } },
-    select: { type: true, amount: true, occurredAt: true },
+    where: { businessId, occurredOn: dayRangeFilter(range, timeZone) },
+    select: { type: true, amount: true, occurredOn: true },
   });
 
+  // Agrupado pelo DIA gravado (occurredOn) - sem converter instante.
   const byDay = new Map<DateKey, typeof entries>();
   for (const entry of entries) {
-    const key = toDateKey(entry.occurredAt, timeZone);
+    const key = dbDateToKey(entry.occurredOn);
     byDay.set(key, [...(byDay.get(key) ?? []), entry]);
   }
 
@@ -169,9 +175,9 @@ export async function hasAnyFinancialEntriesEver(businessId: string): Promise<bo
 // novo, um recorte "dia 1 ate hoje" do mes anterior vazio por coincidencia
 // de timing - isso NAO e a mesma coisa que "nunca teve nenhum lancamento
 // antes". Ver src/lib/insights/snapshot.ts.
-export async function hasFinancialEntriesBefore(businessId: string, date: Date): Promise<boolean> {
+export async function hasFinancialEntriesBefore(businessId: string, date: Date, timeZone: TimeZone): Promise<boolean> {
   const first = await prisma.financialEntry.findFirst({
-    where: { businessId, occurredAt: { lt: date } },
+    where: { businessId, occurredOn: beforeDayFilter(date, timeZone) },
     select: { id: true },
   });
   return first !== null;
@@ -182,10 +188,11 @@ export async function hasFinancialEntriesBefore(businessId: string, date: Date):
 export async function getCategoryBreakdown(
   businessId: string,
   range: { start: Date; end: Date },
-  type: Extract<FinancialEntryType, "COST" | "EXPENSE">
+  type: Extract<FinancialEntryType, "COST" | "EXPENSE">,
+  timeZone: TimeZone
 ): Promise<CategoryBreakdownEntry[]> {
   const entries = await prisma.financialEntry.findMany({
-    where: { businessId, type, occurredAt: { gte: range.start, lt: range.end } },
+    where: { businessId, type, occurredOn: dayRangeFilter(range, timeZone) },
     select: { categoryId: true, amount: true, category: { select: { name: true } } },
   });
 
@@ -207,9 +214,14 @@ export type TransactionListItem = Prisma.FinancialEntryGetPayload<{
   include: { category: { select: { id: true; name: true } } };
 }>;
 
+// Periodo pelo DIA (occurredOn); ordem: dia desc, depois instante desc
+// (mesma ordem de antes dentro do dia), createdAt desc e id desc como
+// desempates (antes, lancamentos no mesmo instante ficavam em ordem
+// indefinida - ex.: varias linhas de um mesmo createMany).
 export async function listTransactions(
   businessId: string,
-  filters: TransactionFilters
+  filters: TransactionFilters,
+  timeZone: TimeZone
 ): Promise<{ items: TransactionListItem[]; total: number; page: number; pageSize: number }> {
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
@@ -219,14 +231,14 @@ export async function listTransactions(
     ...(filters.type ? { type: filters.type } : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
     ...(filters.source ? { source: filters.source } : {}),
-    ...(filters.range ? { occurredAt: { gte: filters.range.start, lt: filters.range.end } } : {}),
+    ...(filters.range ? { occurredOn: dayRangeFilter(filters.range, timeZone) } : {}),
   };
 
   const [items, total] = await Promise.all([
     prisma.financialEntry.findMany({
       where,
       include: { category: { select: { id: true, name: true } } },
-      orderBy: { occurredAt: "desc" },
+      orderBy: [{ occurredOn: "desc" }, { occurredAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

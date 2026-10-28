@@ -15,7 +15,7 @@ export async function getInsightsForBusiness(businessId: string, clock: Business
   const periodKey = getPeriodKey(current.start, clock.timeZone);
 
   const [currentFingerprint, existing] = await Promise.all([
-    computeDataFingerprint(businessId, { start: previousClipped.start, end: current.end }),
+    computeDataFingerprint(businessId, { start: previousClipped.start, end: current.end }, clock.timeZone),
     prisma.insight.findMany({ where: { businessId, periodKey } }),
   ]);
 

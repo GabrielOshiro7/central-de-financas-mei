@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isDateKey } from "@/lib/time/zoned";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { openingBalanceSchema } from "@/lib/finance/cash/schema";
@@ -29,7 +30,9 @@ export async function PATCH(request: Request) {
 
   const result = await updateOpeningBalance(user.id, {
     openingBalance: parsed.data.openingBalance,
-    openingBalanceDate: new Date(parsed.data.openingBalanceDate),
+    ...(isDateKey(parsed.data.openingBalanceDate)
+      ? { openingBalanceOn: parsed.data.openingBalanceDate }
+      : { openingBalanceDate: new Date(parsed.data.openingBalanceDate) }),
   });
 
   if (!result.ok) {

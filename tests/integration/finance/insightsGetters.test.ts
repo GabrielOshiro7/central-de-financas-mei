@@ -102,7 +102,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
 
   describe("hasFinancialEntriesBefore", () => {
     it("retorna false quando não há nenhum lançamento", async () => {
-      const result = await hasFinancialEntriesBefore(businessId, new Date(2026, 8, 1));
+      const result = await hasFinancialEntriesBefore(businessId, new Date(2026, 8, 1), "Asia/Tokyo");
       expect(result).toBe(false);
     });
 
@@ -119,8 +119,8 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
         },
       });
 
-      await expect(hasFinancialEntriesBefore(businessId, new Date(2026, 8, 1))).resolves.toBe(true);
-      await expect(hasFinancialEntriesBefore(businessId, new Date(2026, 7, 1))).resolves.toBe(false);
+      await expect(hasFinancialEntriesBefore(businessId, new Date(2026, 8, 1), "Asia/Tokyo")).resolves.toBe(true);
+      await expect(hasFinancialEntriesBefore(businessId, new Date(2026, 7, 1), "Asia/Tokyo")).resolves.toBe(false);
     });
   });
 });

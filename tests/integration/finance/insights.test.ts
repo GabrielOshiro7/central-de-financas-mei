@@ -74,7 +74,7 @@ describe("Insights (Etapa 7) - integração", () => {
       const independentSummary = await getFinancialSummaryForRange(businessId, {
         start: new Date(2026, 8, 1),
         end: new Date(2026, 9, 1),
-      });
+      }, "Asia/Tokyo");
       expect(revenueInsight!.currentValue?.toString()).toBe(independentSummary.revenue.toString());
     } finally {
       await cleanupBusiness(businessId, userId);
@@ -258,7 +258,7 @@ describe("Insights (Etapa 7) - integração", () => {
       // setembro - o que importa aqui é que o valor NÃO inclui os 900).
       expect(revenueInsight?.currentValue?.toString()).toBe("0");
 
-      const summary = await getFinancialSummaryForRange(businessId, { start: new Date(2026, 8, 1), end: new Date(2026, 9, 1) });
+      const summary = await getFinancialSummaryForRange(businessId, { start: new Date(2026, 8, 1), end: new Date(2026, 9, 1) }, "Asia/Tokyo");
       expect(summary.revenue.toString()).toBe("0");
     } finally {
       await cleanupBusiness(businessId, userId);

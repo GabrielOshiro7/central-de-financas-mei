@@ -4,7 +4,8 @@ import { listVisibleCategories, findOrCreateCategoryInTx } from "@/lib/finance/c
 import { validateImportRow, type ValidatedImportRow } from "@/lib/finance/importValidation";
 import { markPotentialDuplicates } from "@/lib/finance/duplicates";
 import { groupNewCategories } from "@/lib/finance/importPreview";
-import { dbDateOfInstant, type TimeZone } from "@/lib/time/zoned";
+import { toDateKey, type TimeZone } from "@/lib/time/zoned";
+import { dayColumns } from "@/lib/finance/entryDay";
 
 const { Decimal } = Prisma;
 
@@ -116,6 +117,14 @@ export async function confirmImport(
       if (created) categoriesCreated += 1;
     }
 
+    // O dia da planilha e a fonte do dia (Etapa F6a-2): a linha validada traz
+    // 00:00 desse dia no fuso da empresa (importValidation), entao toDateKey
+    // devolve exatamente o dia digitado.
+    function entryDayFromRow(row: ValidatedImportRow) {
+      const day = dayColumns({ day: toDateKey(row.occurredAt!, timeZone) }, timeZone);
+      return { occurredAt: day.at, occurredOn: day.on };
+    }
+
     function resolveCategoryId(row: ValidatedImportRow): string {
       if (row.categoryStatus === "existing") return row.categoryId!;
       const key = `${row.type}:${row.categoryNormalized}`;
@@ -131,16 +140,13 @@ export async function confirmImport(
 
     await tx.financialEntry.createMany({
       data: toInsert.map((r) => ({
+        ...entryDayFromRow(r),
         businessId,
         userId,
         type: r.type as FinancialEntryType,
         categoryId: resolveCategoryId(r),
         description: r.description,
         amount: new Decimal(r.amount!),
-        occurredAt: r.occurredAt!,
-        // Gravacao dupla (F6a-1): o dia da planilha, no fuso da empresa
-        // (occurredAt ja e 00:00 desse dia - importValidation, F3c).
-        occurredOn: dbDateOfInstant(r.occurredAt!, timeZone),
         notes: r.notes || null,
         source: "IMPORT" as const,
       })),
