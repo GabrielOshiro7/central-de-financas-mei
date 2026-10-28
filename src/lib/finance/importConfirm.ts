@@ -4,7 +4,7 @@ import { listVisibleCategories, findOrCreateCategoryInTx } from "@/lib/finance/c
 import { validateImportRow, type ValidatedImportRow } from "@/lib/finance/importValidation";
 import { markPotentialDuplicates } from "@/lib/finance/duplicates";
 import { groupNewCategories } from "@/lib/finance/importPreview";
-import type { TimeZone } from "@/lib/time/zoned";
+import { dbDateOfInstant, type TimeZone } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -138,6 +138,9 @@ export async function confirmImport(
         description: r.description,
         amount: new Decimal(r.amount!),
         occurredAt: r.occurredAt!,
+        // Gravacao dupla (F6a-1): o dia da planilha, no fuso da empresa
+        // (occurredAt ja e 00:00 desse dia - importValidation, F3c).
+        occurredOn: dbDateOfInstant(r.occurredAt!, timeZone),
         notes: r.notes || null,
         source: "IMPORT" as const,
       })),

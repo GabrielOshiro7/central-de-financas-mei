@@ -6,7 +6,7 @@ import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { E2E_BUSINESS_TZ, businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
-import { addDays, formatDateKey, formatInstant, startOfDayInstant } from "../../src/lib/time/zoned";
+import { addDays, dbDateOfInstant, formatDateKey, formatInstant, startOfDayInstant } from "../../src/lib/time/zoned";
 
 // Etapa F4: a empresa esta em Asia/Tokyo e o NAVEGADOR em outro fuso
 // (America/Sao_Paulo e UTC). Todas as datas e horarios exibidos, e os
@@ -91,7 +91,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       type: "REVENUE",
       categoryId: revenue.id,
       amount: new Decimal("250.00"),
-      occurredAt: tokyoMidnight,
+      occurredAt: tokyoMidnight, occurredOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
       description: "Receita madrugada F4",
     },
   });

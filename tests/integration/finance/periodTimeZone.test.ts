@@ -6,6 +6,7 @@ import { getDailySeriesForRange, getFinancialSummary, getMonthlySeriesForRange }
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import { computeIndicatorSnapshot } from "@/lib/insights/snapshot";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 // Etapa F3a: dashboard, series e insights agrupam pelo FUSO DA EMPRESA,
 // nunca pelo fuso do processo. Instantes sempre em UTC explicito e fuso
@@ -34,8 +35,8 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     businessId = (await prisma.business.create({ data: { userId, name: "Empresa F3a", currency: "BRL" } })).id;
     await prisma.financialEntry.createMany({
       data: [
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredAt: NEAR_MONTH_TURN },
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredAt: EARLY_JST },
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredAt: NEAR_MONTH_TURN , occurredOn: dbDateOfInstant(NEAR_MONTH_TURN, "Asia/Tokyo")},
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredAt: EARLY_JST , occurredOn: dbDateOfInstant(EARLY_JST, "Asia/Tokyo")},
       ],
     });
   });

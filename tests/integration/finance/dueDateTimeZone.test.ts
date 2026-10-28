@@ -10,7 +10,7 @@ import { getClientFinancialSummary } from "@/lib/clients/queries";
 import { createSale } from "@/lib/sales/mutations";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { getMonthlyCashSeries } from "@/lib/finance/cash/queries";
-import { dateKeyToDbDate } from "@/lib/time/zoned";
+import { dateKeyToDbDate, dbDateOfInstant } from "@/lib/time/zoned";
 
 // Etapa F3b: contas, vendas, clientes e caixa no FUSO DA EMPRESA, nunca no do
 // processo. Relogio fixo e instantes em UTC explicito: o resultado e o mesmo
@@ -134,8 +134,8 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
     });
     await prisma.financialEntry.createMany({
       data: [
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Outubro", amount: "50", occurredAt: new Date("2026-10-15T00:00:00Z") },
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "01/11 JST", amount: "100", occurredAt: new Date("2026-10-31T16:00:00Z") },
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Outubro", amount: "50", occurredAt: new Date("2026-10-15T00:00:00Z") , occurredOn: dbDateOfInstant(new Date("2026-10-15T00:00:00Z"), "Asia/Tokyo")},
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "01/11 JST", amount: "100", occurredAt: new Date("2026-10-31T16:00:00Z") , occurredOn: dbDateOfInstant(new Date("2026-10-31T16:00:00Z"), "Asia/Tokyo")},
       ],
     });
     const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });

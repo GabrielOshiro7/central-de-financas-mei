@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { createTransaction, updateTransaction, deleteTransaction } from "@/lib/finance/mutations";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 describe("mutações de lançamentos financeiros", () => {
   let userId: string;
@@ -184,7 +185,7 @@ describe("isolamento de lançamentos entre empresas", () => {
         categoryId: expenseCategory.id,
         description: "Despesa da empresa B",
         amount: "300",
-        occurredAt: new Date(),
+        occurredAt: new Date(), occurredOn: dbDateOfInstant(new Date(), "Asia/Tokyo"),
       },
     });
     entryOfBId = entryOfB.id;

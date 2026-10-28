@@ -9,6 +9,7 @@ import { generateInsightsForBusiness } from "@/lib/insights/mutations";
 import * as aiProvider from "@/lib/ai/provider";
 import type { AIProvider } from "@/lib/ai/provider";
 import { processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 // Provedor falso so para este arquivo: ecoa de volta EXATAMENTE os mesmos
 // numeros/texto que já estavam no draft (extraídos do próprio prompt), então
@@ -60,9 +61,9 @@ describe("Insights (Etapa 7) - integração", () => {
       const now = new Date(2026, 8, 15); // 15/09/2026
       await prisma.financialEntry.createMany({
         data: [
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) },
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "700", occurredAt: new Date(2026, 8, 5) },
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 2", amount: "500", occurredAt: new Date(2026, 8, 12) },
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "700", occurredAt: new Date(2026, 8, 5) , occurredOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo")},
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 2", amount: "500", occurredAt: new Date(2026, 8, 12) , occurredOn: dbDateOfInstant(new Date(2026, 8, 12), "Asia/Tokyo")},
         ],
       });
 
@@ -86,8 +87,8 @@ describe("Insights (Etapa 7) - integração", () => {
       const now = new Date(2026, 8, 15);
       await prisma.financialEntry.createMany({
         data: [
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) },
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "1400", occurredAt: new Date(2026, 8, 5) },
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "1400", occurredAt: new Date(2026, 8, 5) , occurredOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo")},
         ],
       });
 
@@ -132,8 +133,8 @@ describe("Insights (Etapa 7) - integração", () => {
       const now = new Date(2026, 8, 15);
       await prisma.financialEntry.createMany({
         data: [
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago (quase nada)", amount: "0.01", occurredAt: new Date(2026, 7, 10) },
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set", amount: "5000", occurredAt: new Date(2026, 8, 5) },
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago (quase nada)", amount: "0.01", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set", amount: "5000", occurredAt: new Date(2026, 8, 5) , occurredOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo")},
         ],
       });
 
@@ -150,8 +151,8 @@ describe("Insights (Etapa 7) - integração", () => {
       const now = new Date(2026, 8, 15);
       await prisma.financialEntry.createMany({
         data: [
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) },
-          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "1300", occurredAt: new Date(2026, 8, 5) },
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
+          { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 1", amount: "1300", occurredAt: new Date(2026, 8, 5) , occurredOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo")},
         ],
       });
 
@@ -163,7 +164,7 @@ describe("Insights (Etapa 7) - integração", () => {
 
       // Dado muda depois da regeneração com IA.
       await prisma.financialEntry.create({
-        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 2", amount: "700", occurredAt: new Date(2026, 8, 20) },
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set 2", amount: "700", occurredAt: new Date(2026, 8, 20) , occurredOn: dbDateOfInstant(new Date(2026, 8, 20), "Asia/Tokyo")},
       });
 
       const afterChange = await getInsightsForBusiness(businessId, processClock(now));
@@ -182,7 +183,7 @@ describe("Insights (Etapa 7) - integração", () => {
     try {
       const now = new Date(2026, 8, 15);
       await prisma.financialEntry.create({
-        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Primeira venda", amount: "500", occurredAt: new Date(2026, 8, 10) },
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Primeira venda", amount: "500", occurredAt: new Date(2026, 8, 10) , occurredOn: dbDateOfInstant(new Date(2026, 8, 10), "Asia/Tokyo")},
       });
 
       const insights = await getInsightsForBusiness(businessId, processClock(now));
@@ -200,8 +201,8 @@ describe("Insights (Etapa 7) - integração", () => {
       for (const { businessId, userId, revenueCategoryId } of [a, b]) {
         await prisma.financialEntry.createMany({
           data: [
-            { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) },
-            { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set", amount: "2000", occurredAt: new Date(2026, 8, 5) },
+            { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
+            { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Set", amount: "2000", occurredAt: new Date(2026, 8, 5) , occurredOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo")},
           ],
         });
       }
@@ -229,7 +230,7 @@ describe("Insights (Etapa 7) - integração", () => {
     try {
       const now = new Date(2026, 8, 15);
       await prisma.financialEntry.create({
-        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) },
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Ago", amount: "1000", occurredAt: new Date(2026, 7, 10) , occurredOn: dbDateOfInstant(new Date(2026, 7, 10), "Asia/Tokyo")},
       });
 
       const saleResult = await createSale(businessId, userId, {

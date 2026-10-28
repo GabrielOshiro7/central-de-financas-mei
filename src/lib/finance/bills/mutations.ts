@@ -1,5 +1,7 @@
 import { Prisma, type RecurringBillFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 import { billDirectionForType, type BillDirection } from "@/lib/finance/bills/status";
 
 const { Decimal } = Prisma;
@@ -165,6 +167,8 @@ export async function settleBill(
     return { ok: false, error: "Conta já confirmada, mas sem lançamento financeiro associado." };
   }
 
+  const timeZone = await getBusinessTimeZone(businessId);
+
   try {
     const financialEntry = await prisma.$transaction(async (tx) => {
       const updated = await tx.bill.updateMany({
@@ -182,6 +186,7 @@ export async function settleBill(
           description: bill.description,
           amount: bill.amount,
           occurredAt: paidAt,
+          occurredOn: dbDateOfInstant(paidAt, timeZone), // gravacao dupla (F6a-1)
           source: "BILL",
           billId: bill.id,
         },

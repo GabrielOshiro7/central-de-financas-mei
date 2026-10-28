@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { resolvePeriodRange } from "@/lib/finance/period";
 import { getDailySeriesForRange, getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { PROCESS_TZ, processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 describe("getDailySeriesForRange - granularidade diária para períodos por dia (Etapa 4)", () => {
   let userId: string;
@@ -50,7 +51,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
         categoryId: revenueCategoryId,
         description: `Venda dia ${i + 1}`,
         amount: String((i + 1) * 10),
-        occurredAt: day,
+        occurredAt: day, occurredOn: dbDateOfInstant(day, "Asia/Tokyo"),
       };
     });
     await prisma.financialEntry.createMany({ data: entries });

@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import { listTransactions } from "@/lib/finance/queries";
 import { processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 function sumAmounts(items: { amount: { toNumber: () => number } }[]): number {
   return items.reduce((total, item) => total + item.amount.toNumber(), 0);
@@ -64,7 +65,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda A1",
           amount: "1000",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -73,7 +74,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda A2",
           amount: "500",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -82,7 +83,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: costCategoryId,
           description: "Mercadoria A",
           amount: "400",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -91,7 +92,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: expenseCategoryId,
           description: "Aluguel A",
           amount: "200",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         // Empresa B - nunca deveria aparecer no dashboard de A.
         {
@@ -101,7 +102,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda B",
           amount: "99999",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
       ],
     });

@@ -1,5 +1,6 @@
 import { Prisma, type Business } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -28,6 +29,8 @@ export async function updateOpeningBalance(
     data: {
       openingBalance: new Decimal(input.openingBalance),
       openingBalanceDate: input.openingBalanceDate,
+      // Gravacao dupla (F6a-1): mesmo dia, no fuso da empresa.
+      openingBalanceOn: dbDateOfInstant(input.openingBalanceDate, existing.timezone),
     },
     select: { id: true },
   });

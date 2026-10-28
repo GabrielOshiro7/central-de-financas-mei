@@ -212,6 +212,10 @@ model Business {
   // data) e sinaliza isso com um banner, nunca finge que foi configurado.
   openingBalance     Decimal   @default(0) @map("opening_balance") @db.Decimal(14, 2)
   openingBalanceDate DateTime? @map("opening_balance_date")
+  // Dia de calendario do saldo inicial (Etapa F6a-1, expandir): gravado junto
+  // com openingBalanceDate (mesmo dia, no fuso da empresa); ninguem le ainda
+  // (F6a-2). Anulavel como openingBalanceDate. Sufixo _on = dia, _at = instante.
+  openingBalanceOn   DateTime? @db.Date @map("opening_balance_on")
 
   // Fuso da EMPRESA (Etapa F2 do plano de fuso): pais ISO 3166-1 alfa-2 e
   // fuso IANA. Default JP/Asia/Tokyo para as linhas existentes e para toda
@@ -298,6 +302,10 @@ model FinancialEntry {
   category    Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   amount      Decimal            @db.Decimal(14, 2)
   occurredAt  DateTime           @map("occurred_at")
+  // Dia de calendario do lancamento (Etapa F6a-1, expandir): gravado em todo
+  // caminho junto com occurredAt - o MESMO dia, toDateKey(occurredAt, fuso da
+  // empresa). Ninguem le ainda (F6a-2); occurredAt sai so na F6d.
+  occurredOn  DateTime           @db.Date @map("occurred_on")
   description String
   notes       String?
   source      EntrySource        @default(MANUAL)

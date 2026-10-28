@@ -296,3 +296,10 @@ export function formatInstant(
 export function formatZonedDate(instant: Date, timeZone: TimeZone, style: "short" | "long" = "short"): string {
   return formatDateKey(toDateKey(instant, timeZone), style);
 }
+
+// Coluna @db.Date (dia de calendario) do dia em que `instant` cai no fuso
+// dado - a gravacao dupla da Etapa F6a-1: o dia novo e SEMPRE o mesmo dia que
+// o app ja enxerga no instante antigo (toDateKey(instante, fuso da empresa)).
+export function dbDateOfInstant(instant: Date, timeZone: TimeZone): Date {
+  return dateKeyToDbDate(toDateKey(instant, timeZone));
+}

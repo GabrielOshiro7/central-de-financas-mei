@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
-import { clockFor, dateKeyToDbDate, dbDateToKey, startOfDayInstant, toDateKey, weekdayOf } from "@/lib/time/zoned";
+import { clockFor, dateKeyToDbDate, dbDateToKey, startOfDayInstant, toDateKey, weekdayOf, dbDateOfInstant } from "@/lib/time/zoned";
 import { materializeInProcessTz } from "../../helpers/materializeInProcessTz";
 
 // Etapa F5: idempotencia dos recorrentes por DIA DE CALENDARIO no fuso da
@@ -108,7 +108,7 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     await prisma.financialEntry.create({
       data: {
         businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(50), description: "Legado UTC",
-        occurredAt: legacyAt, occurrenceDate: dateKeyToDbDate(toDateKey(legacyAt, tz)), source: "RECURRING", recurringEntryId: mold.id,
+        occurredAt: legacyAt, occurredOn: dbDateOfInstant(legacyAt, tz), occurrenceDate: dateKeyToDbDate(toDateKey(legacyAt, tz)), source: "RECURRING", recurringEntryId: mold.id,
       },
     });
 

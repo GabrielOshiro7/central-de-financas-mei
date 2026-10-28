@@ -60,6 +60,7 @@ export async function materializeRecurringEntries(
         description: entry.description,
         amount: entry.amount,
         occurredAt: startOfDayInstant(day, clock.timeZone),
+        occurredOn: dateKeyToDbDate(day), // gravacao dupla (F6a-1): o proprio dia da ocorrencia
         occurrenceDate: dateKeyToDbDate(day),
         source: "RECURRING",
         recurringEntryId: entry.id,

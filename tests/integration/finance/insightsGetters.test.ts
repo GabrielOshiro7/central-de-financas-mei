@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { getOverdueAmountForDueRange } from "@/lib/finance/bills/queries";
 import { hasFinancialEntriesBefore } from "@/lib/finance/queries";
 import { processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 // Getters novos adicionados para a Etapa 7 (Insights) - testados isoladamente
 // aqui, antes do modulo insights/ existir, seguindo o mesmo esqueleto de
@@ -114,7 +115,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
           categoryId: revenueCategoryId,
           description: "Lançamento de agosto",
           amount: "100",
-          occurredAt: new Date(2026, 7, 20),
+          occurredAt: new Date(2026, 7, 20), occurredOn: dbDateOfInstant(new Date(2026, 7, 20), "Asia/Tokyo"),
         },
       });
 

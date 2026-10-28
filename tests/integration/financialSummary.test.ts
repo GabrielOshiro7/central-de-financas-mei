@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummary } from "@/lib/finance/queries";
 import { processClock } from "../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 describe("resumo financeiro (dados inseridos diretamente no banco de teste)", () => {
   let userId: string;
@@ -47,7 +48,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: revenueCategoryId,
           description: "Venda",
           amount: "1000",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId,
@@ -56,7 +57,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: costCategoryId,
           description: "Mercadoria",
           amount: "400",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId,
@@ -65,7 +66,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: expenseCategoryId,
           description: "Aluguel",
           amount: "100",
-          occurredAt: now,
+          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
       ],
     });
@@ -92,7 +93,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
         categoryId: costCategoryId,
         description: "Mercadoria",
         amount: "200",
-        occurredAt: now,
+        occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
       },
     });
 

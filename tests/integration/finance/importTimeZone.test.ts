@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { confirmImport, type ImportRowInput } from "@/lib/finance/importConfirm";
 import { previewImport } from "@/lib/finance/importPreview";
+import { dbDateOfInstant } from "@/lib/time/zoned";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
 
 // Etapa F3c: importacao no FUSO DA EMPRESA. Duplicata = mesmo dia de
 // calendario NESSE fuso (antes: getters locais, fuso do processo). Instantes
@@ -29,7 +31,7 @@ describe("importação e duplicatas no fuso da empresa (Etapa F3c)", () => {
   // servidor em outro fuso, antes desta etapa).
   async function existingImport(businessId: string, userId: string, occurredAtIso: string, description = "Venda balcão") {
     await prisma.financialEntry.create({
-      data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description, amount: "500", occurredAt: new Date(occurredAtIso), source: "IMPORT" },
+      data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description, amount: "500", occurredAt: new Date(occurredAtIso), occurredOn: dbDateOfInstant(new Date(occurredAtIso), await getBusinessTimeZone(businessId)), source: "IMPORT" },
     });
   }
 

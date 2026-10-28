@@ -13,6 +13,7 @@ import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { getBillSummary } from "@/lib/finance/bills/queries";
 import { processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 describe("contas a pagar/receber (Etapa 5)", () => {
   let userId: string;
@@ -261,10 +262,10 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       const target = await createAndSettle("PAYABLE", "Alvo do revert");
       const other = await createAndSettle("RECEIVABLE", "Outra conta");
       const manual = await prisma.financialEntry.create({
-        data: { businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, description: "Manual", amount: 300, occurredAt: new Date(2026, 1, 10), source: "MANUAL" },
+        data: { businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, description: "Manual", amount: 300, occurredAt: new Date(2026, 1, 10), occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "MANUAL" },
       });
       const recurring = await prisma.financialEntry.create({
-        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Recorrente", amount: 300, occurredAt: new Date(2026, 1, 10), source: "RECURRING" },
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Recorrente", amount: 300, occurredAt: new Date(2026, 1, 10), occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "RECURRING" },
       });
 
       expect((await revertBillSettlement(businessId, target.billId)).ok).toBe(true);

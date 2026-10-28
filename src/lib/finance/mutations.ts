@@ -1,5 +1,7 @@
 import { Prisma, type EntrySource, type FinancialEntryType, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -49,6 +51,9 @@ export async function createTransaction(
   const categoryError = await assertCategoryMatches(businessId, input.categoryId, input.type);
   if (categoryError) return { ok: false, error: categoryError };
 
+  // Gravacao dupla (Etapa F6a-1): occurredOn = o mesmo dia de occurredAt no
+  // fuso da empresa. occurredAt continua exatamente como antes.
+  const timeZone = await getBusinessTimeZone(businessId);
   const entry = await prisma.financialEntry.create({
     data: {
       businessId,
@@ -58,6 +63,7 @@ export async function createTransaction(
       description: input.description,
       amount: new Decimal(input.amount),
       occurredAt: input.occurredAt,
+      occurredOn: dbDateOfInstant(input.occurredAt, timeZone),
       notes: input.notes || null,
       source,
     },
@@ -80,6 +86,7 @@ export async function updateTransaction(
   const categoryError = await assertCategoryMatches(businessId, input.categoryId, input.type);
   if (categoryError) return { ok: false, error: categoryError };
 
+  const timeZone = await getBusinessTimeZone(businessId);
   await prisma.financialEntry.update({
     where: { id },
     data: {
@@ -88,6 +95,7 @@ export async function updateTransaction(
       description: input.description,
       amount: new Decimal(input.amount),
       occurredAt: input.occurredAt,
+      occurredOn: dbDateOfInstant(input.occurredAt, timeZone), // gravacao dupla (F6a-1)
       notes: input.notes || null,
     },
   });

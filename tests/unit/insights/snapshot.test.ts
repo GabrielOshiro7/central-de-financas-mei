@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { clipToSameDayOfMonth, resolveInsightPeriods, computeIndicatorSnapshot } from "@/lib/insights/snapshot";
 import { PROCESS_TZ, processClock } from "../../helpers/processClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 
 describe("clipToSameDayOfMonth", () => {
   it("corta no mesmo dia quando ele existe no mês anterior", () => {
@@ -119,7 +120,7 @@ describe("computeIndicatorSnapshot - hasPreviousPeriod desacoplado do recorte", 
         categoryId: revenueCategoryId,
         description: "Recebimento concentrado no fim de agosto",
         amount: "5000",
-        occurredAt: new Date(2026, 7, 25),
+        occurredAt: new Date(2026, 7, 25), occurredOn: dbDateOfInstant(new Date(2026, 7, 25), "Asia/Tokyo"),
       },
     });
 

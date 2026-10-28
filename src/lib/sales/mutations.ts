@@ -1,5 +1,7 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
+import { dbDateOfInstant } from "@/lib/time/zoned";
 import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 import { assertCategoryMatches } from "@/lib/finance/mutations";
 import { calculateSaleTotals, type SaleDiscountInput, type SaleItemInput } from "@/lib/sales/calculations";
@@ -52,6 +54,7 @@ async function generateSaleBills(
   allowImmediatePaid: boolean
 ) {
   const category = await tx.category.findUniqueOrThrow({ where: { id: sale.categoryId }, select: { type: true } });
+  const timeZone = await getBusinessTimeZone(sale.businessId, tx);
   const description = `Venda #${sale.saleNumber}`;
 
   for (const installment of installments) {
@@ -85,6 +88,7 @@ async function generateSaleBills(
           description,
           amount,
           occurredAt: bill.paidAt!,
+          occurredOn: dbDateOfInstant(bill.paidAt!, timeZone), // gravacao dupla (F6a-1)
           source: "BILL",
           billId: bill.id,
         },
