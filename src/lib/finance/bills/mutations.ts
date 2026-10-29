@@ -1,7 +1,7 @@
 import { Prisma, type RecurringBillFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
-import type { DateKey } from "@/lib/time/zoned";
+import { dbDateOfInstant, type DateKey } from "@/lib/time/zoned";
 import { dayColumns } from "@/lib/finance/entryDay";
 import { billDirectionForType, type BillDirection } from "@/lib/finance/bills/status";
 
@@ -54,6 +54,9 @@ export async function createBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
+  // Gravacao dupla (Etapa F6b-1): dueOn/issueOn = o MESMO dia de
+  // dueDate/issueDate no fuso da empresa; as colunas antigas nao mudam.
+  const timeZone = await getBusinessTimeZone(businessId);
   const bill = await prisma.bill.create({
     data: {
       businessId,
@@ -61,7 +64,9 @@ export async function createBill(
       description: input.description,
       amount: new Decimal(input.amount),
       issueDate: input.issueDate ?? null,
+      issueOn: input.issueDate ? dbDateOfInstant(input.issueDate, timeZone) : null,
       dueDate: input.dueDate,
+      dueOn: dbDateOfInstant(input.dueDate, timeZone),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -94,6 +99,7 @@ export async function updateBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
+  const timeZone = await getBusinessTimeZone(businessId);
   await prisma.bill.update({
     where: { id },
     data: {
@@ -101,7 +107,9 @@ export async function updateBill(
       description: input.description,
       amount: new Decimal(input.amount),
       issueDate: input.issueDate ?? null,
+      issueOn: input.issueDate ? dbDateOfInstant(input.issueDate, timeZone) : null, // gravacao dupla (F6b-1)
       dueDate: input.dueDate,
+      dueOn: dbDateOfInstant(input.dueDate, timeZone), // gravacao dupla (F6b-1)
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -172,13 +180,16 @@ export async function settleBill(
     return { ok: false, error: "Conta já confirmada, mas sem lançamento financeiro associado." };
   }
 
-  const day = dayColumns(paidOn !== undefined ? { day: paidOn } : { instant: paidAt }, await getBusinessTimeZone(businessId));
+  const timeZone = await getBusinessTimeZone(businessId);
+  const day = dayColumns(paidOn !== undefined ? { day: paidOn } : { instant: paidAt }, timeZone);
 
   try {
     const financialEntry = await prisma.$transaction(async (tx) => {
       const updated = await tx.bill.updateMany({
         where: { id, businessId, status: "PENDING" },
-        data: { status: "PAID", paidAt },
+        // Gravacao dupla (F6b-1): Bill.paidOn = o MESMO dia de Bill.paidAt no
+        // fuso da empresa (paidAt continua o instante de auditoria).
+        data: { status: "PAID", paidAt, paidOn: dbDateOfInstant(paidAt, timeZone) },
       });
       if (updated.count === 0) return null;
 
@@ -236,7 +247,8 @@ export async function revertBillSettlement(businessId: string, id: string): Prom
 
   await prisma.$transaction(async (tx) => {
     await tx.financialEntry.deleteMany({ where: { billId: id, businessId, source: "BILL" } });
-    await tx.bill.update({ where: { id }, data: { status: "PENDING", paidAt: null } });
+    // paidOn volta a NULL junto com paidAt (F6b-1).
+    await tx.bill.update({ where: { id }, data: { status: "PENDING", paidAt: null, paidOn: null } });
   });
 
   return { ok: true, value: { id } };
@@ -290,6 +302,7 @@ export async function createRecurringBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
+  const timeZone = await getBusinessTimeZone(businessId);
   const entry = await prisma.recurringBill.create({
     data: {
       businessId,
@@ -299,7 +312,9 @@ export async function createRecurringBill(
       frequency: input.frequency,
       ...fieldsForFrequency(input),
       startDate: input.startDate,
+      startOn: dbDateOfInstant(input.startDate, timeZone), // gravacao dupla (F6b-1)
       endDate: input.endDate ?? null,
+      endOn: input.endDate ? dbDateOfInstant(input.endDate, timeZone) : null,
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -327,6 +342,7 @@ export async function updateRecurringBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
+  const timeZone = await getBusinessTimeZone(businessId);
   await prisma.recurringBill.update({
     where: { id },
     data: {
@@ -336,7 +352,9 @@ export async function updateRecurringBill(
       frequency: input.frequency,
       ...fieldsForFrequency(input),
       startDate: input.startDate,
+      startOn: dbDateOfInstant(input.startDate, timeZone), // gravacao dupla (F6b-1)
       endDate: input.endDate ?? null,
+      endOn: input.endDate ? dbDateOfInstant(input.endDate, timeZone) : null,
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,

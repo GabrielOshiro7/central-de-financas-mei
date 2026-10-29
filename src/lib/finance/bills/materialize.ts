@@ -56,6 +56,7 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
         // representacao das contas ja geradas); a chave de idempotencia e o
         // dia de calendario (Etapa F5).
         dueDate: startOfDayInstant(day, clock.timeZone),
+        dueOn: dateKeyToDbDate(day), // gravacao dupla (F6b-1): o mesmo dia de dueDate
         occurrenceDate: dateKeyToDbDate(day),
         documentNumber: entry.documentNumber,
         counterpartyName: entry.counterpartyName,

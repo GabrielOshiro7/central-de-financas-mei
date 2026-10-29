@@ -417,6 +417,21 @@ model Bill {
   paidAt      DateTime?  @map("paid_at")
   status      BillStatus @default(PENDING)
 
+  // Dias de calendario das datas acima (Etapa F6b-1, expandir): gravados
+  // junto com as colunas de instante, sempre o MESMO dia no fuso da empresa;
+  // ninguem le ainda (F6b-2). Anulabilidade espelhada: dueOn obrigatorio como
+  // dueDate; issueOn so quando ha issueDate; paidOn NULL se e somente se
+  // paidAt for NULL.
+  // - paidAt e o INSTANTE de auditoria (momento real do registro do
+  //   pagamento) e continua existindo depois da F6d; paidOn e o dia usado na
+  //   logica.
+  // - dueOn NAO e occurrenceDate: occurrenceDate (F5) e o dia gerado pela
+  //   recorrencia - a identidade da ocorrencia, que nunca muda; dueOn e o
+  //   vencimento e acompanha edicoes do usuario. Nao unificar.
+  dueOn   DateTime  @db.Date @map("due_on")
+  issueOn DateTime? @db.Date @map("issue_on")
+  paidOn  DateTime? @db.Date @map("paid_on")
+
   documentNumber   String? @map("document_number")
   // Fornecedor (contas a pagar) ou cliente (contas a receber) - texto livre
   // (decisao do adendo da Etapa 5): nao ha cadastro de Cliente/Fornecedor no
@@ -492,6 +507,10 @@ model RecurringBill {
 
   startDate DateTime  @map("start_date")
   endDate   DateTime? @map("end_date")
+  // Dias de calendario de startDate/endDate (Etapa F6b-1, expandir): mesmo
+  // dia no fuso da empresa, gravados junto; ninguem le ainda (F6b-2).
+  startOn   DateTime  @db.Date @map("start_on")
+  endOn     DateTime? @db.Date @map("end_on")
   isActive  Boolean   @default(true) @map("is_active")
 
   // Copiados para cada Bill gerada na materializacao (mesmo texto livre em

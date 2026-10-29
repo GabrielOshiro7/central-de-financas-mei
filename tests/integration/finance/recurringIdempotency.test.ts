@@ -209,7 +209,7 @@ describe("contas recorrentes: as mesmas propriedades", () => {
     const mold = await prisma.recurringBill.create({
       data: {
         businessId, categoryId: expenseCategoryId, description: "Conta 31", amount: new Decimal(200),
-        frequency: "MONTHLY", dayOfMonth: 31, startDate: moldStart("2026-01-01", tz), endDate: moldStart("2026-04-30", tz),
+        frequency: "MONTHLY", dayOfMonth: 31, startDate: moldStart("2026-01-01", tz), startOn: dbDateOfInstant(moldStart("2026-01-01", tz), tz), endDate: moldStart("2026-04-30", tz), endOn: dbDateOfInstant(moldStart("2026-04-30", tz), tz),
       },
     });
     const now = new Date("2026-01-14T20:30:00.000Z"); // 05:30 JST de 15/01; horizonte de 90 dias cobre até abril
@@ -231,14 +231,14 @@ describe("contas recorrentes: as mesmas propriedades", () => {
     const mold = await prisma.recurringBill.create({
       data: {
         businessId, categoryId: expenseCategoryId, description: "Conta legado", amount: new Decimal(30),
-        frequency: "MONTHLY", dayOfMonth: 5, startDate: moldStart("2026-09-01", tz), endDate: moldStart("2026-10-31", tz),
+        frequency: "MONTHLY", dayOfMonth: 5, startDate: moldStart("2026-09-01", tz), startOn: dbDateOfInstant(moldStart("2026-09-01", tz), tz), endDate: moldStart("2026-10-31", tz), endOn: dbDateOfInstant(moldStart("2026-10-31", tz), tz),
       },
     });
     const legacyDue = new Date("2026-09-05T00:00:00.000Z");
     await prisma.bill.create({
       data: {
         businessId, categoryId: expenseCategoryId, description: "Conta legado", amount: new Decimal(30),
-        dueDate: legacyDue, occurrenceDate: dateKeyToDbDate(toDateKey(legacyDue, tz)), recurringBillId: mold.id,
+        dueDate: legacyDue, dueOn: dbDateOfInstant(legacyDue, tz), occurrenceDate: dateKeyToDbDate(toDateKey(legacyDue, tz)), recurringBillId: mold.id,
       },
     });
     const result = await materializeRecurringBills(businessId, clockFor({ timezone: tz }, new Date("2026-09-10T03:00:00.000Z")));
@@ -255,13 +255,13 @@ describe("contas recorrentes: as mesmas propriedades", () => {
     const spring = await prisma.recurringBill.create({
       data: {
         businessId, categoryId: expenseCategoryId, description: "Conta semanal NY março", amount: new Decimal(5),
-        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-03-02", tz), endDate: moldStart("2026-03-09", tz),
+        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-03-02", tz), startOn: dbDateOfInstant(moldStart("2026-03-02", tz), tz), endDate: moldStart("2026-03-09", tz), endOn: dbDateOfInstant(moldStart("2026-03-09", tz), tz),
       },
     });
     const fall = await prisma.recurringBill.create({
       data: {
         businessId, categoryId: expenseCategoryId, description: "Conta semanal NY novembro", amount: new Decimal(5),
-        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-10-26", tz), endDate: moldStart("2026-11-02", tz),
+        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-10-26", tz), startOn: dbDateOfInstant(moldStart("2026-10-26", tz), tz), endDate: moldStart("2026-11-02", tz), endOn: dbDateOfInstant(moldStart("2026-11-02", tz), tz),
       },
     });
     await materializeRecurringBills(businessId, clockFor({ timezone: tz }, new Date("2026-09-01T12:00:00.000Z")));
@@ -290,7 +290,7 @@ describe("contas recorrentes: as mesmas propriedades", () => {
       const mold = await prisma.recurringBill.create({
         data: {
           businessId, categoryId: expenseCategoryId, description: `Conta ${tz}`, amount: new Decimal(10),
-          frequency: "MONTHLY", dayOfMonth: 10, startDate: moldStart("2026-01-01", tz), endDate: moldStart("2026-02-28", tz),
+          frequency: "MONTHLY", dayOfMonth: 10, startDate: moldStart("2026-01-01", tz), startOn: dbDateOfInstant(moldStart("2026-01-01", tz), tz), endDate: moldStart("2026-02-28", tz), endOn: dbDateOfInstant(moldStart("2026-02-28", tz), tz),
         },
       });
       const now = startOfDayInstant("2026-01-02", tz);

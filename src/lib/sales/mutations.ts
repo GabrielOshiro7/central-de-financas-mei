@@ -69,8 +69,10 @@ async function generateSaleBills(
         description,
         amount,
         dueDate: installment.dueDate,
+        dueOn: dbDateOfInstant(installment.dueDate, timeZone), // gravacao dupla (F6b-1)
         status: paidNow ? "PAID" : "PENDING",
         paidAt: paidNow ? installment.dueDate : null,
+        paidOn: paidNow ? dbDateOfInstant(installment.dueDate, timeZone) : null,
       },
     });
 
