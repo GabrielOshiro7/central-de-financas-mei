@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { createBill } from "@/lib/finance/bills/mutations";
-import { getBillSummary, listBills } from "@/lib/finance/bills/queries";
+import { getBillSummary, listBills, startOfBusinessToday } from "@/lib/finance/bills/queries";
 import { createClient } from "@/lib/clients/mutations";
 import { getClientFinancialSummary } from "@/lib/clients/queries";
 import { createSale } from "@/lib/sales/mutations";
@@ -22,6 +22,12 @@ import { dateKeyToDbDate, dbDateOfInstant } from "@/lib/time/zoned";
 const TOKYO_0030 = { now: new Date("2026-10-25T15:30:00Z"), timeZone: "Asia/Tokyo" };
 const UTC_SAME_INSTANT = { now: TOKYO_0030.now, timeZone: "UTC" };
 const apiDate = dateKeyToDbDate; // como a API grava "YYYY-MM-DD" hoje
+// "Pago no periodo" vazio: o filtro de periodo exige 00:00 no fuso da empresa
+// (F6b-2), entao o vazio e em 00:00 de hoje, nao em "agora".
+const emptyPaidRange = (clock: { now: Date; timeZone: string }) => {
+  const today = startOfBusinessToday(clock);
+  return { start: today, end: today };
+};
 
 describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", () => {
   let userId: string;
@@ -62,11 +68,11 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       ["Vence hoje (Tóquio)", "2026-10-26", 100],
       ["Venceu ontem (Tóquio)", "2026-10-25", 40],
     ] as const) {
-      const created = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description, amount, dueDate: apiDate(key) });
+      const created = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description, amount, dueOn: key });
       expect(created.ok).toBe(true);
     }
 
-    const tokyo = await getBillSummary(businessId, "PAYABLE", { start: TOKYO_0030.now, end: TOKYO_0030.now }, TOKYO_0030);
+    const tokyo = await getBillSummary(businessId, "PAYABLE", emptyPaidRange(TOKYO_0030), TOKYO_0030);
     expect(tokyo.dueTodayCount).toBe(1);
     expect(tokyo.dueTodayAmount.toNumber()).toBe(100);
     expect(tokyo.totalOverdueAmount.toNumber()).toBe(40);
@@ -79,7 +85,7 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
     expect(pending.items.map((b) => b.description)).toEqual(["Vence hoje (Tóquio)"]);
 
     // Mesmo instante, empresa em UTC: ainda é 25/10 - a de 25/10 vence hoje.
-    const utc = await getBillSummary(businessId, "PAYABLE", { start: UTC_SAME_INSTANT.now, end: UTC_SAME_INSTANT.now }, UTC_SAME_INSTANT);
+    const utc = await getBillSummary(businessId, "PAYABLE", emptyPaidRange(UTC_SAME_INSTANT), UTC_SAME_INSTANT);
     expect(utc.dueTodayAmount.toNumber()).toBe(40);
     expect(utc.totalOverdueAmount.toNumber()).toBe(0);
     const utcOverdue = await listBills(businessId, { direction: "PAYABLE", displayStatus: "OVERDUE" }, UTC_SAME_INSTANT);
@@ -121,10 +127,13 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       now: new Date("2026-10-26T02:00:00Z"), // 23:00 de 25/10 em São Paulo
       timeZone: "America/Sao_Paulo",
     });
-    // Em SP, 25/10 00:00Z é 24/10 21:00 (a representação gravada é UTC - F6):
-    // a parcela "25/10" já é de ontem; a "26/10" é 25/10 21:00 = hoje.
-    expect(spClient.totalOverdueAmount.toNumber()).toBe(100);
-    expect(spClient.totalOpenAmount.toNumber()).toBe(200);
+    // Etapa F6b-2: o vencimento e o DIA gravado (dueOn = 25/10 e 26/10), nao
+    // mais o instante 00:00Z relido em SP (que fazia de "25/10" o dia 24/10
+    // 21:00 - a dependencia da representacao UTC que este comentario
+    // anunciava para a F6). Às 23:00 de 25/10 em SP, "25/10" vence hoje e
+    // "26/10" amanha: nada vencido.
+    expect(spClient.totalOverdueAmount.toNumber()).toBe(0);
+    expect(spClient.totalOpenAmount.toNumber()).toBe(300);
   });
 
   it("caixa: a virada de mês segue o fuso da empresa (01:00 JST de 01/11 já é novembro em Tóquio, ainda outubro em UTC)", async () => {

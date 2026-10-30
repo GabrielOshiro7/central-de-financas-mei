@@ -1,7 +1,7 @@
 import { Prisma, type RecurringBillFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
-import { dbDateOfInstant, type DateKey } from "@/lib/time/zoned";
+import { dateKeyToDbDate, todayKey, type DateKey, type TimeZone } from "@/lib/time/zoned";
 import { dayColumns } from "@/lib/finance/entryDay";
 import { billDirectionForType, type BillDirection } from "@/lib/finance/bills/status";
 
@@ -32,12 +32,15 @@ async function assertCategoryMatchesDirection(
   return null;
 }
 
+// Datas de contas sao DIAS DE CALENDARIO (Etapa F6b-2): dueOn/issueOn sao a
+// fonte da verdade; dueDate/issueDate (gravacao dupla ate a F6d) = 00:00 do
+// mesmo dia no fuso da empresa (dayColumns).
 export type BillInput = {
   categoryId: string;
   description: string;
   amount: number | string;
-  issueDate?: Date | null;
-  dueDate: Date;
+  issueOn?: DateKey | null;
+  dueOn: DateKey;
   documentNumber?: string | null;
   counterpartyName?: string | null;
   paymentMethod?: string | null;
@@ -45,6 +48,12 @@ export type BillInput = {
   costCenter?: string | null;
   notes?: string | null;
 };
+
+function billDayColumns(input: BillInput, timeZone: TimeZone) {
+  const due = dayColumns({ day: input.dueOn }, timeZone);
+  const issue = input.issueOn ? dayColumns({ day: input.issueOn }, timeZone) : null;
+  return { dueOn: due.on, dueDate: due.at, issueOn: issue?.on ?? null, issueDate: issue?.at ?? null };
+}
 
 export async function createBill(
   businessId: string,
@@ -54,8 +63,6 @@ export async function createBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
-  // Gravacao dupla (Etapa F6b-1): dueOn/issueOn = o MESMO dia de
-  // dueDate/issueDate no fuso da empresa; as colunas antigas nao mudam.
   const timeZone = await getBusinessTimeZone(businessId);
   const bill = await prisma.bill.create({
     data: {
@@ -63,10 +70,7 @@ export async function createBill(
       categoryId: input.categoryId,
       description: input.description,
       amount: new Decimal(input.amount),
-      issueDate: input.issueDate ?? null,
-      issueOn: input.issueDate ? dbDateOfInstant(input.issueDate, timeZone) : null,
-      dueDate: input.dueDate,
-      dueOn: dbDateOfInstant(input.dueDate, timeZone),
+      ...billDayColumns(input, timeZone),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -106,10 +110,7 @@ export async function updateBill(
       categoryId: input.categoryId,
       description: input.description,
       amount: new Decimal(input.amount),
-      issueDate: input.issueDate ?? null,
-      issueOn: input.issueDate ? dbDateOfInstant(input.issueDate, timeZone) : null, // gravacao dupla (F6b-1)
-      dueDate: input.dueDate,
-      dueOn: dbDateOfInstant(input.dueDate, timeZone), // gravacao dupla (F6b-1)
+      ...billDayColumns(input, timeZone),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -145,7 +146,7 @@ export type SettleBillResult =
 
 // "Marcar como pago/recebido" (Etapa 5). Regras obrigatorias do ADENDO:
 // - type do lancamento gerado = category.type (nunca assume COST/REVENUE).
-// - occurredAt = paidAt (data REAL do pagamento), nunca dueDate.
+// - o dia do lancamento = o dia do PAGAMENTO, nunca o vencimento.
 // - idempotente: no maximo UM FinancialEntry por conta, mesmo com duplo
 //   clique ou requisicoes concorrentes.
 //
@@ -158,15 +159,22 @@ export type SettleBillResult =
 // 2) billId @unique em FinancialEntry como rede de seguranca contra qualquer
 //    outra corrida - se o create() ainda assim violar a constraint, releemos
 //    o estado em vez de propagar um erro visivel ao usuario.
+//
+// Datas (Etapa F6b-2, decisao do dono - paidAt e instante de AUDITORIA):
+// - Bill.paidOn = o dia informado pelo usuario; sem dia, "hoje" no fuso da
+//   empresa (todayKey no relogio `now`).
+// - Bill.paidAt = o instante REAL do registro (`now`), SEMPRE - inclusive
+//   quando o dia foi informado. Por isso toDateKey(paidAt, fuso) == paidOn
+//   NAO e invariante (pagamento de ontem registrado hoje); a unica invariante
+//   e paidOn/paidAt ambos NULL ou ambos preenchidos.
+// - O lancamento segue a regra do dia: occurredOn = paidOn, occurredAt =
+//   00:00 desse dia no fuso da empresa (dayColumns).
 export async function settleBill(
   businessId: string,
   userId: string,
   id: string,
-  paidAt: Date,
-  // Dia de liquidacao informado pelo usuario (Etapa F6a-2): quando existe, e a
-  // fonte do dia do FinancialEntry; sem ele, o dia sai do instante paidAt (ex.:
-  // "agora", quando a rota nao recebe data). Bill.paidAt nao muda aqui (F6b).
-  paidOn?: DateKey
+  paidOn?: DateKey,
+  now: Date = new Date()
 ): Promise<SettleBillResult> {
   const bill = await prisma.bill.findFirst({
     where: { id, businessId },
@@ -181,15 +189,14 @@ export async function settleBill(
   }
 
   const timeZone = await getBusinessTimeZone(businessId);
-  const day = dayColumns(paidOn !== undefined ? { day: paidOn } : { instant: paidAt }, timeZone);
+  const paidDay = paidOn ?? todayKey({ timeZone, now });
+  const day = dayColumns({ day: paidDay }, timeZone);
 
   try {
     const financialEntry = await prisma.$transaction(async (tx) => {
       const updated = await tx.bill.updateMany({
         where: { id, businessId, status: "PENDING" },
-        // Gravacao dupla (F6b-1): Bill.paidOn = o MESMO dia de Bill.paidAt no
-        // fuso da empresa (paidAt continua o instante de auditoria).
-        data: { status: "PAID", paidAt, paidOn: dbDateOfInstant(paidAt, timeZone) },
+        data: { status: "PAID", paidOn: dateKeyToDbDate(paidDay), paidAt: now },
       });
       if (updated.count === 0) return null;
 
@@ -247,8 +254,8 @@ export async function revertBillSettlement(businessId: string, id: string): Prom
 
   await prisma.$transaction(async (tx) => {
     await tx.financialEntry.deleteMany({ where: { billId: id, businessId, source: "BILL" } });
-    // paidOn volta a NULL junto com paidAt (F6b-1).
-    await tx.bill.update({ where: { id }, data: { status: "PENDING", paidAt: null, paidOn: null } });
+    // paidOn e paidAt voltam a NULL juntos (F6b-1/F6b-2).
+    await tx.bill.update({ where: { id }, data: { status: "PENDING", paidOn: null, paidAt: null } });
   });
 
   return { ok: true, value: { id } };
@@ -262,8 +269,10 @@ export type RecurringBillInput = {
   dayOfWeek?: number | null;
   dayOfMonth?: number | null;
   yearMonth?: number | null;
-  startDate: Date;
-  endDate?: Date | null;
+  // Dias de inicio/fim (F6b-2): startOn/endOn sao a fonte da verdade;
+  // startDate/endDate = 00:00 do mesmo dia no fuso da empresa.
+  startOn: DateKey;
+  endOn?: DateKey | null;
   documentNumber?: string | null;
   counterpartyName?: string | null;
   paymentMethod?: string | null;
@@ -294,6 +303,12 @@ function fieldsForFrequency(input: RecurringBillInput) {
   }
 }
 
+function recurringDayColumns(input: RecurringBillInput, timeZone: TimeZone) {
+  const start = dayColumns({ day: input.startOn }, timeZone);
+  const end = input.endOn ? dayColumns({ day: input.endOn }, timeZone) : null;
+  return { startOn: start.on, startDate: start.at, endOn: end?.on ?? null, endDate: end?.at ?? null };
+}
+
 export async function createRecurringBill(
   businessId: string,
   direction: BillDirection,
@@ -311,10 +326,7 @@ export async function createRecurringBill(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      startDate: input.startDate,
-      startOn: dbDateOfInstant(input.startDate, timeZone), // gravacao dupla (F6b-1)
-      endDate: input.endDate ?? null,
-      endOn: input.endDate ? dbDateOfInstant(input.endDate, timeZone) : null,
+      ...recurringDayColumns(input, timeZone),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -351,10 +363,7 @@ export async function updateRecurringBill(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      startDate: input.startDate,
-      startOn: dbDateOfInstant(input.startDate, timeZone), // gravacao dupla (F6b-1)
-      endDate: input.endDate ?? null,
-      endOn: input.endDate ? dbDateOfInstant(input.endDate, timeZone) : null,
+      ...recurringDayColumns(input, timeZone),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,

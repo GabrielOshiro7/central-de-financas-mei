@@ -9,7 +9,7 @@ import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { SaleBillsTable, type SaleBillRow } from "@/components/vendas/SaleBillsTable";
 import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
 import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
-import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const { id } = await props.params;
@@ -25,10 +25,10 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
 
   const billRows: SaleBillRow[] = sale.bills.map((bill) => ({
     id: bill.id,
-    dueDateDisplay: formatZonedDate(bill.dueDate, clock.timeZone),
+    dueDateDisplay: formatDateKey(dbDateToKey(bill.dueOn)), // dias gravados (F6b-2)
     amount: bill.amount.toString(),
     displayStatus: deriveBillStatus(bill, clock),
-    paidAtDisplay: bill.paidAt ? formatZonedDate(bill.paidAt, clock.timeZone) : null,
+    paidAtDisplay: bill.paidOn ? formatDateKey(dbDateToKey(bill.paidOn)) : null,
   }));
 
   return (

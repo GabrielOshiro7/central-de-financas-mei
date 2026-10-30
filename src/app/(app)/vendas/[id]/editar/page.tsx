@@ -7,7 +7,7 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { SaleForm } from "@/components/vendas/SaleForm";
 import { SaleNotesForm } from "@/components/vendas/SaleNotesForm";
-import { clockFor, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, toDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/editar">) {
   const { id } = await props.params;
@@ -70,7 +70,7 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
             notes: sale.notes ?? "",
             status: sale.status === "DRAFT" ? "DRAFT" : "CONFIRMED",
             installments: sale.bills.map((bill) => ({
-              dueDateInput: toDateKey(bill.dueDate, timeZone),
+              dueDateInput: dbDateToKey(bill.dueOn), // dia gravado (F6b-2)
               amount: bill.amount.toString(),
             })),
           }}

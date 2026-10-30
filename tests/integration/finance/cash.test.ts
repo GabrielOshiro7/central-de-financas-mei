@@ -142,7 +142,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
       categoryId: revenueCategoryId,
       description: "Conta a receber pendente",
       amount: 700,
-      dueDate: new Date(2026, 0, 20),
+      dueOn: "2026-01-20",
     });
     expect(bill.ok).toBe(true);
     if (!bill.ok) return;
@@ -151,7 +151,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
     const cashBefore = await getCurrentCashBalance(businessId, businessBefore);
     expect(cashBefore!.balance.toNumber()).toBe(0); // conta PENDING nao conta
 
-    const settled = await settleBill(businessId, userId, bill.value.id, new Date(2026, 0, 20));
+    const settled = await settleBill(businessId, userId, bill.value.id, "2026-01-20");
     expect(settled.ok).toBe(true);
 
     const businessAfter = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });

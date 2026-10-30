@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import { listTransactions } from "@/lib/finance/queries";
-import { processClock } from "../../helpers/processClock";
+import { PROCESS_TZ, processClock } from "../../helpers/processClock";
 import { dbDateOfInstant } from "@/lib/time/zoned";
 
 function sumAmounts(items: { amount: { toNumber: () => number } }[]): number {
@@ -115,9 +115,11 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
     }, processClock());
 
     const [revenueTx, costTx, expenseTx] = await Promise.all([
-      listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
-      listTransactions(businessAId, { type: "COST", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
-      listTransactions(businessAId, { type: "EXPENSE", range: data.range, pageSize: 100 }, "Asia/Tokyo"),
+      // data.range foi resolvido no fuso do relogio (processClock); o filtro
+      // de periodo exige o mesmo fuso (F6b-2).
+      listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }, PROCESS_TZ),
+      listTransactions(businessAId, { type: "COST", range: data.range, pageSize: 100 }, PROCESS_TZ),
+      listTransactions(businessAId, { type: "EXPENSE", range: data.range, pageSize: 100 }, PROCESS_TZ),
     ]);
 
     expect(data.summary.revenue.toNumber()).toBe(sumAmounts(revenueTx.items));

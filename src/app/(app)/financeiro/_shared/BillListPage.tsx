@@ -13,7 +13,7 @@ import { BillSummaryCards } from "@/components/financeiro/BillSummaryCards";
 import { RecurringBillTable, type RecurringBillRow } from "@/components/financeiro/RecurringBillTable";
 import { NewBillButton } from "@/components/financeiro/NewBillButton";
 import { InfoTooltip } from "@/components/InfoTooltip";
-import { addDays, clockFor, formatZonedDate, startOfDayInstant, toDateKey, todayKey } from "@/lib/time/zoned";
+import { addDays, clockFor, dbDateToKey, formatDateKey, startOfDayInstant, todayKey } from "@/lib/time/zoned";
 
 const VALID_STATUSES = new Set<string>(["PENDING", "OVERDUE", "PAID", "CANCELLED"]);
 const VALID_DUE = new Set<string>(DUE_SOON_OPTIONS.map((o) => o.value));
@@ -93,12 +93,13 @@ export async function BillListPage({
     counterpartyName: item.counterpartyName ?? "",
     categoryId: item.categoryId,
     categoryName: item.category.name,
-    dueDateDisplay: formatZonedDate(item.dueDate, clock.timeZone),
-    dueDateInput: toDateKey(item.dueDate, clock.timeZone),
-    issueDateInput: item.issueDate ? toDateKey(item.issueDate, clock.timeZone) : "",
+    // Vencimento, emissao e pagamento sao os dias gravados (F6b-2).
+    dueDateDisplay: formatDateKey(dbDateToKey(item.dueOn)),
+    dueDateInput: dbDateToKey(item.dueOn),
+    issueDateInput: item.issueOn ? dbDateToKey(item.issueOn) : "",
     amount: item.amount.toString(),
     displayStatus: deriveBillStatus(item, clock),
-    paidAtDisplay: item.paidAt ? formatZonedDate(item.paidAt, clock.timeZone) : null,
+    paidAtDisplay: item.paidOn ? formatDateKey(dbDateToKey(item.paidOn)) : null,
     documentNumber: item.documentNumber ?? "",
     paymentMethod: item.paymentMethod ?? "",
     bankAccount: item.bankAccount ?? "",
@@ -117,10 +118,10 @@ export async function BillListPage({
     dayOfWeek: entry.dayOfWeek,
     dayOfMonth: entry.dayOfMonth,
     yearMonth: entry.yearMonth,
-    startDateDisplay: formatZonedDate(entry.startDate, clock.timeZone),
-    startDateInput: toDateKey(entry.startDate, clock.timeZone),
-    endDateDisplay: entry.endDate ? formatZonedDate(entry.endDate, clock.timeZone) : null,
-    endDateInput: entry.endDate ? toDateKey(entry.endDate, clock.timeZone) : "",
+    startDateDisplay: formatDateKey(dbDateToKey(entry.startOn)),
+    startDateInput: dbDateToKey(entry.startOn),
+    endDateDisplay: entry.endOn ? formatDateKey(dbDateToKey(entry.endOn)) : null,
+    endDateInput: entry.endOn ? dbDateToKey(entry.endOn) : "",
     documentNumber: entry.documentNumber ?? "",
     counterpartyName: entry.counterpartyName ?? "",
     paymentMethod: entry.paymentMethod ?? "",

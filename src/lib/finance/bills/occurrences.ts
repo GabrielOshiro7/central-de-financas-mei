@@ -1,6 +1,6 @@
 import type { RecurringBillFrequency } from "@prisma/client";
 import { firstOccurrence, nextOccurrence, type RecurrenceRule } from "@/lib/finance/recurring/occurrences";
-import { compareKeys, toDateKey, type DateKey, type TimeZone } from "@/lib/time/zoned";
+import { compareKeys, dbDateToKey, toDateKey, type DateKey, type TimeZone } from "@/lib/time/zoned";
 
 // Reaproveita INTEGRALMENTE o motor puro de datas de
 // src/lib/finance/recurring/occurrences.ts (firstOccurrence/nextOccurrence,
@@ -15,8 +15,8 @@ export type RecurringBillLike = {
   dayOfWeek: number | null;
   dayOfMonth: number | null;
   yearMonth: number | null;
-  startDate: Date;
-  endDate: Date | null;
+  startOn: Date; // @db.Date (Etapa F6b-2)
+  endOn: Date | null;
 };
 
 function toBaseRuleAndStep(entry: RecurringBillLike): { base: RecurrenceRule; step: number } {
@@ -62,19 +62,20 @@ function advanceBySteps(base: RecurrenceRule, from: DateKey, step: number): Date
 
 // Mesma forma de generateOccurrences (recurring/occurrences.ts): todos os
 // DIAS de calendario (DateKey) entre a primeira ocorrencia valida e
-// `uptoDate` (inclusive), respeitando endDate. Pura - quem materializa
-// (bills/materialize.ts) e que transforma esses dias em Bill reais. Os
-// instantes do molde (startDate/endDate) e o limite viram dia de calendario
-// no fuso da empresa (F3b/F5); o resto e aritmetica pura de calendario.
+// `uptoDate` (inclusive), respeitando endOn. Pura - quem materializa
+// (bills/materialize.ts) e que transforma esses dias em Bill reais. Inicio e
+// fim do molde sao os dias gravados (startOn/endOn, Etapa F6b-2), sem
+// conversao de fuso; so o limite `uptoDate` (um instante do relogio) vira dia
+// no fuso da empresa. O resto e aritmetica pura de calendario.
 export function generateBillOccurrences(entry: RecurringBillLike, uptoDate: Date, timeZone: TimeZone): DateKey[] {
   const { base, step } = toBaseRuleAndStep(entry);
 
   const upto = toDateKey(uptoDate, timeZone);
-  const cappedEnd = entry.endDate ? toDateKey(entry.endDate, timeZone) : null;
+  const cappedEnd = entry.endOn ? dbDateToKey(entry.endOn) : null;
   const effectiveEnd = cappedEnd && compareKeys(cappedEnd, upto) < 0 ? cappedEnd : upto;
 
   const dates: DateKey[] = [];
-  let current = firstOccurrence(base, toDateKey(entry.startDate, timeZone));
+  let current = firstOccurrence(base, dbDateToKey(entry.startOn));
   while (compareKeys(current, effectiveEnd) <= 0) {
     dates.push(current);
     current = advanceBySteps(base, current, step);

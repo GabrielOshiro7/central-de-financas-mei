@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateBillOccurrences } from "@/lib/finance/bills/occurrences";
-import { dateKeyToDbDate, startOfDayInstant, type BusinessClock } from "@/lib/time/zoned";
+import { dateKeyToDbDate, dbDateOfInstant, startOfDayInstant, type BusinessClock } from "@/lib/time/zoned";
 
 // Diferente de materializeRecurringEntries (Etapa 4.1), que so materializa
 // ate "agora" (um RecurringEntry vira dinheiro automaticamente na data,
@@ -25,8 +25,9 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 export async function materializeRecurringBills(businessId: string, clock: BusinessClock): Promise<{ created: number }> {
   const uptoDate = new Date(clock.now.getTime() + HORIZON_DAYS * MS_PER_DAY);
 
+  // Molde que comeca ate o dia-limite (startOn e o dia de inicio, F6b-2).
   const activeEntries = await prisma.recurringBill.findMany({
-    where: { businessId, isActive: true, startDate: { lte: uptoDate } },
+    where: { businessId, isActive: true, startOn: { lte: dbDateOfInstant(uptoDate, clock.timeZone) } },
   });
 
   if (activeEntries.length === 0) return { created: 0 };
@@ -39,8 +40,8 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
         dayOfWeek: entry.dayOfWeek,
         dayOfMonth: entry.dayOfMonth,
         yearMonth: entry.yearMonth,
-        startDate: entry.startDate,
-        endDate: entry.endDate,
+        startOn: entry.startOn,
+        endOn: entry.endOn,
       },
       uptoDate,
       clock.timeZone
@@ -52,11 +53,11 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
         categoryId: entry.categoryId,
         description: entry.description,
         amount: entry.amount,
-        // Vencimento novo = 00:00 do dia no fuso da empresa (mesma
-        // representacao das contas ja geradas); a chave de idempotencia e o
-        // dia de calendario (Etapa F5).
+        // Vencimento = o dia da ocorrencia (dueOn, fonte da verdade desde a
+        // F6b-2); dueDate (gravacao dupla ate a F6d) = 00:00 desse dia no
+        // fuso da empresa. A chave de idempotencia e o dia (Etapa F5).
+        dueOn: dateKeyToDbDate(day),
         dueDate: startOfDayInstant(day, clock.timeZone),
-        dueOn: dateKeyToDbDate(day), // gravacao dupla (F6b-1): o mesmo dia de dueDate
         occurrenceDate: dateKeyToDbDate(day),
         documentNumber: entry.documentNumber,
         counterpartyName: entry.counterpartyName,

@@ -1,9 +1,22 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
-import { addDays, compareKeys, startOfDayInstant, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { dayRangeFilter } from "@/lib/finance/entryDay";
+import {
+  addDays,
+  compareKeys,
+  dateKeyToDbDate,
+  dbDateToKey,
+  startOfDayInstant,
+  todayKey,
+  type BusinessClock,
+} from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
+
+// Leituras de contas (Etapa F6b-2): vencimento, emissao e pagamento sao os
+// DIAS gravados em dueOn/issueOn/paidOn, comparados direto com DateKeys (sem
+// conversao de fuso no banco); dueDate/issueDate/paidAt nao sao lidos aqui.
 
 function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
   return direction === "PAYABLE"
@@ -11,20 +24,22 @@ function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
     : { category: { type: "REVENUE" } };
 }
 
-// "OVERDUE" nunca e uma condicao persistida - vira status=PENDING + dueDate
-// antes do inicio de "hoje" (00:00 do dia de calendario no fuso da EMPRESA,
-// Etapa F3b), espelhando deriveBillStatus (bills/status.ts) do lado da query.
+// 00:00 de "hoje" no fuso da EMPRESA (Etapa F3b) - limite inicial das janelas
+// "vencendo em N dias" montadas pela pagina de Contas.
 export function startOfBusinessToday(clock: BusinessClock): Date {
   return startOfDayInstant(todayKey(clock), clock.timeZone);
 }
 
+// "OVERDUE" nunca e uma condicao persistida - vira status=PENDING + dueOn
+// antes do dia de "hoje" no fuso da empresa, espelhando deriveBillStatus
+// (bills/status.ts) do lado da query.
 function displayStatusWhere(displayStatus: BillDisplayStatus, clock: BusinessClock): Prisma.BillWhereInput {
-  const today = startOfBusinessToday(clock);
+  const today = dateKeyToDbDate(todayKey(clock));
   switch (displayStatus) {
     case "PENDING":
-      return { status: "PENDING", dueDate: { gte: today } };
+      return { status: "PENDING", dueOn: { gte: today } };
     case "OVERDUE":
-      return { status: "PENDING", dueDate: { lt: today } };
+      return { status: "PENDING", dueOn: { lt: today } };
     case "PAID":
       return { status: "PAID" };
     case "CANCELLED":
@@ -41,7 +56,7 @@ export type BillFilters = {
   displayStatus?: BillDisplayStatus;
   categoryId?: string;
   search?: string;
-  dueRange?: { start: Date; end: Date };
+  dueRange?: { start: Date; end: Date }; // alinhado a 00:00 no fuso da empresa (dayRangeFilter)
   amountMin?: number;
   amountMax?: number;
   page?: number;
@@ -78,7 +93,7 @@ export async function listBills(
     ...directionWhere(filters.direction),
     ...(filters.displayStatus ? displayStatusWhere(filters.displayStatus, clock) : {}),
     ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-    ...(filters.dueRange ? { dueDate: { gte: filters.dueRange.start, lt: filters.dueRange.end } } : {}),
+    ...(filters.dueRange ? { dueOn: dayRangeFilter(filters.dueRange, clock.timeZone) } : {}),
     ...amountFilter,
     ...(filters.search
       ? {
@@ -96,7 +111,8 @@ export async function listBills(
     prisma.bill.findMany({
       where,
       include: { category: { select: { id: true, name: true, type: true } } },
-      orderBy: { dueDate: "asc" },
+      // Vencimento (dia) e, no empate, id - ordem deterministica (F6b-2).
+      orderBy: [{ dueOn: "asc" }, { id: "asc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -128,7 +144,7 @@ export type BillSummary = {
   totalOpenAmount: Prisma.Decimal; // PENDING + OVERDUE (obrigacao futura, nao cancelada nem paga)
   totalOverdueAmount: Prisma.Decimal;
   totalPendingAmount: Prisma.Decimal; // PENDING e ainda nao vencida
-  totalPaidAmount: Prisma.Decimal; // PAID com paidAt dentro de paidRange
+  totalPaidAmount: Prisma.Decimal; // PAID com paidOn (dia do pagamento) dentro de paidRange
   dueTodayAmount: Prisma.Decimal;
   dueTodayCount: number;
   dueNext7Amount: Prisma.Decimal;
@@ -143,8 +159,9 @@ export type BillSummary = {
 // independente do filtro de periodo aplicado na tabela); so totalPaidAmount
 // e recortado por `paidRange`, do mesmo jeito que o resto do financeiro usa
 // PeriodKey para "quanto foi pago/recebido nesse periodo". Vencido / vence
-// hoje / proximos 7 e 30 dias comparam DIAS DE CALENDARIO no fuso da empresa
-// (dueDate convertido para a data do fuso; "hoje" = todayKey(clock)).
+// hoje / proximos 7 e 30 dias comparam DIAS DE CALENDARIO (dueOn com
+// "hoje" = todayKey(clock), no fuso da empresa). `paidRange` precisa estar
+// alinhado a 00:00 no fuso da empresa (dayRangeFilter sobre paidOn).
 export async function getBillSummary(
   businessId: string,
   direction: BillDirection,
@@ -159,14 +176,14 @@ export async function getBillSummary(
   const [openBills, paidBills] = await Promise.all([
     prisma.bill.findMany({
       where: { businessId, status: "PENDING", ...directionWhere(direction) },
-      select: { amount: true, dueDate: true },
+      select: { amount: true, dueOn: true },
     }),
     prisma.bill.findMany({
       where: {
         businessId,
         status: "PAID",
         ...directionWhere(direction),
-        paidAt: { gte: paidRange.start, lt: paidRange.end },
+        paidOn: dayRangeFilter(paidRange, clock.timeZone),
       },
       select: { amount: true },
     }),
@@ -184,7 +201,7 @@ export async function getBillSummary(
 
   for (const bill of openBills) {
     totalOpenAmount = totalOpenAmount.plus(bill.amount);
-    const due = toDateKey(bill.dueDate, clock.timeZone);
+    const due = dbDateToKey(bill.dueOn);
     const notOverdue = compareKeys(due, today) >= 0;
 
     if (!notOverdue) {
@@ -224,7 +241,7 @@ export async function getBillSummary(
 }
 
 // "Vencido referente ao mes X" (Etapa 7 - Insights) = bills PENDING cujo
-// dueDate cai dentro de dueRange E que continuam vencidas HOJE (dueDate <
+// dueOn cai dentro de dueRange E que continuam vencidas HOJE (dueOn <
 // hoje). Isto NAO e "o saldo vencido como estava no fim daquele mes" -
 // Bill.status e um campo vivo, sem historico versionado, entao esse numero
 // nao e reconstruivel; o que da para responder com precisao e "quanto do que
@@ -244,13 +261,13 @@ export async function getOverdueAmountForDueRange(
       businessId,
       status: "PENDING",
       ...directionWhere(direction),
-      dueDate: { gte: dueRange.start, lt: dueRange.end },
+      dueOn: dayRangeFilter(dueRange, clock.timeZone),
     },
-    select: { amount: true, dueDate: true },
+    select: { amount: true, dueOn: true },
   });
 
   return bills
-    .filter((b) => compareKeys(toDateKey(b.dueDate, clock.timeZone), today) < 0)
+    .filter((b) => compareKeys(dbDateToKey(b.dueOn), today) < 0)
     .reduce((total, b) => total.plus(b.amount), new Decimal(0));
 }
 
@@ -265,9 +282,11 @@ export type ForecastBalance = {
 
 // Reaproveita getBillSummary para as duas direcoes em vez de duplicar a
 // query de soma - paidRange vazio (start===end) porque so o total EM ABERTO
-// interessa aqui, nunca o que ja foi pago/recebido.
+// interessa aqui, nunca o que ja foi pago/recebido. Vazio em 00:00 de hoje
+// (nao em `now`) porque o filtro de periodo exige limites no inicio de um dia.
 export async function getForecastBalance(businessId: string, clock: BusinessClock): Promise<ForecastBalance> {
-  const emptyRange = { start: clock.now, end: clock.now };
+  const today = startOfBusinessToday(clock);
+  const emptyRange = { start: today, end: today };
   const [payable, receivable] = await Promise.all([
     getBillSummary(businessId, "PAYABLE", emptyRange, clock),
     getBillSummary(businessId, "RECEIVABLE", emptyRange, clock),

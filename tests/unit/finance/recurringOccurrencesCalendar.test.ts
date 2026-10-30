@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { generateOccurrences, generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
 import { generateBillOccurrences } from "@/lib/finance/bills/occurrences";
-import { startOfDayInstant, weekdayOf } from "@/lib/time/zoned";
+import { dateKeyToDbDate, startOfDayInstant, weekdayOf } from "@/lib/time/zoned";
 
 // Etapa F5: o motor de ocorrencias trabalha em dias de calendario (DateKey).
 // Todas as entradas aqui sao instantes absolutos ou DateKeys - o resultado
@@ -42,7 +42,9 @@ describe("borda com o banco: instantes do molde viram dia no fuso da EMPRESA", (
       const entry = { ...monthly1, startDate: startOfDayInstant("2026-01-01", tz) };
       const upto = startOfDayInstant("2026-03-01", tz); // exatamente 00:00 do último dia
       expect(generateOccurrencesForEntry(entry, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
-      expect(generateBillOccurrences(entry, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
+      // Contas: o inicio e o dia gravado em startOn (F6b-2), nao o instante.
+      const bill = { ...monthly1, startOn: dateKeyToDbDate("2026-01-01"), endOn: null };
+      expect(generateBillOccurrences(bill, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
     });
   }
 

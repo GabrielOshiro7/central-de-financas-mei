@@ -3,6 +3,7 @@ import { isIntegerCurrency } from "@/lib/money";
 import {
   addDays,
   compareKeys,
+  dbDateToKey,
   startOfDayInstant,
   toDateKey,
   todayKey,
@@ -68,10 +69,10 @@ export type SalePaymentStatus = "NAO_PAGA" | "PARCIAL" | "PAGA" | "ATRASADA";
 // como paga nem como pendente). PARCIAL tem prioridade sobre ATRASADA:
 // se ja entrou algum dinheiro, "parcial" e mais informativo pro usuario do
 // que "atrasada", mesmo que uma das parcelas restantes esteja vencida.
-// "Vencida" = dia de calendario do vencimento antes de "hoje" no fuso da
-// empresa (Etapa F3b), mesma regra de deriveBillStatus.
+// "Vencida" = dia de vencimento gravado (Bill.dueOn, Etapa F6b-2) antes de
+// "hoje" no fuso da empresa (Etapa F3b), mesma regra de deriveBillStatus.
 export function deriveSalePaymentStatus(
-  bills: { status: BillStatus; dueDate: Date }[],
+  bills: { status: BillStatus; dueOn: Date }[],
   clock: BusinessClock
 ): SalePaymentStatus {
   const active = bills.filter((b) => b.status !== "CANCELLED");
@@ -83,7 +84,7 @@ export function deriveSalePaymentStatus(
 
   const today = todayKey(clock);
   const hasOverdue = active.some(
-    (b) => b.status === "PENDING" && compareKeys(toDateKey(b.dueDate, clock.timeZone), today) < 0
+    (b) => b.status === "PENDING" && compareKeys(dbDateToKey(b.dueOn), today) < 0
   );
   return hasOverdue ? "ATRASADA" : "NAO_PAGA";
 }

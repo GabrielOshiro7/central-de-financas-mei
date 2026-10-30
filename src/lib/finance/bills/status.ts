@@ -1,5 +1,5 @@
 import type { BillStatus, FinancialEntryType } from "@prisma/client";
-import { compareKeys, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 // Direcao de uma Bill: nunca armazenada - sempre derivada de category.type,
 // o mesmo discriminador que FinancialEntry/RecurringEntry ja usam (Etapa 5,
@@ -23,16 +23,17 @@ export function billDirectionForType(type: FinancialEntryType): BillDirection {
 
 // Status exibido ao usuario - "OVERDUE" (Atrasado) NUNCA e persistido no
 // banco (BillStatus so tem PENDING/PAID/CANCELLED): e sempre derivado aqui a
-// partir de status + dueDate. "Hoje" e o vencimento sao DIAS DE CALENDARIO no
-// fuso da EMPRESA (Etapa F3b, src/lib/time/zoned.ts) - a mesma nocao de "hoje"
-// de period.ts, nunca o fuso do processo Node. Vence hoje = PENDING; venceu
+// partir de status + dueOn. O vencimento e o DIA DE CALENDARIO gravado em
+// dueOn (Etapa F6b-2, sem conversao de fuso); "hoje" e o dia no fuso da
+// EMPRESA (Etapa F3b, src/lib/time/zoned.ts) - a mesma nocao de "hoje" de
+// period.ts, nunca o fuso do processo Node. Vence hoje = PENDING; venceu
 // ontem ou antes = OVERDUE.
 export type BillDisplayStatus = "PENDING" | "OVERDUE" | "PAID" | "CANCELLED";
 
-export function deriveBillStatus(bill: { status: BillStatus; dueDate: Date }, clock: BusinessClock): BillDisplayStatus {
+export function deriveBillStatus(bill: { status: BillStatus; dueOn: Date }, clock: BusinessClock): BillDisplayStatus {
   switch (bill.status) {
     case "PENDING":
-      return compareKeys(toDateKey(bill.dueDate, clock.timeZone), todayKey(clock)) < 0 ? "OVERDUE" : "PENDING";
+      return compareKeys(dbDateToKey(bill.dueOn), todayKey(clock)) < 0 ? "OVERDUE" : "PENDING";
     case "PAID":
       return "PAID";
     case "CANCELLED":

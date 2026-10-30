@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
 import { calculateSaleTotals, deriveSalePaymentStatus, splitEqualInstallments } from "@/lib/sales/calculations";
 import { PROCESS_TZ, processClock } from "../../helpers/processClock";
+import { dateKeyToDbDate } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -50,8 +51,9 @@ describe("calculateSaleTotals", () => {
 
 describe("deriveSalePaymentStatus", () => {
   const today = new Date(2026, 5, 15);
-  const past = new Date(2026, 5, 1);
-  const future = new Date(2026, 5, 30);
+  // Vencimentos = dias gravados em dueOn (@db.Date, F6b-2).
+  const past = dateKeyToDbDate("2026-06-01");
+  const future = dateKeyToDbDate("2026-06-30");
 
   it("sem parcelas (venda ainda em rascunho) => NAO_PAGA", () => {
     expect(deriveSalePaymentStatus([], processClock(today))).toBe("NAO_PAGA");
@@ -61,8 +63,8 @@ describe("deriveSalePaymentStatus", () => {
     expect(
       deriveSalePaymentStatus(
         [
-          { status: "PAID", dueDate: past },
-          { status: "PAID", dueDate: future },
+          { status: "PAID", dueOn: past },
+          { status: "PAID", dueOn: future },
         ],
         processClock(today)
       )
@@ -73,9 +75,9 @@ describe("deriveSalePaymentStatus", () => {
     expect(
       deriveSalePaymentStatus(
         [
-          { status: "PAID", dueDate: past },
-          { status: "PENDING", dueDate: future },
-          { status: "PENDING", dueDate: future },
+          { status: "PAID", dueOn: past },
+          { status: "PENDING", dueOn: future },
+          { status: "PENDING", dueOn: future },
         ],
         processClock(today)
       )
@@ -84,13 +86,13 @@ describe("deriveSalePaymentStatus", () => {
 
   it("nenhuma paga, uma vencida => ATRASADA", () => {
     expect(
-      deriveSalePaymentStatus([{ status: "PENDING", dueDate: past }], processClock(today))
+      deriveSalePaymentStatus([{ status: "PENDING", dueOn: past }], processClock(today))
     ).toBe("ATRASADA");
   });
 
   it("nenhuma paga, todas com vencimento futuro => NAO_PAGA", () => {
     expect(
-      deriveSalePaymentStatus([{ status: "PENDING", dueDate: future }], processClock(today))
+      deriveSalePaymentStatus([{ status: "PENDING", dueOn: future }], processClock(today))
     ).toBe("NAO_PAGA");
   });
 
@@ -98,8 +100,8 @@ describe("deriveSalePaymentStatus", () => {
     expect(
       deriveSalePaymentStatus(
         [
-          { status: "PAID", dueDate: past },
-          { status: "PENDING", dueDate: past },
+          { status: "PAID", dueOn: past },
+          { status: "PENDING", dueOn: past },
         ],
         processClock(today)
       )
@@ -110,8 +112,8 @@ describe("deriveSalePaymentStatus", () => {
     expect(
       deriveSalePaymentStatus(
         [
-          { status: "CANCELLED", dueDate: past },
-          { status: "PAID", dueDate: future },
+          { status: "CANCELLED", dueOn: past },
+          { status: "PAID", dueOn: future },
         ],
         processClock(today)
       )

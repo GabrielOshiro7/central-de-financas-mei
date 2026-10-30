@@ -4,7 +4,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { clipToSameDayOfMonth, resolveInsightPeriods, computeIndicatorSnapshot } from "@/lib/insights/snapshot";
 import { PROCESS_TZ, processClock } from "../../helpers/processClock";
-import { dbDateOfInstant } from "@/lib/time/zoned";
+import { dbDateOfInstant, startOfDayInstant } from "@/lib/time/zoned";
 
 describe("clipToSameDayOfMonth", () => {
   it("corta no mesmo dia quando ele existe no mês anterior", () => {
@@ -126,7 +126,8 @@ describe("computeIndicatorSnapshot - hasPreviousPeriod desacoplado do recorte", 
 
     // Confirma a premissa do cenário: o range recortado realmente não pega
     // nenhum lançamento.
-    const previousClippedRange = { start: new Date(2026, 7, 1), end: new Date(2026, 7, 4) };
+    // Dias no fuso da empresa (Toquio): o filtro de periodo exige 00:00 nesse fuso (F6b-2).
+    const previousClippedRange = { start: startOfDayInstant("2026-08-01", "Asia/Tokyo"), end: startOfDayInstant("2026-08-04", "Asia/Tokyo") };
     const clippedSummary = await getFinancialSummaryForRange(businessId, previousClippedRange, "Asia/Tokyo");
     expect(clippedSummary.hasAnyEntries).toBe(false);
 

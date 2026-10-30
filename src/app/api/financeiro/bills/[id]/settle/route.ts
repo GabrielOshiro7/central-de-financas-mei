@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { isDateKey } from "@/lib/time/zoned";
 import { z } from "zod";
+import { dayFromInput } from "@/lib/finance/entryDay";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { settleBill } from "@/lib/finance/bills/mutations";
@@ -14,9 +14,8 @@ const bodySchema = z.object({
 
 // "Marcar como pago/recebido" (secao "PAGAMENTO / RECEBIMENTO" da Etapa 5).
 // Endpoint dedicado (nao reaproveita o PATCH de edicao) porque a semantica e
-// diferente: aqui a data enviada e SEMPRE a data real do pagamento
-// (occurredAt do FinancialEntry gerado), nunca um campo editavel de uma
-// conta ja finalizada.
+// diferente: aqui a data enviada e SEMPRE o dia real do pagamento (dia do
+// FinancialEntry gerado), nunca um campo editavel de uma conta ja finalizada.
 export async function POST(request: Request, context: RouteContext<"/api/financeiro/bills/[id]/settle">) {
   const user = await getCurrentUser();
   if (!user) {
@@ -35,11 +34,12 @@ export async function POST(request: Request, context: RouteContext<"/api/finance
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." }, { status: 400 });
   }
 
-  const paidAt = parsed.data.paidAt ? new Date(parsed.data.paidAt) : new Date();
-  // Data informada (YYYY-MM-DD) = o dia do lancamento (Etapa F6a-2); sem
-  // data, o dia sai do instante do clique.
-  const paidOn = parsed.data.paidAt && isDateKey(parsed.data.paidAt) ? parsed.data.paidAt : undefined;
-  const result = await settleBill(business.id, user.id, id, paidAt, paidOn);
+  // O campo do corpo continua se chamando "paidAt", mas e o DIA do pagamento
+  // (Etapa F6b-2): vira Bill.paidOn e o dia do lancamento. Sem data, o dia e
+  // "hoje" no fuso da empresa. Bill.paidAt e sempre o instante real do
+  // registro (agora), gravado por settleBill.
+  const paidOn = parsed.data.paidAt ? dayFromInput(parsed.data.paidAt, business.timezone) : undefined;
+  const result = await settleBill(business.id, user.id, id, paidOn);
 
   if (!result.ok) {
     return NextResponse.json(

@@ -1,6 +1,6 @@
 import { Prisma, type SaleStatus, type BillStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { compareKeys, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -179,7 +179,8 @@ export type ClientFinancialSummary = {
 // escopada por cliente (via sale.clientId) em vez de direcao - RECEIVABLE e
 // implicito aqui porque toda Bill gerada por uma venda usa uma categoria
 // REVENUE (ver generateSaleBills).
-// Vencido = dia de calendario antes de "hoje" no fuso da empresa (F3b).
+// Vencido = dia de vencimento (dueOn, F6b-2) antes de "hoje" no fuso da
+// empresa (F3b).
 export async function getClientFinancialSummary(
   businessId: string,
   clientId: string,
@@ -187,7 +188,7 @@ export async function getClientFinancialSummary(
 ): Promise<ClientFinancialSummary> {
   const bills = await prisma.bill.findMany({
     where: { businessId, sale: { clientId } },
-    select: { amount: true, status: true, dueDate: true },
+    select: { amount: true, status: true, dueOn: true },
   });
 
   const today = todayKey(clock);
@@ -199,7 +200,7 @@ export async function getClientFinancialSummary(
     if (bill.status === "PAID") {
       totalReceivedAmount = totalReceivedAmount.plus(bill.amount);
     } else if (bill.status === "PENDING") {
-      if (compareKeys(toDateKey(bill.dueDate, clock.timeZone), today) < 0) {
+      if (compareKeys(dbDateToKey(bill.dueOn), today) < 0) {
         totalOverdueAmount = totalOverdueAmount.plus(bill.amount);
       } else {
         totalOpenAmount = totalOpenAmount.plus(bill.amount);
@@ -216,7 +217,7 @@ export type ClientHistoryItem = {
   saleDate: Date;
   status: SaleStatus;
   total: Prisma.Decimal;
-  bills: { id: string; dueDate: Date; amount: Prisma.Decimal; status: BillStatus; paidAt: Date | null }[];
+  bills: { id: string; dueOn: Date; amount: Prisma.Decimal; status: BillStatus; paidOn: Date | null }[]; // dias @db.Date (F6b-2)
 };
 
 // Historico cronologico do cliente (vendas + parcelas + recebimentos) para
@@ -225,7 +226,12 @@ export async function getClientHistory(businessId: string, clientId: string): Pr
   const sales = await prisma.sale.findMany({
     where: { businessId, clientId },
     orderBy: { saleDate: "desc" },
-    include: { bills: { orderBy: { dueDate: "asc" }, select: { id: true, dueDate: true, amount: true, status: true, paidAt: true } } },
+    include: {
+      bills: {
+        orderBy: [{ dueOn: "asc" }, { id: "asc" }],
+        select: { id: true, dueOn: true, amount: true, status: true, paidOn: true },
+      },
+    },
   });
 
   return sales.map((sale) => ({

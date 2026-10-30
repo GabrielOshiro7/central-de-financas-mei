@@ -1,6 +1,6 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { compareKeys, toDateKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -64,7 +64,7 @@ export async function listSales(businessId: string, filters: SaleFilters) {
       where,
       include: {
         client: { select: { id: true, name: true } },
-        bills: { select: { id: true, status: true, dueDate: true } },
+        bills: { select: { id: true, status: true, dueOn: true } },
       },
       orderBy: { saleDate: "desc" },
       skip: (page - 1) * pageSize,
@@ -83,7 +83,8 @@ export async function getSaleById(businessId: string, id: string) {
       client: true,
       category: { select: { id: true, name: true, type: true } },
       items: { include: { product: { select: { id: true, name: true } } } },
-      bills: { orderBy: { dueDate: "asc" } },
+      // Parcelas por dia de vencimento e, no empate, id (F6b-2).
+      bills: { orderBy: [{ dueOn: "asc" }, { id: "asc" }] },
     },
   });
 }
@@ -121,7 +122,7 @@ export async function getSalesSummary(
         businessId,
         sale: { saleDate: { gte: range.start, lt: range.end }, status: { not: "CANCELLED" } },
       },
-      select: { amount: true, status: true, dueDate: true },
+      select: { amount: true, status: true, dueOn: true },
     }),
   ]);
 
@@ -129,7 +130,8 @@ export async function getSalesSummary(
   const salesCount = sales.length;
   const averageTicket = salesCount > 0 ? totalRevenue.dividedBy(salesCount) : null;
 
-  // Vencido = dia de calendario antes de "hoje" no fuso da empresa (F3b).
+  // Vencido = dia de vencimento (dueOn, F6b-2) antes de "hoje" no fuso da
+  // empresa (F3b).
   const today = todayKey(clock);
   let totalReceived = new Decimal(0);
   let totalPending = new Decimal(0);
@@ -139,7 +141,7 @@ export async function getSalesSummary(
     if (bill.status === "PAID") {
       totalReceived = totalReceived.plus(bill.amount);
     } else if (bill.status === "PENDING") {
-      if (compareKeys(toDateKey(bill.dueDate, clock.timeZone), today) < 0) {
+      if (compareKeys(dbDateToKey(bill.dueOn), today) < 0) {
         totalOverdue = totalOverdue.plus(bill.amount);
       } else {
         totalPending = totalPending.plus(bill.amount);

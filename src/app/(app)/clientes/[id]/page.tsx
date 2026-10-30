@@ -10,7 +10,7 @@ import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bill
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
-import { clockFor, formatZonedDate } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, formatZonedDate } from "@/lib/time/zoned";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
@@ -155,7 +155,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                           const displayStatus = deriveBillStatus(bill, clock);
                           return (
                             <li key={bill.id} className="flex items-center gap-2">
-                              <span>{formatZonedDate(bill.dueDate, clock.timeZone)}</span>
+                              <span>{formatDateKey(dbDateToKey(bill.dueOn))}</span>
                               <span>{formatMoney(bill.amount, currency)}</span>
                               <span className="text-xs text-gray-500 dark:text-neutral-400">
                                 {BILL_DISPLAY_STATUS_LABELS.RECEIVABLE[displayStatus]}

@@ -9,6 +9,7 @@ import { settleBill } from "@/lib/finance/bills/mutations";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { processClock } from "../../helpers/processClock";
+import { monthRange } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -110,7 +111,7 @@ describe("vendas (Etapa 6)", () => {
     expect(entries).toHaveLength(0);
 
     // Recebe a primeira parcela reaproveitando settleBill (Etapa 5) sem nenhum código novo.
-    const settle = await settleBill(businessId, userId, bills[0].id, new Date(2026, 6, 1));
+    const settle = await settleBill(businessId, userId, bills[0].id, "2026-07-01");
     expect(settle.ok).toBe(true);
 
     bills = await prisma.bill.findMany({ where: { saleId: result.value.id } });
@@ -335,7 +336,8 @@ describe("vendas (Etapa 6)", () => {
       })
     );
 
-    const range = { start: new Date(2026, 5, 1), end: new Date(2026, 6, 1) };
+    // Mes no fuso da empresa (Toquio): o filtro de periodo exige 00:00 nesse fuso (F6b-2).
+    const range = monthRange(2026, 6, "Asia/Tokyo");
     const financialSummary = await getFinancialSummaryForRange(businessId, range, "Asia/Tokyo");
 
     const paidBills = await prisma.bill.findMany({

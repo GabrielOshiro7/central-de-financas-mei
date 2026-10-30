@@ -13,7 +13,7 @@ import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { getBillSummary } from "@/lib/finance/bills/queries";
 import { processClock } from "../../helpers/processClock";
-import { dbDateOfInstant } from "@/lib/time/zoned";
+import { dbDateOfInstant, dbDateToKey, monthRange, startOfDayInstant } from "@/lib/time/zoned";
 
 describe("contas a pagar/receber (Etapa 5)", () => {
   let userId: string;
@@ -63,7 +63,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: revenueCategoryId,
       description: "Categoria incompatível",
       amount: 100,
-      dueDate: new Date(2026, 0, 10),
+      dueOn: "2026-01-10",
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/não é compatível/i);
@@ -74,7 +74,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Aluguel de janeiro",
       amount: 1000,
-      dueDate: new Date(2026, 0, 10),
+      dueOn: "2026-01-10",
       counterpartyName: "Imobiliária X",
     });
     expect(result.ok).toBe(true);
@@ -90,49 +90,57 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta editável",
       amount: 200,
-      dueDate: new Date(2026, 0, 10),
+      dueOn: "2026-01-10",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const settled = await settleBill(businessId, userId, created.value.id, new Date(2026, 0, 10));
+    const settled = await settleBill(businessId, userId, created.value.id, "2026-01-10");
     expect(settled.ok).toBe(true);
 
     const editAfterPaid = await updateBill(businessId, created.value.id, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Tentando editar após pago",
       amount: 999,
-      dueDate: new Date(2026, 0, 10),
+      dueOn: "2026-01-10",
     });
     expect(editAfterPaid.ok).toBe(false);
     if (!editAfterPaid.ok) expect(editAfterPaid.error).toMatch(/pendentes/i);
   });
 
-  it("settleBill: type do lançamento = category.type, occurredAt = data do pagamento (não dueDate)", async () => {
+  // Etapa F6b-2 (decisao do dono): o dia do pagamento informado vira
+  // Bill.paidOn e o dia do lancamento (occurredOn; occurredAt = 00:00 desse
+  // dia no fuso da empresa); Bill.paidAt passou a ser o instante REAL do
+  // registro (auditoria), nao mais a data informada. Por isso as asserções de
+  // paidAt/occurredAt abaixo mudaram de forma (o dia esperado nao mudou).
+  it("settleBill: type do lançamento = category.type, dia do lançamento = dia do pagamento (não o vencimento)", async () => {
     const created = await createBill(businessId, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Conta paga com atraso",
       amount: 300,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const paidAt = new Date(2026, 0, 20); // pago 15 dias depois do vencimento
-    const settled = await settleBill(businessId, userId, created.value.id, paidAt);
+    const paidOn = "2026-01-20"; // pago 15 dias depois do vencimento
+    const registeredAt = new Date("2026-01-21T03:00:00.000Z"); // registrado no dia seguinte
+    const settled = await settleBill(businessId, userId, created.value.id, paidOn, registeredAt);
     expect(settled.ok).toBe(true);
     if (!settled.ok) return;
 
     const entry = await prisma.financialEntry.findUnique({ where: { id: settled.value.financialEntryId } });
     expect(entry?.type).toBe("EXPENSE");
-    expect(entry?.occurredAt).toEqual(paidAt);
+    expect(dbDateToKey(entry!.occurredOn)).toBe(paidOn);
+    expect(entry?.occurredAt).toEqual(startOfDayInstant(paidOn, "Asia/Tokyo"));
     expect(entry?.source).toBe("BILL");
     expect(entry?.billId).toBe(created.value.id);
     expect(entry?.amount.toNumber()).toBe(300);
 
     const bill = await prisma.bill.findUnique({ where: { id: created.value.id } });
     expect(bill?.status).toBe("PAID");
-    expect(bill?.paidAt).toEqual(paidAt);
+    expect(dbDateToKey(bill!.paidOn!)).toBe(paidOn);
+    expect(bill?.paidAt).toEqual(registeredAt);
   });
 
   it("idempotência: duas confirmações concorrentes na mesma conta geram no máximo um FinancialEntry", async () => {
@@ -140,15 +148,15 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta disputada por duplo clique",
       amount: 400,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const paidAt = new Date(2026, 0, 5);
+    const paidOn = "2026-01-05";
     const [r1, r2] = await Promise.all([
-      settleBill(businessId, userId, created.value.id, paidAt),
-      settleBill(businessId, userId, created.value.id, paidAt),
+      settleBill(businessId, userId, created.value.id, paidOn),
+      settleBill(businessId, userId, created.value.id, paidOn),
     ]);
 
     expect(r1.ok).toBe(true);
@@ -172,12 +180,12 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta a reverter",
       amount: 500,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const settled = await settleBill(businessId, userId, created.value.id, new Date(2026, 0, 5));
+    const settled = await settleBill(businessId, userId, created.value.id, "2026-01-05");
     expect(settled.ok).toBe(true);
     if (!settled.ok) return;
 
@@ -199,10 +207,10 @@ describe("contas a pagar/receber (Etapa 5)", () => {
         categoryId: direction === "PAYABLE" ? expenseCategoryId : revenueCategoryId,
         description,
         amount,
-        dueDate: new Date(2026, 1, 10),
+        dueOn: "2026-02-10",
       });
       if (!created.ok) throw new Error(created.error);
-      const settled = await settleBill(businessId, userId, created.value.id, new Date(2026, 1, 10));
+      const settled = await settleBill(businessId, userId, created.value.id, "2026-02-10");
       if (!settled.ok) throw new Error(settled.error);
       return { billId: created.value.id, entryId: settled.value.financialEntryId };
     }
@@ -225,13 +233,15 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       it(`${direction}: liquidar → reverter → liquidar de novo deixa exatamente 1 lançamento`, async () => {
         const { billId } = await createAndSettle(direction, `Re-liquidar ${direction}`);
         await revertBillSettlement(businessId, billId);
-        const again = await settleBill(businessId, userId, billId, new Date(2026, 1, 12));
+        const again = await settleBill(businessId, userId, billId, "2026-02-12");
         expect(again.ok).toBe(true);
 
         expect(await prisma.financialEntry.count({ where: { businessId } })).toBe(1);
         const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId } });
         expect(entry.billId).toBe(billId);
-        expect(entry.occurredAt.getTime()).toBe(new Date(2026, 1, 12).getTime());
+        // Dia informado (F6b-2): 00:00 de 12/02 no fuso da empresa (Toquio).
+        expect(dbDateToKey(entry.occurredOn)).toBe("2026-02-12");
+        expect(entry.occurredAt.getTime()).toBe(startOfDayInstant("2026-02-12", "Asia/Tokyo").getTime());
       });
     }
 
@@ -240,7 +250,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
         categoryId: expenseCategoryId,
         description: "Ainda pendente",
         amount: 80,
-        dueDate: new Date(2026, 1, 10),
+        dueOn: "2026-02-10",
       });
       if (!pending.ok) throw new Error(pending.error);
       const { billId: paidId } = await createAndSettle("RECEIVABLE", "Outra já paga");
@@ -288,12 +298,12 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta a cancelar",
       amount: 150,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const settled = await settleBill(businessId, userId, created.value.id, new Date(2026, 0, 5));
+    const settled = await settleBill(businessId, userId, created.value.id, "2026-01-05");
     expect(settled.ok).toBe(true);
 
     const cancelPaid = await cancelBill(businessId, created.value.id);
@@ -303,7 +313,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     const cancelled = await cancelBill(businessId, created.value.id);
     expect(cancelled.ok).toBe(true);
 
-    const settleCancelled = await settleBill(businessId, userId, created.value.id, new Date());
+    const settleCancelled = await settleBill(businessId, userId, created.value.id);
     expect(settleCancelled.ok).toBe(false);
   });
 
@@ -323,19 +333,19 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta da empresa B",
       amount: 999,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(billB.ok).toBe(true);
     if (!billB.ok) return;
 
-    const crossSettle = await settleBill(businessId, userId, billB.value.id, new Date());
+    const crossSettle = await settleBill(businessId, userId, billB.value.id);
     expect(crossSettle.ok).toBe(false);
 
     const crossUpdate = await updateBill(businessId, billB.value.id, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Tentativa de edição cruzada",
       amount: 1,
-      dueDate: new Date(2026, 0, 5),
+      dueOn: "2026-01-05",
     });
     expect(crossUpdate.ok).toBe(false);
 
@@ -349,16 +359,17 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Conta para conferência de totais",
       amount: 700,
-      dueDate: new Date(2026, 1, 1),
+      dueOn: "2026-02-01",
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
 
-    const paidAt = new Date(2026, 1, 3);
-    const settled = await settleBill(businessId, userId, created.value.id, paidAt);
+    const paidOn = "2026-02-03";
+    const settled = await settleBill(businessId, userId, created.value.id, paidOn);
     expect(settled.ok).toBe(true);
 
-    const range = { start: new Date(2026, 1, 1), end: new Date(2026, 2, 1) };
+    // Fevereiro no fuso da empresa (o filtro de periodo exige 00:00 nesse fuso).
+    const range = monthRange(2026, 2, "Asia/Tokyo");
     const summary = await getFinancialSummaryForRange(businessId, range, "Asia/Tokyo");
     const { items } = await listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 }, "Asia/Tokyo");
 
@@ -373,7 +384,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       amount: 1000,
       frequency: "MONTHLY",
       dayOfMonth: 5,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
@@ -404,13 +415,13 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       categoryId: expenseCategoryId,
       description: "Vencida",
       amount: 100,
-      dueDate: new Date(2020, 0, 1),
+      dueOn: "2020-01-01",
     });
     const future = await createBill(businessId, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Futura",
       amount: 250,
-      dueDate: new Date(2099, 0, 1),
+      dueOn: "2099-01-01",
     });
     expect(overdue.ok && future.ok).toBe(true);
 

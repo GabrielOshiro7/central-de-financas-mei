@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { recurringBillSchema } from "@/lib/finance/bills/schema";
 import { createRecurringBill } from "@/lib/finance/bills/mutations";
+import { dayFromInput } from "@/lib/finance/entryDay";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { clockFor } from "@/lib/time/zoned";
 
@@ -34,8 +35,9 @@ export async function POST(request: Request) {
     dayOfWeek: parsed.data.dayOfWeek,
     dayOfMonth: parsed.data.dayOfMonth,
     yearMonth: parsed.data.yearMonth,
-    startDate: new Date(parsed.data.startDate),
-    endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
+    // Dias de calendario (F6b-2): "YYYY-MM-DD" do formulario e o proprio dia.
+    startOn: dayFromInput(parsed.data.startDate, business.timezone),
+    endOn: parsed.data.endDate ? dayFromInput(parsed.data.endDate, business.timezone) : null,
     documentNumber: parsed.data.documentNumber,
     counterpartyName: parsed.data.counterpartyName,
     paymentMethod: parsed.data.paymentMethod,

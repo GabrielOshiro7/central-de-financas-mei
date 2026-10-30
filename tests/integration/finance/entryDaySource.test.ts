@@ -85,7 +85,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia - empresa em %s", (tz)
 
   it('liquidação com data informada "2026-10-20" pela rota: o lançamento da conta fica no dia 20', async () => {
     const { userId, businessId } = await login(tz);
-    const bill = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description: "Conta", amount: 30, dueDate: new Date("2026-10-15") });
+    const bill = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description: "Conta", amount: 30, dueOn: "2026-10-15" });
     expect(bill.ok).toBe(true);
     if (!bill.ok) return;
     const res = await postSettle(jsonRequest(`http://test/api/financeiro/bills/${bill.value.id}/settle`, "POST", { paidAt: "2026-10-20" }), {
@@ -116,7 +116,7 @@ describe("madrugada de Tóquio (00:00–09:00 JST)", () => {
   it("liquidação SEM data às 05:30 JST (20:30 UTC do dia anterior) cai no dia de Tóquio", async () => {
     const tz = "Asia/Tokyo";
     const { businessId } = await login(tz);
-    const bill = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description: "Conta", amount: 10, dueDate: new Date("2026-10-26") });
+    const bill = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description: "Conta", amount: 10, dueOn: "2026-10-26" });
     expect(bill.ok).toBe(true);
     if (!bill.ok) return;
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -128,6 +128,12 @@ describe("madrugada de Tóquio (00:00–09:00 JST)", () => {
     expect(res.status).toBe(200);
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.value.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe("2026-10-27");
-    expect(entry.occurredAt.toISOString()).toBe("2026-10-26T20:30:00.000Z"); // instante real, como antes
+    // Etapa F6b-2 (decisao do dono, regra 1.2): o lancamento da liquidacao
+    // segue a regra do DIA - occurredAt = 00:00 de 27/10 em Toquio, nao mais
+    // o instante do clique (o instante real fica em Bill.paidAt, auditoria).
+    // O dia (27/10) e o mesmo de antes.
+    expect(entry.occurredAt.toISOString()).toBe(startOfDayInstant("2026-10-27", tz).toISOString());
+    const bill2 = await prisma.bill.findUniqueOrThrow({ where: { id: bill.value.id } });
+    expect(bill2.paidAt!.toISOString()).toBe("2026-10-26T20:30:00.000Z");
   });
 });

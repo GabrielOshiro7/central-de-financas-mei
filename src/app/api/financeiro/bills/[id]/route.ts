@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { billSchema } from "@/lib/finance/bills/schema";
 import { updateBill } from "@/lib/finance/bills/mutations";
+import { dayFromInput } from "@/lib/finance/entryDay";
 
 // Nao ha DELETE aqui de proposito (secao "EXCLUSAO" da Etapa 5: preservar
 // rastreabilidade financeira) - so PATCH (enquanto PENDING) e os endpoints
@@ -33,8 +34,9 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
     categoryId: parsed.data.categoryId,
     description: parsed.data.description,
     amount: parsed.data.amount,
-    issueDate: parsed.data.issueDate ? new Date(parsed.data.issueDate) : null,
-    dueDate: new Date(parsed.data.dueDate),
+    // Dias de calendario (F6b-2): "YYYY-MM-DD" do formulario e o proprio dia.
+    issueOn: parsed.data.issueDate ? dayFromInput(parsed.data.issueDate, business.timezone) : null,
+    dueOn: dayFromInput(parsed.data.dueDate, business.timezone),
     documentNumber: parsed.data.documentNumber,
     counterpartyName: parsed.data.counterpartyName,
     paymentMethod: parsed.data.paymentMethod,

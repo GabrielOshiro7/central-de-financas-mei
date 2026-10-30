@@ -91,11 +91,12 @@ describe.each(TIME_ZONES)("gravação dupla occurredAt + occurredOn - empresa em
     const { userId, businessId } = await newBusiness(tz);
     for (const paidAt of [new Date("2026-09-14T01:17:04.558Z"), EARLY_JST]) {
       const bill = await createBill(businessId, "PAYABLE", {
-        categoryId: expenseCategoryId, description: "Conta", amount: 30, dueDate: new Date("2026-09-04"),
+        categoryId: expenseCategoryId, description: "Conta", amount: 30, dueOn: "2026-09-04",
       });
       expect(bill.ok).toBe(true);
       if (!bill.ok) return;
-      const settled = await settleBill(businessId, userId, bill.value.id, paidAt);
+      // sem dia informado: "hoje" da empresa no instante do clique (F6b-2)
+      const settled = await settleBill(businessId, userId, bill.value.id, undefined, paidAt);
       expect(settled.ok).toBe(true);
     }
     const rows = await assertEntriesInvariant(businessId, tz);

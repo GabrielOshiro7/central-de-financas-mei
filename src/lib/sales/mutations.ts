@@ -68,8 +68,12 @@ async function generateSaleBills(
         saleId: sale.id,
         description,
         amount,
+        // Parcelas (de venda e de conclusao de agendamento) ainda chegam como
+        // INSTANTE (a venda recebe Date ate a F6c): dueOn/paidOn = o dia
+        // desse instante no fuso da empresa (regra do instante, F6b-1). Os
+        // leitores ja usam so dueOn/paidOn (F6b-2).
         dueDate: installment.dueDate,
-        dueOn: dbDateOfInstant(installment.dueDate, timeZone), // gravacao dupla (F6b-1)
+        dueOn: dbDateOfInstant(installment.dueDate, timeZone),
         status: paidNow ? "PAID" : "PENDING",
         paidAt: paidNow ? installment.dueDate : null,
         paidOn: paidNow ? dbDateOfInstant(installment.dueDate, timeZone) : null,
