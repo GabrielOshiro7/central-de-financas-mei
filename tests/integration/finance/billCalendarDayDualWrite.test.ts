@@ -157,13 +157,13 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
     const { userId, businessId } = await newBusiness(tz);
     const client = await prisma.client.create({ data: { businessId, name: "Cliente" } });
     const base = {
-      status: "CONFIRMED" as const, clientId: client.id, categoryId: revenueCategoryId, saleDate: new Date("2026-06-10"),
+      status: "CONFIRMED" as const, clientId: client.id, categoryId: revenueCategoryId, saleOn: "2026-06-10",
       items: [{ description: "Item", quantity: 1, unitPrice: 600 }], discount: null, paymentMethod: "PIX", notes: null,
     };
-    expect((await createSale(businessId, userId, { ...base, clientRequestId: randomUUID(), installments: [{ dueDate: new Date("2026-06-10"), amount: 600, paidNow: true }] })).ok).toBe(true);
+    expect((await createSale(businessId, userId, { ...base, clientRequestId: randomUUID(), installments: [{ dueOn: "2026-06-10", amount: 600, paidNow: true }] })).ok).toBe(true);
     expect((await createSale(businessId, userId, {
       ...base, clientRequestId: randomUUID(),
-      installments: [{ dueDate: new Date("2026-07-10"), amount: 300 }, { dueDate: EARLY_JST, amount: 300 }],
+      installments: [{ dueOn: "2026-07-10", amount: 300 }, { dueOn: toDateKey(EARLY_JST, tz), amount: 300 }],
     })).ok).toBe(true);
     const { bills } = await assertBillsInvariant(businessId, tz);
     expect(bills).toHaveLength(3);

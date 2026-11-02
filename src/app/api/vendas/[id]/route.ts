@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { saleUpdateSchema, saleNotesUpdateSchema } from "@/lib/sales/schema";
 import { updateSale, updateSaleNotes } from "@/lib/sales/mutations";
+import { dayFromInput } from "@/lib/finance/entryDay";
 
 // Nao ha DELETE aqui de proposito (preservar rastreabilidade - ver
 // cancel/route.ts). A rota decide entre edicao completa e "so notas"
@@ -51,7 +52,8 @@ export async function PATCH(request: Request, context: RouteContext<"/api/vendas
   const result = await updateSale(business.id, id, {
     clientId: data.clientId,
     categoryId: data.categoryId,
-    saleDate: new Date(data.saleDate),
+    // Dias de calendario (F6c): "YYYY-MM-DD" do formulario e o proprio dia.
+    saleOn: dayFromInput(data.saleDate, business.timezone),
     items: data.items.map((item) => ({
       productId: item.productId || null,
       description: item.description,
@@ -61,7 +63,7 @@ export async function PATCH(request: Request, context: RouteContext<"/api/vendas
     discount: data.discountType ? { type: data.discountType, value: data.discountValue ?? 0 } : null,
     paymentMethod: data.paymentMethod || null,
     installments: data.installments?.map((installment) => ({
-      dueDate: new Date(installment.dueDate),
+      dueOn: dayFromInput(installment.dueDate, business.timezone),
       amount: installment.amount,
     })),
     notes: data.notes || null,

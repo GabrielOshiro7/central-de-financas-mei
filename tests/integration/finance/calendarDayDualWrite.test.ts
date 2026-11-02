@@ -9,7 +9,7 @@ import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize
 import { createSale } from "@/lib/sales/mutations";
 import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
 import { updateOpeningBalance } from "@/lib/finance/cash/mutations";
-import { dbDateToKey, startOfDayInstant, toDateKey } from "@/lib/time/zoned";
+import { dateKeyToDbDate, dbDateToKey, startOfDayInstant, toDateKey } from "@/lib/time/zoned";
 
 // Etapa F6a-1 (expandir): todo caminho que grava FinancialEntry.occurredAt
 // ou Business.openingBalanceDate grava TAMBEM a coluna nova de dia
@@ -118,7 +118,7 @@ describe.each(TIME_ZONES)("gravação dupla occurredAt + occurredOn - empresa em
     await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Prisma.Decimal(10), description: "Mensal",
-        frequency: "MONTHLY", dayOfMonth: 1, startDate: startOfDayInstant("2026-08-01", tz),
+        frequency: "MONTHLY", dayOfMonth: 1, startDate: startOfDayInstant("2026-08-01", tz), startOn: dateKeyToDbDate("2026-08-01"),
       },
     });
     await materializeRecurringEntries(businessId, userId, EARLY_JST);
@@ -131,8 +131,8 @@ describe.each(TIME_ZONES)("gravação dupla occurredAt + occurredOn - empresa em
     const client = await prisma.client.create({ data: { businessId, name: "Cliente" } });
     const result = await createSale(businessId, userId, {
       clientRequestId: randomUUID(), status: "CONFIRMED", clientId: client.id, categoryId: revenueCategoryId,
-      saleDate: new Date("2026-06-10"), items: [{ description: "Item", quantity: 1, unitPrice: 500 }], discount: null,
-      paymentMethod: "PIX", installments: [{ dueDate: new Date("2026-06-10"), amount: 500, paidNow: true }], notes: null,
+      saleOn: "2026-06-10", items: [{ description: "Item", quantity: 1, unitPrice: 500 }], discount: null,
+      paymentMethod: "PIX", installments: [{ dueOn: "2026-06-10", amount: 500, paidNow: true }], notes: null,
     });
     expect(result.ok).toBe(true);
     await assertEntriesInvariant(businessId, tz);
@@ -155,11 +155,11 @@ describe.each(TIME_ZONES)("gravação dupla occurredAt + occurredOn - empresa em
     }, tz);
     expect(completed.ok).toBe(true);
     const rows = await assertEntriesInvariant(businessId, tz);
-    // Tóquio/UTC: o dia do atendimento. São Paulo: a venda grava saleDate/paidAt
-    // como new Date("YYYY-MM-DD") (00:00 UTC = 21:00 do dia anterior em SP) -
-    // comportamento atual de Sale/Bill, que muda só na F6b/F6c; a coluna nova
-    // reproduz fielmente o mesmo dia que o app já mostra hoje.
-    expect(rows[0].on).toBe(tz === "America/Sao_Paulo" ? "2026-10-25" : day);
+    // O dia do atendimento em todos os fusos. Ate a F6b, São Paulo caía no dia
+    // anterior (a venda gravava new Date("YYYY-MM-DD") = 00:00 UTC = 21:00 do
+    // dia anterior em SP); a F6c, anunciada aqui, corrigiu isso: o lancamento a
+    // vista fica no dia da venda (dia do atendimento no fuso da empresa).
+    expect(rows[0].on).toBe(day);
   });
 
   it("saldo inicial (Configurações): openingBalanceOn = dia de openingBalanceDate", async () => {

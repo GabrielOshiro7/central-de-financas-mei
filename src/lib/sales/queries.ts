@@ -1,11 +1,16 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { dayRangeFilter } from "@/lib/finance/entryDay";
+import { compareKeys, dbDateToKey, todayKey, type BusinessClock, type TimeZone } from "@/lib/time/zoned";
+
+// Leituras de vendas (Etapa F6c): o dia da venda e Sale.saleOn, filtrado por
+// dias (dayRangeFilter, periodos alinhados a 00:00 no fuso da empresa) - sem
+// ler Sale.saleDate.
 
 const { Decimal } = Prisma;
 
 export type SaleFilters = {
-  period?: { start: Date; end: Date };
+  period?: { start: Date; end: Date }; // alinhado a 00:00 no fuso da empresa (dayRangeFilter)
   clientId?: string;
   status?: SaleStatus;
   paymentMethod?: string;
@@ -23,7 +28,7 @@ export type SaleFilters = {
 // menos uma parcela ainda pendente, "RECEIVED" = todas as parcelas existentes
 // estao pagas; suficiente para o filtro da lista sem duplicar a logica de
 // derivacao aqui.
-export async function listSales(businessId: string, filters: SaleFilters) {
+export async function listSales(businessId: string, filters: SaleFilters, timeZone: TimeZone) {
   const page = Math.max(1, filters.page ?? 1);
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
 
@@ -44,7 +49,7 @@ export async function listSales(businessId: string, filters: SaleFilters) {
     ...(filters.clientId ? { clientId: filters.clientId } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.paymentMethod ? { paymentMethod: filters.paymentMethod } : {}),
-    ...(filters.period ? { saleDate: { gte: filters.period.start, lt: filters.period.end } } : {}),
+    ...(filters.period ? { saleOn: dayRangeFilter(filters.period, timeZone) } : {}),
     ...(filters.paymentStatus === "PENDING" ? { bills: { some: { status: "PENDING" } } } : {}),
     ...(filters.paymentStatus === "RECEIVED" ? { bills: { some: { status: "PAID" }, none: { status: "PENDING" } } } : {}),
     ...amountFilter,
@@ -66,7 +71,9 @@ export async function listSales(businessId: string, filters: SaleFilters) {
         client: { select: { id: true, name: true } },
         bills: { select: { id: true, status: true, dueOn: true } },
       },
-      orderBy: { saleDate: "desc" },
+      // Mais recente primeiro: dia da venda, numero da venda e, por fim, id
+      // (ordem deterministica, F6c).
+      orderBy: [{ saleOn: "desc" }, { saleNumber: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -114,13 +121,13 @@ export async function getSalesSummary(
 ): Promise<SalesSummary> {
   const [sales, bills] = await Promise.all([
     prisma.sale.findMany({
-      where: { businessId, saleDate: { gte: range.start, lt: range.end }, status: { in: ["CONFIRMED", "COMPLETED"] } },
+      where: { businessId, saleOn: dayRangeFilter(range, clock.timeZone), status: { in: ["CONFIRMED", "COMPLETED"] } },
       select: { total: true },
     }),
     prisma.bill.findMany({
       where: {
         businessId,
-        sale: { saleDate: { gte: range.start, lt: range.end }, status: { not: "CANCELLED" } },
+        sale: { saleOn: dayRangeFilter(range, clock.timeZone), status: { not: "CANCELLED" } },
       },
       select: { amount: true, status: true, dueOn: true },
     }),
@@ -168,10 +175,11 @@ export type TopClientEntry = { clientId: string; clientName: string; totalPurcha
 export async function getTopClients(
   businessId: string,
   range: { start: Date; end: Date },
+  timeZone: TimeZone,
   limit = 5
 ): Promise<TopClientEntry[]> {
   const sales = await prisma.sale.findMany({
-    where: { businessId, saleDate: { gte: range.start, lt: range.end }, status: { in: ["CONFIRMED", "COMPLETED"] } },
+    where: { businessId, saleOn: dayRangeFilter(range, timeZone), status: { in: ["CONFIRMED", "COMPLETED"] } },
     select: { total: true, client: { select: { id: true, name: true } } },
   });
 
@@ -213,11 +221,12 @@ export type TopProductEntry = {
 export async function getTopProducts(
   businessId: string,
   range: { start: Date; end: Date },
+  timeZone: TimeZone,
   limit = 5
 ): Promise<TopProductEntry[]> {
   const items = await prisma.saleItem.findMany({
     where: {
-      sale: { businessId, saleDate: { gte: range.start, lt: range.end }, status: { in: ["CONFIRMED", "COMPLETED"] } },
+      sale: { businessId, saleOn: dayRangeFilter(range, timeZone), status: { in: ["CONFIRMED", "COMPLETED"] } },
     },
     select: { description: true, quantity: true, lineTotal: true, productId: true, saleId: true },
   });

@@ -9,7 +9,7 @@ import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { SaleBillsTable, type SaleBillRow } from "@/components/vendas/SaleBillsTable";
 import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
 import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
-import { clockFor, dbDateToKey, formatDateKey, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const { id } = await props.params;
@@ -36,7 +36,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Venda #{sale.saleNumber}</h1>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">{formatZonedDate(sale.saleDate, clock.timeZone)}</p>
+          <p className="text-sm text-gray-500 dark:text-neutral-400">{formatDateKey(dbDateToKey(sale.saleOn))}</p>
         </div>
         <Link href="/vendas" className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
           ← Voltar para vendas
@@ -57,7 +57,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
       <SaleDetailActions
         saleId={sale.id}
         status={sale.status}
-        saleDateInput={toDateKey(sale.saleDate, clock.timeZone)}
+        saleDateInput={dbDateToKey(sale.saleOn)}
         total={sale.total.toString()}
         currency={currency}
         editable={sale.status !== "CANCELLED"}

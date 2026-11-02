@@ -89,7 +89,8 @@ export async function getClientById(businessId: string, id: string) {
   return prisma.client.findFirst({ where: { id, businessId } });
 }
 
-export type ClientSalesSummary = { salesCount: number; lastPurchaseAt: Date | null };
+// Datas de compra sao os DIAS das vendas (Sale.saleOn, @db.Date, Etapa F6c).
+export type ClientSalesSummary = { salesCount: number; lastPurchaseOn: Date | null };
 
 // Usado pela coluna "Total de vendas"/"Última venda" da listagem de clientes.
 // UMA UNICA query para a pagina inteira (findMany com clientId IN [...ids] +
@@ -104,18 +105,18 @@ export async function getClientsSalesSummaryMap(
 
   const sales = await prisma.sale.findMany({
     where: { businessId, clientId: { in: clientIds }, status: { in: ["CONFIRMED", "COMPLETED"] } },
-    select: { clientId: true, saleDate: true },
+    select: { clientId: true, saleOn: true },
   });
 
   for (const sale of sales) {
     const existing = map.get(sale.clientId);
     if (existing) {
       existing.salesCount += 1;
-      if (sale.saleDate.getTime() > (existing.lastPurchaseAt?.getTime() ?? -Infinity)) {
-        existing.lastPurchaseAt = sale.saleDate;
+      if (sale.saleOn.getTime() > (existing.lastPurchaseOn?.getTime() ?? -Infinity)) {
+        existing.lastPurchaseOn = sale.saleOn;
       }
     } else {
-      map.set(sale.clientId, { salesCount: 1, lastPurchaseAt: sale.saleDate });
+      map.set(sale.clientId, { salesCount: 1, lastPurchaseOn: sale.saleOn });
     }
   }
 
@@ -131,8 +132,8 @@ export type ClientCommercialSummary = {
   totalPurchased: Prisma.Decimal;
   salesCount: number;
   averageTicket: Prisma.Decimal | null;
-  firstPurchaseAt: Date | null;
-  lastPurchaseAt: Date | null;
+  firstPurchaseOn: Date | null; // dia da venda (@db.Date, F6c)
+  lastPurchaseOn: Date | null;
 };
 
 // So conta vendas CONFIRMED/COMPLETED (uma venda cancelada nunca representa
@@ -149,12 +150,12 @@ export async function getClientCommercialSummary(
 ): Promise<ClientCommercialSummary> {
   const sales = await prisma.sale.findMany({
     where: { businessId, clientId, status: { in: ["CONFIRMED", "COMPLETED"] } },
-    select: { total: true, saleDate: true },
-    orderBy: { saleDate: "asc" },
+    select: { total: true, saleOn: true },
+    orderBy: [{ saleOn: "asc" }, { saleNumber: "asc" }, { id: "asc" }],
   });
 
   if (sales.length === 0) {
-    return { totalPurchased: new Decimal(0), salesCount: 0, averageTicket: null, firstPurchaseAt: null, lastPurchaseAt: null };
+    return { totalPurchased: new Decimal(0), salesCount: 0, averageTicket: null, firstPurchaseOn: null, lastPurchaseOn: null };
   }
 
   const totalPurchased = sales.reduce((total, s) => total.plus(s.total), new Decimal(0));
@@ -164,8 +165,8 @@ export async function getClientCommercialSummary(
     totalPurchased,
     salesCount: sales.length,
     averageTicket,
-    firstPurchaseAt: sales[0].saleDate,
-    lastPurchaseAt: sales[sales.length - 1].saleDate,
+    firstPurchaseOn: sales[0].saleOn,
+    lastPurchaseOn: sales[sales.length - 1].saleOn,
   };
 }
 
@@ -214,7 +215,7 @@ export async function getClientFinancialSummary(
 export type ClientHistoryItem = {
   saleId: string;
   saleNumber: number;
-  saleDate: Date;
+  saleOn: Date; // dia da venda (@db.Date, F6c)
   status: SaleStatus;
   total: Prisma.Decimal;
   bills: { id: string; dueOn: Date; amount: Prisma.Decimal; status: BillStatus; paidOn: Date | null }[]; // dias @db.Date (F6b-2)
@@ -225,7 +226,7 @@ export type ClientHistoryItem = {
 export async function getClientHistory(businessId: string, clientId: string): Promise<ClientHistoryItem[]> {
   const sales = await prisma.sale.findMany({
     where: { businessId, clientId },
-    orderBy: { saleDate: "desc" },
+    orderBy: [{ saleOn: "desc" }, { saleNumber: "desc" }, { id: "desc" }],
     include: {
       bills: {
         orderBy: [{ dueOn: "asc" }, { id: "asc" }],
@@ -237,7 +238,7 @@ export async function getClientHistory(businessId: string, clientId: string): Pr
   return sales.map((sale) => ({
     saleId: sale.id,
     saleNumber: sale.saleNumber,
-    saleDate: sale.saleDate,
+    saleOn: sale.saleOn,
     status: sale.status,
     total: sale.total,
     bills: sale.bills,

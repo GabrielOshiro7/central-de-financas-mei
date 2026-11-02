@@ -116,7 +116,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       categoryId: revenue.id,
       userId: user.id,
       saleNumber,
-      saleDate: tokyoMidnight,
+      saleDate: tokyoMidnight, saleOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
       status: "CONFIRMED",
       subtotal: new Decimal("400.00"),
       total: new Decimal("400.00"),

@@ -10,7 +10,7 @@ import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bill
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
-import { clockFor, dbDateToKey, formatDateKey, formatZonedDate } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
@@ -102,7 +102,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
           />
           <MetricCard
             label="Última compra"
-            value={commercial.lastPurchaseAt ? formatZonedDate(commercial.lastPurchaseAt, clock.timeZone) : null}
+            value={commercial.lastPurchaseOn ? formatDateKey(dbDateToKey(commercial.lastPurchaseOn)) : null}
           />
         </div>
       </section>
@@ -143,7 +143,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                       </Link>
                     </td>
                     <td role="cell" data-label="Data" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Data: </span>
-                      {formatZonedDate(sale.saleDate, clock.timeZone)}
+                      {formatDateKey(dbDateToKey(sale.saleOn))}
                     </td>
                     <td role="cell" data-label="Status" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Status: </span>{SALE_STATUS_LABELS[sale.status]}</td>
                     <td role="cell" data-label="Total" className="px-4 py-3 text-right font-medium text-gray-900 dark:text-neutral-100 rt-key"><span className="rt-sr">Total: </span>

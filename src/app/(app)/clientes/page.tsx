@@ -3,7 +3,7 @@ import { listClients, hasAnyClientsEver, getClientsSalesSummaryMap } from "@/lib
 import { ClientFilters } from "@/components/clientes/ClientFilters";
 import { ClientTable, type ClientRow } from "@/components/clientes/ClientTable";
 import { NewClientButton } from "@/components/clientes/NewClientButton";
-import { formatZonedDate } from "@/lib/time/zoned";
+import { dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -53,7 +53,7 @@ export default async function ClientesPage(props: PageProps<"/clientes">) {
       notes: c.notes ?? "",
       active: c.active,
       salesCount: summary?.salesCount ?? 0,
-      lastPurchaseDisplay: summary?.lastPurchaseAt ? formatZonedDate(summary.lastPurchaseAt, business.timezone) : null,
+      lastPurchaseDisplay: summary?.lastPurchaseOn ? formatDateKey(dbDateToKey(summary.lastPurchaseOn)) : null, // dia da venda (F6c)
     };
   });
 

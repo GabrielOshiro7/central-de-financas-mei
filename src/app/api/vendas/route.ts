@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { saleSchema } from "@/lib/sales/schema";
 import { createSale } from "@/lib/sales/mutations";
+import { dayFromInput } from "@/lib/finance/entryDay";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
@@ -27,7 +28,8 @@ export async function POST(request: Request) {
     status: data.status,
     clientId: data.clientId,
     categoryId: data.categoryId,
-    saleDate: new Date(data.saleDate),
+    // Dias de calendario (F6c): "YYYY-MM-DD" do formulario e o proprio dia.
+    saleOn: dayFromInput(data.saleDate, business.timezone),
     items: data.items.map((item) => ({
       productId: item.productId || null,
       description: item.description,
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
     discount: data.discountType ? { type: data.discountType, value: data.discountValue ?? 0 } : null,
     paymentMethod: data.paymentMethod || null,
     installments: data.installments?.map((installment) => ({
-      dueDate: new Date(installment.dueDate),
+      dueOn: dayFromInput(installment.dueDate, business.timezone),
       amount: installment.amount,
       paidNow: installment.paidNow,
     })),

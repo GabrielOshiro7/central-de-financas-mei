@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { confirmSaleSchema } from "@/lib/sales/schema";
 import { confirmSale } from "@/lib/sales/mutations";
+import { dayFromInput } from "@/lib/finance/entryDay";
 
 // DRAFT -> CONFIRMED: so aqui (ou em POST /api/vendas ja confirmando direto)
 // as Bills sao materializadas.
@@ -26,7 +27,7 @@ export async function POST(request: Request, context: RouteContext<"/api/vendas/
 
   const result = await confirmSale(business.id, id, {
     installments: parsed.data.installments.map((installment) => ({
-      dueDate: new Date(installment.dueDate),
+      dueOn: dayFromInput(installment.dueDate, business.timezone),
       amount: installment.amount,
       paidNow: installment.paidNow,
     })),

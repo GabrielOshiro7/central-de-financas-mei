@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
 import { listAppointmentsForMonth } from "@/lib/agenda/queries";
 import { parseAgendaDateTimeInput } from "@/lib/agenda/time";
+import { dbDateToKey, startOfDayInstant } from "@/lib/time/zoned";
 
 // Etapa F3c: a Agenda segue o FUSO DA EMPRESA (Business.timezone), nao mais o
 // fuso fixo de Toquio. Instantes em UTC explicito: o resultado e o mesmo com
@@ -86,9 +87,13 @@ describe("agenda no fuso da empresa (Etapa F3c)", () => {
     if (!result.ok) throw new Error(result.error);
 
     const sale = await prisma.sale.findUniqueOrThrow({ where: { id: result.value.saleId }, include: { bills: true } });
-    // Mesma representacao de uma venda manual de "2026-10-31" (meia-noite UTC
-    // da string - a forma de gravar so muda na F6).
-    expect(sale.saleDate.toISOString()).toBe("2026-10-31T00:00:00.000Z");
-    expect(sale.bills[0].paidAt?.toISOString()).toBe("2026-10-31T00:00:00.000Z");
+    // Etapa F6c: o dia (31/10 em SP) e gravado em saleOn/paidOn; saleDate =
+    // 00:00 de 31/10 em SP (antes, a meia-noite UTC da string "2026-10-31" -
+    // representacao que este comentario anunciava mudar na F6). paidAt passou
+    // a ser o instante real do registro (auditoria, F6b-2).
+    expect(dbDateToKey(sale.saleOn)).toBe("2026-10-31");
+    expect(sale.saleDate.toISOString()).toBe(startOfDayInstant("2026-10-31", "America/Sao_Paulo").toISOString());
+    expect(dbDateToKey(sale.bills[0].paidOn!)).toBe("2026-10-31");
+    expect(sale.bills[0].paidAt).not.toBeNull();
   });
 });

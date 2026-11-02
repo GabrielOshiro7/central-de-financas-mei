@@ -8,7 +8,7 @@ import {
   todayRange,
 } from "@/lib/agenda/time";
 import { agendaDayRange, agendaMonthRange, buildMonthGrid, groupAppointmentsByDay } from "@/lib/agenda/calendar";
-import { resolveSaleDateFromAppointment } from "@/lib/agenda/calculations";
+import { resolveSaleDayFromAppointment } from "@/lib/agenda/calculations";
 
 // Etapa F3c: dia/hora da Agenda no FUSO DA EMPRESA (antes fixo em Asia/Tokyo).
 // Instantes em UTC explicito: o resultado nao depende do fuso do processo.
@@ -74,7 +74,8 @@ describe("Agenda com empresa em São Paulo", () => {
 
   it("saleDate de um atendimento às 23:30 de 20/10 em SP é o dia 20/10 (em Tóquio já seria 21/10)", () => {
     const startAt = new Date("2026-10-21T02:30:00Z");
-    expect(resolveSaleDateFromAppointment(startAt, SP).toISOString()).toBe("2026-10-20T00:00:00.000Z");
-    expect(resolveSaleDateFromAppointment(startAt, TOKYO).toISOString()).toBe("2026-10-21T00:00:00.000Z");
+    // F6c: o dia da venda e uma DateKey (antes, a meia-noite UTC desse dia).
+    expect(resolveSaleDayFromAppointment(startAt, SP)).toBe("2026-10-20");
+    expect(resolveSaleDayFromAppointment(startAt, TOKYO)).toBe("2026-10-21");
   });
 });

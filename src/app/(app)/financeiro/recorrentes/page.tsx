@@ -5,13 +5,13 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { RecurringEntryTable, type RecurringEntryRow } from "@/components/financeiro/RecurringEntryTable";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
-import { clockFor, formatZonedDate, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 
 export default async function RecurringEntriesPage() {
   const { business } = await requireOnboardedUser();
-  // Datas exibidas e "hoje" dos formularios no fuso da empresa (Etapa F4).
+  // "Hoje" dos formularios no fuso da empresa (Etapa F4); as datas exibidas
+  // sao os dias gravados (F6c).
   const clock = clockFor(business);
-  const timeZone = clock.timeZone;
 
   const [entries, revenueCategories, costCategories, expenseCategories] = await Promise.all([
     listRecurringEntries(business.id),
@@ -38,10 +38,11 @@ export default async function RecurringEntriesPage() {
     dayOfWeek: entry.dayOfWeek,
     dayOfMonth: entry.dayOfMonth,
     yearMonth: entry.yearMonth,
-    startDateDisplay: formatZonedDate(entry.startDate, timeZone),
-    startDateInput: toDateKey(entry.startDate, timeZone),
-    endDateDisplay: entry.endDate ? formatZonedDate(entry.endDate, timeZone) : null,
-    endDateInput: entry.endDate ? toDateKey(entry.endDate, timeZone) : "",
+    // Inicio/fim sao os dias gravados (F6c).
+    startDateDisplay: formatDateKey(dbDateToKey(entry.startOn)),
+    startDateInput: dbDateToKey(entry.startOn),
+    endDateDisplay: entry.endOn ? formatDateKey(dbDateToKey(entry.endOn)) : null,
+    endDateInput: entry.endOn ? dbDateToKey(entry.endOn) : "",
     isActive: entry.isActive,
   }));
 

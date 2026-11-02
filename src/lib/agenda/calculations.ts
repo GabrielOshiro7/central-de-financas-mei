@@ -1,6 +1,6 @@
 import type { AppointmentStatus } from "@prisma/client";
 import { agendaDateKey } from "@/lib/agenda/time";
-import type { TimeZone } from "@/lib/time/zoned";
+import type { DateKey, TimeZone } from "@/lib/time/zoned";
 
 // Tabela EXPLICITA de pares permitidos (nunca uma funcao "generica" com
 // regras soltas) - cada aresta e uma decisao deliberada da Etapa 8, testada
@@ -82,20 +82,14 @@ export function detectOverlap(
   });
 }
 
-// Sale.saleDate de uma conclusao de atendimento DEVE ser byte-a-byte igual
-// ao que uma venda manual do mesmo dia calendario geraria: SaleForm envia
-// uma string "YYYY-MM-DD" (input type="date") que a API converte com
-// `new Date(string)` (meia-noite UTC dessa string - ver saleDate em
-// api/vendas/route.ts). Aqui fazemos EXATAMENTE o mesmo: formata o dia
-// calendario NO FUSO DA EMPRESA (Etapa F3c; antes fixo em Toquio) como
-// string e passa pelo mesmo `new Date(string)` -
-// NUNCA Date.UTC(...)/aritmetica calculada direto do instante de startAt ou
-// completedAt, que produziria um resultado DIFERENTE (ver teste de
-// comparacao em tests/unit/agenda/saleDateConversion.test.ts). Bill.paidAt
-// de uma conclusao a vista reaproveita este MESMO valor (nunca completedAt -
-// decisao aprovada da Etapa 8, incremento 3): o pagamento e datado do dia do
-// atendimento, nao do dia em que o dono efetivamente clicou em "Concluir"
-// (registro retroativo).
-export function resolveSaleDateFromAppointment(startAt: Date, timeZone: TimeZone): Date {
-  return new Date(agendaDateKey(startAt, timeZone));
+// Dia da venda (Sale.saleOn) de uma conclusao de atendimento: o DIA DE
+// CALENDARIO do atendimento (startAt) no fuso da empresa (Etapa F3c; desde a
+// F6c uma DateKey, a mesma que uma venda manual "YYYY-MM-DD" do mesmo dia
+// grava - ver tests/unit/agenda/saleDateConversion.test.ts). Nunca
+// completedAt: a venda a vista (Bill.paidOn e o lancamento) e datada do dia
+// do atendimento, nao do dia em que o dono clicou em "Concluir" (registro
+// retroativo, decisao aprovada da Etapa 8, incremento 3); Bill.paidAt e o
+// instante real do registro (auditoria, F6b-2).
+export function resolveSaleDayFromAppointment(startAt: Date, timeZone: TimeZone): DateKey {
+  return agendaDateKey(startAt, timeZone);
 }

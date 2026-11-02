@@ -115,7 +115,7 @@ describe("clientes (Etapa 6)", () => {
     expect(commercial.salesCount).toBe(0);
     expect(commercial.totalPurchased.toNumber()).toBe(0);
     expect(commercial.averageTicket).toBeNull();
-    expect(commercial.firstPurchaseAt).toBeNull();
+    expect(commercial.firstPurchaseOn).toBeNull();
 
     const financial = await getClientFinancialSummary(businessId, created.value.id, processClock());
     expect(financial.totalOpenAmount.toNumber()).toBe(0);

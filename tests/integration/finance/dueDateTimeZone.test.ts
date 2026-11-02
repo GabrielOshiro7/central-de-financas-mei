@@ -10,7 +10,7 @@ import { getClientFinancialSummary } from "@/lib/clients/queries";
 import { createSale } from "@/lib/sales/mutations";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { getMonthlyCashSeries } from "@/lib/finance/cash/queries";
-import { dateKeyToDbDate, dbDateOfInstant } from "@/lib/time/zoned";
+import { dbDateOfInstant, monthRange } from "@/lib/time/zoned";
 
 // Etapa F3b: contas, vendas, clientes e caixa no FUSO DA EMPRESA, nunca no do
 // processo. Relogio fixo e instantes em UTC explicito: o resultado e o mesmo
@@ -21,7 +21,6 @@ import { dateKeyToDbDate, dbDateOfInstant } from "@/lib/time/zoned";
 // UTC (ou um teste que monte a data em UTC) erraria o "hoje".
 const TOKYO_0030 = { now: new Date("2026-10-25T15:30:00Z"), timeZone: "Asia/Tokyo" };
 const UTC_SAME_INSTANT = { now: TOKYO_0030.now, timeZone: "UTC" };
-const apiDate = dateKeyToDbDate; // como a API grava "YYYY-MM-DD" hoje
 // "Pago no periodo" vazio: o filtro de periodo exige 00:00 no fuso da empresa
 // (F6b-2), entao o vazio e em 00:00 de hoje, nao em "agora".
 const emptyPaidRange = (clock: { now: Date; timeZone: string }) => {
@@ -100,23 +99,24 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       status: "CONFIRMED",
       clientId: client.value.id,
       categoryId: revenueCategoryId,
-      saleDate: apiDate("2026-10-20"),
+      saleOn: "2026-10-20",
       items: [{ description: "Serviço", quantity: 1, unitPrice: 300 }],
       discount: null,
       paymentMethod: null,
       installments: [
-        { dueDate: apiDate("2026-10-25"), amount: 100 },
-        { dueDate: apiDate("2026-10-26"), amount: 200 },
+        { dueOn: "2026-10-25", amount: 100 },
+        { dueOn: "2026-10-26", amount: 200 },
       ],
       notes: null,
     });
     if (!sale.ok) throw new Error(sale.error);
 
-    const range = { start: new Date("2026-10-01T00:00:00Z"), end: new Date("2026-11-01T00:00:00Z") };
-    const tokyoSales = await getSalesSummary(businessId, range, TOKYO_0030);
+    // Outubro no fuso de cada relogio (o filtro de periodo exige 00:00 nesse
+    // fuso, F6b-2); as vendas de 20/10 caem em outubro nos dois.
+    const tokyoSales = await getSalesSummary(businessId, monthRange(2026, 10, "Asia/Tokyo"), TOKYO_0030);
     expect(tokyoSales.totalOverdue.toNumber()).toBe(100);
     expect(tokyoSales.totalPending.toNumber()).toBe(200);
-    const utcSales = await getSalesSummary(businessId, range, UTC_SAME_INSTANT);
+    const utcSales = await getSalesSummary(businessId, monthRange(2026, 10, "UTC"), UTC_SAME_INSTANT);
     expect(utcSales.totalOverdue.toNumber()).toBe(0);
     expect(utcSales.totalPending.toNumber()).toBe(300);
 

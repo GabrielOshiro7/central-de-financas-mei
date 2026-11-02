@@ -34,22 +34,22 @@ describe("semanal atravessando o horário de verão (os dias não mudam)", () =>
   });
 });
 
-describe("borda com o banco: instantes do molde viram dia no fuso da EMPRESA", () => {
-  const monthly1 = { frequency: "MONTHLY" as const, dayOfWeek: null, dayOfMonth: 1, yearMonth: null, endDate: null };
+// Desde a F6c (lancamentos) e a F6b-2 (contas) o inicio/fim do molde sao os
+// dias gravados (startOn/endOn); so o "ate quando" e um instante, que vira o
+// dia no fuso da EMPRESA.
+describe("borda com o banco: o limite (instante) vira dia no fuso da EMPRESA", () => {
+  const monthly1 = { frequency: "MONTHLY" as const, dayOfWeek: null, dayOfMonth: 1, yearMonth: null, startOn: dateKeyToDbDate("2026-01-01"), endOn: null };
 
   for (const tz of ["Asia/Tokyo", "America/Sao_Paulo", "UTC", "America/New_York"]) {
-    it(`${tz}: molde com início às 00:00 de 01/01 no fuso -> 01/01, 01/02, 01/03`, () => {
-      const entry = { ...monthly1, startDate: startOfDayInstant("2026-01-01", tz) };
+    it(`${tz}: molde com início em 01/01 e limite às 00:00 de 01/03 no fuso -> 01/01, 01/02, 01/03`, () => {
       const upto = startOfDayInstant("2026-03-01", tz); // exatamente 00:00 do último dia
-      expect(generateOccurrencesForEntry(entry, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
-      // Contas: o inicio e o dia gravado em startOn (F6b-2), nao o instante.
-      const bill = { ...monthly1, startOn: dateKeyToDbDate("2026-01-01"), endOn: null };
-      expect(generateBillOccurrences(bill, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
+      expect(generateOccurrencesForEntry(monthly1, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
+      expect(generateBillOccurrences(monthly1, upto, tz)).toEqual(["2026-01-01", "2026-02-01", "2026-03-01"]);
     });
   }
 
   it("Tóquio na madrugada (05:30 JST = 20:30 UTC do dia anterior): o limite é o dia de Tóquio", () => {
-    const entry = { ...monthly1, startDate: startOfDayInstant("2026-01-01", "Asia/Tokyo") };
+    const entry = monthly1;
     expect(generateOccurrencesForEntry(entry, new Date("2026-02-28T20:30:00.000Z"), "Asia/Tokyo")).toEqual([
       "2026-01-01",
       "2026-02-01",

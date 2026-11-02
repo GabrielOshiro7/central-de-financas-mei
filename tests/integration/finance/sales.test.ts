@@ -9,7 +9,7 @@ import { settleBill } from "@/lib/finance/bills/mutations";
 import { getFinancialSummaryForRange } from "@/lib/finance/queries";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { processClock } from "../../helpers/processClock";
-import { monthRange } from "@/lib/time/zoned";
+import { dbDateToKey, monthRange } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -57,11 +57,11 @@ describe("vendas (Etapa 6)", () => {
       status: "CONFIRMED",
       clientId,
       categoryId: revenueCategoryId,
-      saleDate: new Date(2026, 5, 10),
+      saleOn: "2026-06-10",
       items: [{ description: "Serviço A", quantity: 1, unitPrice: 500 }],
       discount: null,
       paymentMethod: "PIX",
-      installments: [{ dueDate: new Date(2026, 5, 10), amount: 500, paidNow: true }],
+      installments: [{ dueOn: "2026-06-10", amount: 500, paidNow: true }],
       notes: null,
       ...overrides,
     };
@@ -75,7 +75,11 @@ describe("vendas (Etapa 6)", () => {
     const bills = await prisma.bill.findMany({ where: { saleId: result.value.id } });
     expect(bills).toHaveLength(1);
     expect(bills[0].status).toBe("PAID");
-    expect(bills[0].paidAt?.getTime()).toBe(new Date(2026, 5, 10).getTime());
+    // Etapa F6c (mesma decisao de auditoria da F6b-2): o dia do recebimento a
+    // vista e o dia da venda (paidOn); paidAt passou a ser o instante real do
+    // registro, entao a assercao saiu de paidAt para paidOn (o dia nao mudou).
+    expect(dbDateToKey(bills[0].paidOn!)).toBe("2026-06-10");
+    expect(bills[0].paidAt).not.toBeNull();
     expect(bills[0].categoryId).toBe(revenueCategoryId);
 
     const entries = await prisma.financialEntry.findMany({ where: { billId: bills[0].id } });
@@ -92,9 +96,9 @@ describe("vendas (Etapa 6)", () => {
       baseInput({
         items: [{ description: "Produto B", quantity: 1, unitPrice: 1200 }],
         installments: [
-          { dueDate: new Date(2026, 6, 1), amount: 400 },
-          { dueDate: new Date(2026, 7, 1), amount: 400 },
-          { dueDate: new Date(2026, 8, 1), amount: 400 },
+          { dueOn: "2026-07-01", amount: 400 },
+          { dueOn: "2026-08-01", amount: 400 },
+          { dueOn: "2026-09-01", amount: 400 },
         ],
       })
     );
@@ -129,7 +133,7 @@ describe("vendas (Etapa 6)", () => {
       baseInput({
         items: [{ description: "Item com desconto", quantity: 1, unitPrice: 1000 }],
         discount: { type: "PERCENTAGE", value: 10 },
-        installments: [{ dueDate: new Date(2026, 5, 10), amount: 900, paidNow: true }],
+        installments: [{ dueOn: "2026-06-10", amount: 900, paidNow: true }],
       })
     );
     expect(result.ok).toBe(true);
@@ -147,7 +151,7 @@ describe("vendas (Etapa 6)", () => {
       userId,
       baseInput({
         items: [{ description: "Produto", quantity: 1, unitPrice: 1000 }],
-        installments: [{ dueDate: new Date(2026, 5, 10), amount: 900 }],
+        installments: [{ dueOn: "2026-06-10", amount: 900 }],
       })
     );
     expect(result.ok).toBe(false);
@@ -186,8 +190,8 @@ describe("vendas (Etapa 6)", () => {
       baseInput({
         items: [{ description: "Produto a prazo", quantity: 1, unitPrice: 1000 }],
         installments: [
-          { dueDate: new Date(2026, 6, 1), amount: 500 },
-          { dueDate: new Date(2026, 7, 1), amount: 500 },
+          { dueOn: "2026-07-01", amount: 500 },
+          { dueOn: "2026-08-01", amount: 500 },
         ],
       })
     );
@@ -213,7 +217,7 @@ describe("vendas (Etapa 6)", () => {
     const blocked = await updateSale(businessId, result.value.id, {
       clientId,
       categoryId: revenueCategoryId,
-      saleDate: new Date(2026, 5, 10),
+      saleOn: "2026-06-10",
       items: [{ description: "Tentando mudar", quantity: 1, unitPrice: 999 }],
       discount: null,
       paymentMethod: "PIX",
@@ -241,8 +245,8 @@ describe("vendas (Etapa 6)", () => {
       baseInput({
         items: [{ description: "Produto a prazo", quantity: 1, unitPrice: 1000 }],
         installments: [
-          { dueDate: new Date(2026, 6, 1), amount: 500 },
-          { dueDate: new Date(2026, 7, 1), amount: 500 },
+          { dueOn: "2026-07-01", amount: 500 },
+          { dueOn: "2026-08-01", amount: 500 },
         ],
       })
     );
@@ -251,11 +255,11 @@ describe("vendas (Etapa 6)", () => {
     const update = await updateSale(businessId, result.value.id, {
       clientId,
       categoryId: revenueCategoryId,
-      saleDate: new Date(2026, 5, 10),
+      saleOn: "2026-06-10",
       items: [{ description: "Produto a prazo (editado)", quantity: 2, unitPrice: 300 }],
       discount: null,
       paymentMethod: "PIX",
-      installments: [{ dueDate: new Date(2026, 6, 15), amount: 600 }],
+      installments: [{ dueOn: "2026-07-15", amount: 600 }],
       notes: null,
     });
     expect(update.ok).toBe(true);
@@ -301,7 +305,7 @@ describe("vendas (Etapa 6)", () => {
     expect(bills).toHaveLength(0);
 
     const confirmInput = {
-      installments: [{ dueDate: new Date(2026, 5, 10), amount: 500, paidNow: true }],
+      installments: [{ dueOn: "2026-06-10", amount: 500, paidNow: true }],
       paymentMethod: "PIX",
     };
     const confirm = await confirmSale(businessId, draft.value.id, confirmInput);
@@ -332,7 +336,7 @@ describe("vendas (Etapa 6)", () => {
       baseInput({
         clientRequestId: randomUUID(),
         items: [{ description: "Outra venda à vista", quantity: 1, unitPrice: 250 }],
-        installments: [{ dueDate: new Date(2026, 5, 10), amount: 250, paidNow: true }],
+        installments: [{ dueOn: "2026-06-10", amount: 250, paidNow: true }],
       })
     );
 
@@ -363,11 +367,11 @@ describe("vendas (Etapa 6)", () => {
       status: "CONFIRMED",
       clientId: clientB.value.id,
       categoryId: revenueCategoryId,
-      saleDate: new Date(2026, 5, 10),
+      saleOn: "2026-06-10",
       items: [{ description: "Venda da empresa B", quantity: 1, unitPrice: 500 }],
       discount: null,
       paymentMethod: "PIX",
-      installments: [{ dueDate: new Date(2026, 5, 10), amount: 500, paidNow: true }],
+      installments: [{ dueOn: "2026-06-10", amount: 500, paidNow: true }],
       notes: null,
     });
     expect(saleB.ok).toBe(true);
@@ -377,7 +381,7 @@ describe("vendas (Etapa 6)", () => {
     const crossUpdate = await updateSale(businessId, saleB.value.id, {
       clientId,
       categoryId: revenueCategoryId,
-      saleDate: new Date(2026, 5, 10),
+      saleOn: "2026-06-10",
       items: [{ description: "Hackeado", quantity: 1, unitPrice: 1 }],
       discount: null,
       notes: null,

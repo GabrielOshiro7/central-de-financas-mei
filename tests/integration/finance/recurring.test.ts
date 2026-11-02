@@ -12,6 +12,7 @@ import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { updateBusinessProfile, type BusinessEditInput } from "@/lib/onboarding/businessMutations";
 import { PROCESS_TZ } from "../../helpers/processClock";
+import { dateKeyToDbDate } from "@/lib/time/zoned";
 
 function sumAmounts(items: { amount: { toNumber: () => number } }[]): number {
   return items.reduce((total, item) => total + item.amount.toNumber(), 0);
@@ -76,7 +77,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 100,
       frequency: "MONTHLY",
       dayOfMonth: 5,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/não é compatível/i);
@@ -93,14 +94,14 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 500,
       frequency: "MONTHLY",
       dayOfMonth: 5,
-      startDate: new Date(2025, 0, 1),
+      startOn: "2025-01-01",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
 
     const uptoDate = new Date(2026, 8, 30);
     const expectedCount = generateOccurrencesForEntry(
-      { frequency: "MONTHLY", dayOfWeek: null, dayOfMonth: 5, yearMonth: null, startDate: new Date(2025, 0, 1), endDate: null },
+      { frequency: "MONTHLY", dayOfWeek: null, dayOfMonth: 5, yearMonth: null, startOn: dateKeyToDbDate("2025-01-01"), endOn: null },
       uptoDate,
       PROCESS_TZ // fuso da empresa criada acima
     ).length;
@@ -134,7 +135,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 100,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
@@ -148,7 +149,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 200,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(update.ok).toBe(true);
 
@@ -171,8 +172,8 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 300,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
-      endDate: new Date(2026, 2, 1),
+      startOn: "2026-01-01",
+      endOn: "2026-03-01",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
@@ -191,7 +192,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 150,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
@@ -215,7 +216,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 80,
       frequency: "WEEKLY",
       dayOfWeek: 1,
-      startDate: new Date(2026, 0, 5),
+      startOn: "2026-01-05",
     });
     expect(molde.ok).toBe(true);
     if (!molde.ok) return;
@@ -255,7 +256,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 400,
       frequency: "MONTHLY",
       dayOfMonth: 10,
-      startDate: new Date(2030, 0, 1), // no futuro - nao gera ocorrencia nenhuma hoje
+      startOn: "2030-01-01", // no futuro - nao gera ocorrencia nenhuma hoje
     });
     expect(molde.ok).toBe(true);
 
@@ -298,7 +299,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 111,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     const moldeB = await createRecurringEntry(businessB.id, {
       type: "REVENUE",
@@ -307,7 +308,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 222,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(moldeA.ok).toBe(true);
     expect(moldeB.ok).toBe(true);
@@ -336,7 +337,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 500,
       frequency: "MONTHLY",
       dayOfMonth: 1,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     const weekly = await createRecurringEntry(businessId, {
       type: "REVENUE",
@@ -345,7 +346,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       amount: 50,
       frequency: "WEEKLY",
       dayOfWeek: 1,
-      startDate: new Date(2026, 0, 5),
+      startOn: "2026-01-05",
     });
     const yearly = await createRecurringEntry(businessId, {
       type: "COST",
@@ -355,7 +356,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       frequency: "YEARLY",
       yearMonth: 0,
       dayOfMonth: 15,
-      startDate: new Date(2026, 0, 1),
+      startOn: "2026-01-01",
     });
     expect(monthly.ok && weekly.ok && yearly.ok).toBe(true);
 

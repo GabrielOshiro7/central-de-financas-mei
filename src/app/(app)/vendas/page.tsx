@@ -9,7 +9,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SaleFilters } from "@/components/vendas/SaleFilters";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
-import { clockFor, formatZonedDate } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -39,7 +39,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
   const status = statusParam && VALID_STATUS.has(statusParam) ? (statusParam as SaleStatus) : undefined;
 
   const [{ items }, summary, hasAnyEver] = await Promise.all([
-    listSales(business.id, { period: { start: range.start, end: range.end }, search, status, pageSize: 100 }),
+    listSales(business.id, { period: { start: range.start, end: range.end }, search, status, pageSize: 100 }, clock.timeZone),
     getSalesSummary(business.id, range, clock),
     hasAnySalesEver(business.id),
   ]);
@@ -48,7 +48,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
     id: sale.id,
     saleNumber: sale.saleNumber,
     clientName: sale.client.name,
-    saleDateDisplay: formatZonedDate(sale.saleDate, clock.timeZone),
+    saleDateDisplay: formatDateKey(dbDateToKey(sale.saleOn)), // dia da venda (F6c)
     total: sale.total.toString(),
     paymentMethod: sale.paymentMethod ?? "",
     status: sale.status,

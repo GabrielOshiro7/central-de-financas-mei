@@ -379,6 +379,10 @@ model RecurringEntry {
   // pra constraint de unicidade acima pegar duplicata de forma confiavel.
   startDate DateTime  @map("start_date")
   endDate   DateTime? @map("end_date")
+  // Dias de calendario de inicio/fim (Etapa F6c): fonte da verdade;
+  // startDate/endDate = 00:00 desses dias no fuso da empresa, ate a F6d.
+  startOn   DateTime  @db.Date @map("start_on")
+  endOn     DateTime? @db.Date @map("end_on")
   isActive  Boolean   @default(true) @map("is_active")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -635,6 +639,9 @@ model Sale {
   // invariante passiva: a alocacao atomica ja impede colisao por construcao.
   saleNumber Int        @map("sale_number")
   saleDate   DateTime   @map("sale_date")
+  // Dia de calendario da venda (Etapa F6c): fonte da verdade; saleDate
+  // (instante) = 00:00 desse dia no fuso da empresa, gravado ate a F6d.
+  saleOn     DateTime   @db.Date @map("sale_on")
   status     SaleStatus @default(CONFIRMED)
 
   subtotal       Decimal           @db.Decimal(14, 2)

@@ -7,14 +7,14 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { SaleForm } from "@/components/vendas/SaleForm";
 import { SaleNotesForm } from "@/components/vendas/SaleNotesForm";
-import { clockFor, dbDateToKey, toDateKey, todayKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, todayKey } from "@/lib/time/zoned";
 
 export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/editar">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();
-  // Datas iniciais dos campos no fuso da empresa (Etapa F4).
+  // "Hoje" do formulario no fuso da empresa (Etapa F4); as datas iniciais
+  // dos campos sao os dias gravados (F6c).
   const clock = clockFor(business);
-  const timeZone = clock.timeZone;
 
   const sale = await getSaleById(business.id, id);
   if (!sale) notFound();
@@ -57,7 +57,7 @@ export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/edi
             id: sale.id,
             clientId: sale.clientId,
             categoryId: sale.categoryId,
-            saleDateInput: toDateKey(sale.saleDate, timeZone),
+            saleDateInput: dbDateToKey(sale.saleOn), // dia gravado (F6c)
             items: sale.items.map((item) => ({
               productId: item.productId ?? "",
               description: item.description,

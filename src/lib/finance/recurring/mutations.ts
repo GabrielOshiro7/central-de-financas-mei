@@ -1,6 +1,9 @@
 import { Prisma, type FinancialEntryType, type RecurrenceFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertCategoryMatches } from "@/lib/finance/mutations";
+import { dayColumns } from "@/lib/finance/entryDay";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
+import type { DateKey, TimeZone } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -13,8 +16,10 @@ export type RecurringEntryInput = {
   dayOfWeek?: number | null;
   dayOfMonth?: number | null;
   yearMonth?: number | null;
-  startDate: Date;
-  endDate?: Date | null;
+  // Dias de inicio/fim (Etapa F6c): startOn/endOn sao a fonte da verdade;
+  // startDate/endDate = 00:00 do mesmo dia no fuso da empresa (ate a F6d).
+  startOn: DateKey;
+  endOn?: DateKey | null;
 };
 
 export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -39,6 +44,12 @@ function fieldsForFrequency(input: RecurringEntryInput) {
   }
 }
 
+function recurringDayColumns(input: RecurringEntryInput, timeZone: TimeZone) {
+  const start = dayColumns({ day: input.startOn }, timeZone);
+  const end = input.endOn ? dayColumns({ day: input.endOn }, timeZone) : null;
+  return { startOn: start.on, startDate: start.at, endOn: end?.on ?? null, endDate: end?.at ?? null };
+}
+
 export async function createRecurringEntry(
   businessId: string,
   input: RecurringEntryInput
@@ -55,8 +66,7 @@ export async function createRecurringEntry(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      startDate: input.startDate,
-      endDate: input.endDate ?? null,
+      ...recurringDayColumns(input, await getBusinessTimeZone(businessId)),
     },
     select: { id: true },
   });
@@ -88,8 +98,7 @@ export async function updateRecurringEntry(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      startDate: input.startDate,
-      endDate: input.endDate ?? null,
+      ...recurringDayColumns(input, await getBusinessTimeZone(businessId)),
     },
   });
 

@@ -106,8 +106,8 @@ function completeItemSchema(currency: Currency | null) {
 // reaproveitado, nao reinventado (ver instrucao explicita do prompt da
 // Etapa 8: "reaproveite o schema/validação existente, não invente opções
 // novas"). `dueDate` de uma parcela paidNow=true e ignorado pelo backend
-// (completeAppointment sempre usa o saleDate do proprio atendimento nesse
-// caso - ver resolveSaleDateFromAppointment em calculations.ts), mas o
+// (completeAppointment sempre usa o dia do proprio atendimento nesse
+// caso - ver resolveSaleDayFromAppointment em calculations.ts), mas o
 // campo continua obrigatorio no schema pra manter o mesmo formato de
 // instalments em toda a base.
 function completeInstallmentSchema(currency: Currency | null) {

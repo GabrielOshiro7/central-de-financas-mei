@@ -124,8 +124,8 @@ export async function computeIndicatorSnapshot(
     getFinancialSummaryForRange(businessId, previousClipped, timeZone),
     getSalesSummary(businessId, current, clock),
     getSalesSummary(businessId, previousClipped, clock),
-    getTopClients(businessId, current, 1000),
-    getTopClients(businessId, previousClipped, 1000),
+    getTopClients(businessId, current, timeZone, 1000),
+    getTopClients(businessId, previousClipped, timeZone, 1000),
     getOverdueAmountForDueRange(businessId, "RECEIVABLE", current, clock),
     getOverdueAmountForDueRange(businessId, "RECEIVABLE", previousClipped, clock),
   ]);

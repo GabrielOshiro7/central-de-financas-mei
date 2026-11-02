@@ -69,7 +69,7 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     const mold = await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(100), description: "Mensal 31",
-        frequency: "MONTHLY", dayOfMonth: 31, startDate: moldStart("2026-01-01", tz),
+        frequency: "MONTHLY", dayOfMonth: 31, startDate: moldStart("2026-01-01", tz), startOn: dateKeyToDbDate("2026-01-01"),
       },
     });
     // 05:30 JST de 15/04 = 20:30 UTC de 14/04: madrugada de Toquio, o pior caso.
@@ -99,7 +99,7 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     const mold = await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(50), description: "Legado UTC",
-        frequency: "MONTHLY", dayOfMonth: 20, startDate: moldStart("2026-09-01", tz),
+        frequency: "MONTHLY", dayOfMonth: 20, startDate: moldStart("2026-09-01", tz), startOn: dateKeyToDbDate("2026-09-01"),
       },
     });
     // Como o host em UTC gravava em 20/09 (00:00 UTC = 09:00 JST, dia 20 em
@@ -126,7 +126,7 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     const mold = await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(10), description: "Concorrente",
-        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-01-05", tz),
+        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-01-05", tz), startOn: dateKeyToDbDate("2026-01-05"),
       },
     });
     const now = new Date("2026-02-02T03:00:00.000Z");
@@ -144,13 +144,13 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     const spring = await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(10), description: "Semanal NY (março)",
-        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-03-02", tz), endDate: moldStart("2026-03-16", tz),
+        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-03-02", tz), startOn: dateKeyToDbDate("2026-03-02"), endDate: moldStart("2026-03-16", tz), endOn: dateKeyToDbDate("2026-03-16"),
       },
     });
     const fall = await prisma.recurringEntry.create({
       data: {
         businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(10), description: "Semanal NY (novembro)",
-        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-10-26", tz), endDate: moldStart("2026-11-09", tz),
+        frequency: "WEEKLY", dayOfWeek: 1, startDate: moldStart("2026-10-26", tz), startOn: dateKeyToDbDate("2026-10-26"), endDate: moldStart("2026-11-09", tz), endOn: dateKeyToDbDate("2026-11-09"),
       },
     });
     await materializeRecurringEntries(businessId, userId, new Date("2026-11-20T12:00:00.000Z"));
@@ -187,7 +187,7 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
       const mold = await prisma.recurringEntry.create({
         data: {
           businessId, type: "EXPENSE", categoryId: expenseCategoryId, amount: new Decimal(10), description: `Mensal ${tz}`,
-          frequency: "MONTHLY", dayOfMonth: 1, startDate: moldStart("2026-01-01", tz),
+          frequency: "MONTHLY", dayOfMonth: 1, startDate: moldStart("2026-01-01", tz), startOn: dateKeyToDbDate("2026-01-01"),
         },
       });
       const now = startOfDayInstant("2026-03-15", tz);

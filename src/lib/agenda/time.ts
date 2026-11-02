@@ -77,8 +77,8 @@ export function parseAgendaDateTimeInput(value: string, timeZone: TimeZone): Dat
 }
 
 // "YYYY-MM-DD" do dia no fuso dado - usado tanto para exibicao quanto (Etapa
-// 8, incremento 3) como a mesma representacao de string que createSale ja
-// recebe para Sale.saleDate.
+// 8, incremento 3; DateKey desde a F6c) como o dia da venda que createSale
+// recebe em Sale.saleOn.
 export function agendaDateKey(date: Date, timeZone: TimeZone): string {
   return toDateKey(date, timeZone);
 }

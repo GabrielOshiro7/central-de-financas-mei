@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
 import { getBusinessClock } from "@/lib/time/businessClock";
-import { addDays, dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/time/zoned";
+import { dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/time/zoned";
 
 // Materializacao preguicosa (secao "MATERIALIZACAO" da Etapa 4.1): chamada a
 // cada leitura de dados financeiros (Receitas/Custos/Despesas, Caixa,
@@ -21,7 +21,8 @@ import { addDays, dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/tim
 // occurredAt de uma ocorrencia NOVA = 00:00 do dia no fuso da empresa
 // (startOfDayInstant), a mesma representacao das ocorrencias ja gravadas
 // (geradas com o host em JST) - entao toDateKey(occurredAt, fuso) == dia e
-// as consultas por periodo (F3) continuam iguais. A troca para @db.Date e a F6.
+// as consultas por periodo (F3) continuam iguais. Inicio/fim do molde sao os
+// dias gravados em startOn/endOn (Etapa F6c).
 export async function materializeRecurringEntries(
   businessId: string,
   userId: string,
@@ -31,7 +32,8 @@ export async function materializeRecurringEntries(
   const today = todayKey(clock);
 
   const activeEntries = await prisma.recurringEntry.findMany({
-    where: { businessId, isActive: true, startDate: { lt: startOfDayInstant(addDays(today, 1), clock.timeZone) } },
+    // Molde que ja comecou ate hoje (startOn e o dia de inicio, F6c).
+    where: { businessId, isActive: true, startOn: { lte: dateKeyToDbDate(today) } },
   });
 
   if (activeEntries.length === 0) return { created: 0 };
@@ -44,8 +46,8 @@ export async function materializeRecurringEntries(
         dayOfWeek: entry.dayOfWeek,
         dayOfMonth: entry.dayOfMonth,
         yearMonth: entry.yearMonth,
-        startDate: entry.startDate,
-        endDate: entry.endDate,
+        startOn: entry.startOn,
+        endOn: entry.endOn,
       },
       clock.now,
       clock.timeZone

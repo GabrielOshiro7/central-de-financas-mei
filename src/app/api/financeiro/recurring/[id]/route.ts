@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { recurringEntrySchema } from "@/lib/finance/recurring/schema";
 import { updateRecurringEntry, deleteRecurringEntry } from "@/lib/finance/recurring/mutations";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
+import { dayFromInput } from "@/lib/finance/entryDay";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/financeiro/recurring/[id]">) {
   const user = await getCurrentUser();
@@ -37,8 +38,9 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
     dayOfWeek: parsed.data.dayOfWeek,
     dayOfMonth: parsed.data.dayOfMonth,
     yearMonth: parsed.data.yearMonth,
-    startDate: new Date(parsed.data.startDate),
-    endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
+    // Dias de calendario (F6c): "YYYY-MM-DD" do formulario e o proprio dia.
+    startOn: dayFromInput(parsed.data.startDate, business.timezone),
+    endOn: parsed.data.endDate ? dayFromInput(parsed.data.endDate, business.timezone) : null,
   });
 
   if (!result.ok) {

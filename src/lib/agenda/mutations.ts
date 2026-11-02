@@ -6,11 +6,12 @@ import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 // completeAppointment abaixo).
 import { createSale, type CreateSaleInput } from "@/lib/sales/mutations";
 import type { TimeZone } from "@/lib/time/zoned";
+import { dayFromInput } from "@/lib/finance/entryDay";
 import {
   canTransition,
   computeEndAt,
   detectOverlap,
-  resolveSaleDateFromAppointment,
+  resolveSaleDayFromAppointment,
   type ExistingAppointment,
 } from "@/lib/agenda/calculations";
 
@@ -282,7 +283,7 @@ export async function completeAppointment(
   appointmentId: string,
   input: CompleteAppointmentInput,
   // Fuso da empresa (Business.timezone, Etapa F3c) - define o dia do
-  // atendimento usado como saleDate.
+  // atendimento usado como dia da venda (saleOn).
   timeZone: TimeZone
 ): Promise<MutationResult<CompleteAppointmentResult>> {
   const now = new Date();
@@ -309,18 +310,18 @@ export async function completeAppointment(
 
         const appointment = await tx.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
 
-        // Diretriz aprovada (Etapa 8, incremento 3): saleDate/paidAt à vista
-        // usam o dia do ATENDIMENTO (startAt) no fuso da empresa, nunca `now`/
-        // completedAt - cobre corretamente o registro retroativo (dono
-        // conclui dias depois de o servico ter sido prestado).
-        const saleDate = resolveSaleDateFromAppointment(appointment.startAt, timeZone);
+        // Diretriz aprovada (Etapa 8, incremento 3): o dia da venda (e o dia do
+        // recebimento a vista) e o dia do ATENDIMENTO (startAt) no fuso da
+        // empresa, nunca `now`/completedAt - cobre corretamente o registro
+        // retroativo (dono conclui dias depois de o servico ter sido prestado).
+        const saleOn = resolveSaleDayFromAppointment(appointment.startAt, timeZone);
 
         const saleInput: CreateSaleInput = {
           clientRequestId: `agenda:${appointmentId}`,
           status: "CONFIRMED",
           clientId: appointment.clientId,
           categoryId: input.categoryId,
-          saleDate,
+          saleOn,
           items: input.items.map((item) => ({
             productId: item.productId || null,
             description: item.description,
@@ -330,12 +331,11 @@ export async function completeAppointment(
           discount: null,
           paymentMethod: input.paymentMethod || null,
           installments: input.installments.map((installment) => ({
-            // paidNow: dueDate/paidAt = saleDate (dia do atendimento) -
-            // NUNCA completedAt (ver comentario de resolveSaleDateFromAppointment
-            // em calculations.ts). Parcela a prazo comum mantem o dueDate
-            // que o usuario escolheu no formulario, igual ao fluxo de venda
-            // ja existente.
-            dueDate: installment.paidNow ? saleDate : new Date(installment.dueDate),
+            // paidNow: vencimento = dia da venda (dia do atendimento) -
+            // NUNCA completedAt (ver resolveSaleDayFromAppointment em
+            // calculations.ts). Parcela a prazo comum mantem o dia que o
+            // usuario escolheu no formulario, igual ao fluxo de venda.
+            dueOn: installment.paidNow ? saleOn : dayFromInput(installment.dueDate, timeZone),
             amount: installment.amount,
             paidNow: installment.paidNow,
           })),

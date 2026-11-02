@@ -169,7 +169,7 @@ export async function getDashboardData(
     // Secao comercial (Etapa 6) - reaproveita getSalesSummary/getTopClients
     // (sales/queries.ts) tal como estao, nenhum calculo novo aqui.
     getSalesSummary(businessId, range, clock),
-    getTopClients(businessId, range, 5),
+    getTopClients(businessId, range, timeZone, 5),
     // Insights (Etapa 7) - le o MESMO getInsightsForBusiness usado pela
     // pagina /insights, nunca chama IA (withAI so acontece atras do botao
     // manual de regenerar) - o dashboard nunca bloqueia por causa disso.

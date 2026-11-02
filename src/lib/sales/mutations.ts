@@ -1,7 +1,8 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
-import { dbDateOfInstant } from "@/lib/time/zoned";
+import { dbDateToKey, type DateKey } from "@/lib/time/zoned";
+import { dayColumns } from "@/lib/finance/entryDay";
 import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 import { assertCategoryMatches } from "@/lib/finance/mutations";
 import { calculateSaleTotals, type SaleDiscountInput, type SaleItemInput } from "@/lib/sales/calculations";
@@ -15,8 +16,11 @@ export type SaleItemMutationInput = SaleItemInput & {
   description: string;
 };
 
+// Datas de venda e de parcela sao DIAS DE CALENDARIO (Etapa F6c): saleOn/
+// dueOn sao a fonte da verdade; saleDate/dueDate (gravacao dupla ate a F6d)
+// = 00:00 do mesmo dia no fuso da empresa (dayColumns).
 export type SaleInstallmentInput = {
-  dueDate: Date;
+  dueOn: DateKey;
   amount: number | string;
   paidNow?: boolean;
 };
@@ -26,7 +30,7 @@ export type CreateSaleInput = {
   status: Extract<SaleStatus, "DRAFT" | "CONFIRMED">;
   clientId: string;
   categoryId: string;
-  saleDate: Date;
+  saleOn: DateKey;
   items: SaleItemMutationInput[];
   discount: SaleDiscountInput;
   paymentMethod?: string | null;
@@ -47,19 +51,26 @@ export type CreateSaleInput = {
 // paineis de distribuicao por categoria do dashboard, que ja leem
 // FinancialEntry.categoryId (copiado de Bill.categoryId em settleBill),
 // contabilizarem vendas corretamente sem nenhum codigo novo.
+//
+// Venda a vista (Etapa F6c, mesma decisao de auditoria da F6b-2): Bill.paidOn
+// = o dia da VENDA e Bill.paidAt = o instante REAL do registro (`now`); o
+// lancamento fica no dia da venda (occurredOn; occurredAt = 00:00 dele).
 async function generateSaleBills(
   tx: Prisma.TransactionClient,
-  sale: { id: string; businessId: string; categoryId: string; userId: string; saleNumber: number },
+  sale: { id: string; businessId: string; categoryId: string; userId: string; saleNumber: number; saleOn: DateKey },
   installments: SaleInstallmentInput[],
-  allowImmediatePaid: boolean
+  allowImmediatePaid: boolean,
+  now: Date = new Date()
 ) {
   const category = await tx.category.findUniqueOrThrow({ where: { id: sale.categoryId }, select: { type: true } });
   const timeZone = await getBusinessTimeZone(sale.businessId, tx);
   const description = `Venda #${sale.saleNumber}`;
+  const saleDay = dayColumns({ day: sale.saleOn }, timeZone);
 
   for (const installment of installments) {
     const amount = new Decimal(installment.amount);
     const paidNow = allowImmediatePaid && installments.length === 1 && installment.paidNow === true;
+    const due = dayColumns({ day: installment.dueOn }, timeZone);
 
     const bill = await tx.bill.create({
       data: {
@@ -68,22 +79,18 @@ async function generateSaleBills(
         saleId: sale.id,
         description,
         amount,
-        // Parcelas (de venda e de conclusao de agendamento) ainda chegam como
-        // INSTANTE (a venda recebe Date ate a F6c): dueOn/paidOn = o dia
-        // desse instante no fuso da empresa (regra do instante, F6b-1). Os
-        // leitores ja usam so dueOn/paidOn (F6b-2).
-        dueDate: installment.dueDate,
-        dueOn: dbDateOfInstant(installment.dueDate, timeZone),
+        dueOn: due.on,
+        dueDate: due.at,
         status: paidNow ? "PAID" : "PENDING",
-        paidAt: paidNow ? installment.dueDate : null,
-        paidOn: paidNow ? dbDateOfInstant(installment.dueDate, timeZone) : null,
+        paidOn: paidNow ? saleDay.on : null,
+        paidAt: paidNow ? now : null,
       },
     });
 
     if (paidNow) {
       // Mesmo formato de FinancialEntry que settleBill produz (bills/mutations.ts)
-      // - source "BILL", occurredAt = data real do "pagamento" (aqui, a propria
-      // data da venda), billId vinculado. Um unico caminho Sale -> Bill ->
+      // - source "BILL", dia do lancamento = dia do "pagamento" (aqui, o
+      // proprio dia da venda), billId vinculado. Um unico caminho Sale -> Bill ->
       // FinancialEntry, tambem para o caso a vista.
       await tx.financialEntry.create({
         data: {
@@ -93,8 +100,8 @@ async function generateSaleBills(
           categoryId: sale.categoryId,
           description,
           amount,
-          occurredAt: bill.paidAt!,
-          occurredOn: dbDateOfInstant(bill.paidAt!, timeZone), // gravacao dupla (F6a-1)
+          occurredOn: saleDay.on,
+          occurredAt: saleDay.at,
           source: "BILL",
           billId: bill.id,
         },
@@ -139,6 +146,7 @@ async function runCreateSaleBody(
     select: { lastSaleNumber: true },
   });
 
+  const saleDay = dayColumns({ day: input.saleOn }, await getBusinessTimeZone(businessId, tx));
   const created = await tx.sale.create({
     data: {
       businessId,
@@ -146,7 +154,8 @@ async function runCreateSaleBody(
       categoryId: input.categoryId,
       userId,
       saleNumber: lastSaleNumber,
-      saleDate: input.saleDate,
+      saleOn: saleDay.on,
+      saleDate: saleDay.at,
       status: input.status,
       subtotal: totals.subtotal,
       discountType: input.discount?.type ?? null,
@@ -171,7 +180,7 @@ async function runCreateSaleBody(
   if (input.status === "CONFIRMED" && input.installments) {
     await generateSaleBills(
       tx,
-      { id: created.id, businessId, categoryId: input.categoryId, userId, saleNumber: created.saleNumber },
+      { id: created.id, businessId, categoryId: input.categoryId, userId, saleNumber: created.saleNumber, saleOn: input.saleOn },
       input.installments,
       true
     );
@@ -266,7 +275,7 @@ export async function confirmSale(businessId: string, id: string, input: Confirm
 
     await generateSaleBills(
       tx,
-      { id: sale.id, businessId, categoryId: sale.categoryId, userId: sale.userId, saleNumber: sale.saleNumber },
+      { id: sale.id, businessId, categoryId: sale.categoryId, userId: sale.userId, saleNumber: sale.saleNumber, saleOn: dbDateToKey(sale.saleOn) },
       input.installments,
       true
     );
@@ -278,7 +287,7 @@ export async function confirmSale(businessId: string, id: string, input: Confirm
 export type SaleUpdateInput = {
   clientId: string;
   categoryId: string;
-  saleDate: Date;
+  saleOn: DateKey;
   items: SaleItemMutationInput[];
   discount: SaleDiscountInput;
   paymentMethod?: string | null;
@@ -324,13 +333,15 @@ export async function updateSale(businessId: string, id: string, input: SaleUpda
     }
   }
 
+  const saleDay = dayColumns({ day: input.saleOn }, await getBusinessTimeZone(businessId));
   await prisma.$transaction(async (tx) => {
     await tx.sale.update({
       where: { id },
       data: {
         clientId: input.clientId,
         categoryId: input.categoryId,
-        saleDate: input.saleDate,
+        saleOn: saleDay.on,
+        saleDate: saleDay.at,
         subtotal: totals.subtotal,
         discountType: input.discount?.type ?? null,
         discountValue: input.discount ? new Decimal(input.discount.value) : null,
@@ -359,7 +370,7 @@ export async function updateSale(businessId: string, id: string, input: SaleUpda
       await tx.bill.deleteMany({ where: { saleId: id } });
       await generateSaleBills(
         tx,
-        { id, businessId, categoryId: input.categoryId, userId: existing.userId, saleNumber: existing.saleNumber },
+        { id, businessId, categoryId: input.categoryId, userId: existing.userId, saleNumber: existing.saleNumber, saleOn: input.saleOn },
         input.installments!,
         false
       );

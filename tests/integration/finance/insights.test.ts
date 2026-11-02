@@ -236,10 +236,10 @@ describe("Insights (Etapa 7) - integração", () => {
         status: "CONFIRMED",
         clientId,
         categoryId: revenueCategoryId,
-        saleDate: new Date(2026, 8, 5),
+        saleOn: "2026-09-05",
         items: [{ quantity: 1, unitPrice: 900, description: "Item de teste" }],
         discount: null,
-        installments: [{ dueDate: new Date(2026, 8, 20), amount: 900 }],
+        installments: [{ dueOn: "2026-09-20", amount: 900 }],
       });
       expect(saleResult.ok).toBe(true);
       if (!saleResult.ok) return;

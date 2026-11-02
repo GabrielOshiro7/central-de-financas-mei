@@ -2,6 +2,7 @@ import type { RecurrenceFrequency } from "@prisma/client";
 import {
   addDays,
   compareKeys,
+  dbDateToKey,
   lastDayOfMonth,
   parseDateKey,
   toDateKey,
@@ -13,8 +14,8 @@ import {
 // Motor de ocorrencias (Etapa F5): opera SO em dias de calendario (DateKey,
 // "YYYY-MM-DD"), sem instante e sem fuso - aritmetica pura de calendario via
 // src/lib/time/zoned.ts. O fuso so entra na borda (generateOccurrencesForEntry):
-// startDate/endDate/"ate quando" gravados como instantes viram o dia de
-// calendario no fuso da EMPRESA. Assim a mesma regra gera exatamente os
+// so o "ate quando" (um instante do relogio) vira dia no fuso da EMPRESA;
+// inicio/fim do molde ja sao os dias gravados (startOn/endOn, Etapa F6c). Assim a mesma regra gera exatamente os
 // mesmos dias com o processo em qualquer TZ - a causa das duplicatas da
 // Academia Gabriel (servidor em UTC gerando "meia-noite" em outro instante).
 
@@ -28,8 +29,8 @@ export type RecurringEntryLike = {
   dayOfWeek: number | null;
   dayOfMonth: number | null;
   yearMonth: number | null;
-  startDate: Date;
-  endDate: Date | null;
+  startOn: Date; // @db.Date (Etapa F6c)
+  endOn: Date | null;
 };
 
 export function toRecurrenceRule(entry: RecurringEntryLike): RecurrenceRule {
@@ -161,14 +162,15 @@ export function generateOccurrences(params: {
   return dates;
 }
 
-// Borda com o banco: startDate/endDate do molde e o "ate quando" sao
-// instantes; viram dias de calendario no fuso da empresa.
+// Borda com o banco: inicio/fim do molde sao os dias gravados (startOn/endOn,
+// F6c, sem conversao de fuso); so o "ate quando" e um instante, que vira o
+// dia no fuso da empresa.
 export function generateOccurrencesForEntry(entry: RecurringEntryLike, uptoDate: Date, timeZone: TimeZone): DateKey[] {
   const rule = toRecurrenceRule(entry);
   return generateOccurrences({
     rule,
-    startDate: toDateKey(entry.startDate, timeZone),
+    startDate: dbDateToKey(entry.startOn),
     uptoDate: toDateKey(uptoDate, timeZone),
-    endDate: entry.endDate ? toDateKey(entry.endDate, timeZone) : null,
+    endDate: entry.endOn ? dbDateToKey(entry.endOn) : null,
   });
 }
