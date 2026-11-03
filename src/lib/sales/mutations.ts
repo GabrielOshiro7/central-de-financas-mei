@@ -33,6 +33,10 @@ export type CreateSaleInput = {
   paymentMethod?: string | null;
   installments?: SaleInstallmentInput[];
   notes?: string | null;
+  // Rastro do agendamento DAY cuja conclusao gera esta venda (Agenda A2,
+  // Sale.appointmentId). Nunca enviado por rota de venda nem pela conclusao
+  // TIMED - so por completeDayAppointment.
+  appointmentId?: string | null;
 };
 
 // Gera as Bills de uma venda CONFIRMED (uma por parcela) e, quando ha
@@ -156,6 +160,7 @@ async function runCreateSaleBody(
       paymentMethod: input.paymentMethod || null,
       notes: input.notes || null,
       clientRequestId: input.clientRequestId,
+      appointmentId: input.appointmentId ?? null,
       items: {
         create: input.items.map((item, index) => ({
           productId: item.productId || null,

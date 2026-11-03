@@ -5,14 +5,18 @@ import { getAppointmentById } from "@/lib/agenda/queries";
 import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { agendaDateKey, formatAgendaTime } from "@/lib/agenda/time";
+import { requireTimed } from "@/lib/agenda/calculations";
 import { AppointmentForm } from "@/components/agenda/AppointmentForm";
 
 export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[id]/editar">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();
 
-  const appointment = await getAppointmentById(business.id, id);
-  if (!appointment) notFound();
+  const found = await getAppointmentById(business.id, id);
+  // Este formulario e do fluxo TIMED; o fluxo DAY (Agenda A1) tem tela propria
+  // em outra etapa.
+  if (!found || found.kind !== "TIMED") notFound();
+  const appointment = requireTimed(found);
 
   const [clients, services] = await Promise.all([
     listVisibleClients(business.id),

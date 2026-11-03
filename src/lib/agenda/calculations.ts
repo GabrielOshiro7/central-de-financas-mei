@@ -1,6 +1,6 @@
 import type { AppointmentStatus } from "@prisma/client";
 import { agendaDateKey } from "@/lib/agenda/time";
-import type { DateKey, TimeZone } from "@/lib/time/zoned";
+import { compareKeys, type DateKey, type TimeZone } from "@/lib/time/zoned";
 
 // Tabela EXPLICITA de pares permitidos (nunca uma funcao "generica" com
 // regras soltas) - cada aresta e uma decisao deliberada da Etapa 8, testada
@@ -18,7 +18,63 @@ const TRANSITIONS: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
   FALTOU: ["AGENDADO"],
 };
 
+// Fluxo DAY (Agenda A2, plano 4.3; decisao: sem CONFIRMADO). AGENDADO ->
+// CONCLUIDO nao passa por aqui: so por completeDayAppointment (manual agora,
+// automatica no Prompt 4). CONCLUIDO -> CANCELADO/FALTOU e o Desfazer, de
+// outra etapa - por enquanto sem aresta.
+const DAY_TRANSITIONS: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
+  AGENDADO: ["CANCELADO", "FALTOU"],
+  CONFIRMADO: [],
+  CONCLUIDO: [],
+  CANCELADO: ["AGENDADO"],
+  FALTOU: ["AGENDADO"],
+};
+
 export type TransitionResult = { ok: true } | { ok: false; error: string };
+
+// Validacao de mudanca de status do fluxo DAY, por DIA de calendario no fuso
+// da empresa (`today` = todayKey do relogio da empresa): falta so a partir
+// do dia do atendimento; reabrir so se o dia ainda nao passou (data passada
+// pede nova data ou "Concluir agora" - UI de outra etapa).
+export function canTransitionDay(
+  from: AppointmentStatus,
+  to: AppointmentStatus,
+  ctx: { scheduledOn: DateKey; today: DateKey }
+): TransitionResult {
+  if (!DAY_TRANSITIONS[from].includes(to)) {
+    return { ok: false, error: `Não é possível mudar o status de ${from} para ${to}.` };
+  }
+  if (to === "FALTOU" && compareKeys(ctx.scheduledOn, ctx.today) > 0) {
+    return { ok: false, error: "Só é possível marcar falta a partir do dia do atendimento." };
+  }
+  if (to === "AGENDADO" && compareKeys(ctx.scheduledOn, ctx.today) < 0) {
+    return { ok: false, error: "A data deste atendimento já passou: escolha uma nova data para reabri-lo." };
+  }
+  return { ok: true };
+}
+
+// Decisao 7 (Agenda A1/A2): cancelar, marcar falta ou reabrir tiram o
+// agendamento da conclusao automatica PARA SEMPRE (o Desfazer, de outra
+// etapa, tambem). Devolve o valor a gravar, ou undefined para nao mexer.
+// Nunca devolve true - so a criacao DAY grava true.
+export function autoCompleteEligibleAfter(from: AppointmentStatus, to: AppointmentStatus): false | undefined {
+  if (to === "CANCELADO" || to === "FALTOU") return false;
+  if (to === "AGENDADO" && (from === "CANCELADO" || from === "FALTOU")) return false;
+  return undefined;
+}
+
+// startAt/endAt sao anulaveis desde a Agenda A1 (o fluxo DAY nao tem
+// horario), mas TODO agendamento TIMED tem os dois - garantido no banco pela
+// CHECK appointments_timed_fields_check. As leituras do fluxo TIMED passam
+// por aqui para voltar a ter Date obrigatorio, em vez de `!` espalhado.
+export function requireTimed<T extends { id: string; startAt: Date | null; endAt: Date | null }>(
+  appointment: T
+): T & { startAt: Date; endAt: Date } {
+  if (!appointment.startAt || !appointment.endAt) {
+    throw new Error(`Agendamento ${appointment.id} sem horário: não é do fluxo com horário.`);
+  }
+  return appointment as T & { startAt: Date; endAt: Date };
+}
 
 export type TransitionContext = {
   startAt: Date;

@@ -51,7 +51,7 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
     if (!result.ok) return;
 
     const appointment = await getAppointmentById(businessId, result.value.id);
-    expect(appointment?.endAt.toISOString()).toBe("2026-04-01T10:50:00.000Z");
+    expect(appointment?.endAt?.toISOString()).toBe("2026-04-01T10:50:00.000Z");
     expect(appointment?.services.map((s) => s.nameSnapshot)).toEqual(["Corte", "Barba"]);
     expect(appointment?.services.map((s) => s.durationMinutesSnapshot)).toEqual([30, 20]);
   });
@@ -71,7 +71,7 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
 
     const appointment = await getAppointmentById(businessId, created.value.id);
     // endAt continua com a duração ORIGINAL (30 min), não a nova (90 min).
-    expect(appointment?.endAt.toISOString()).toBe("2026-04-02T10:30:00.000Z");
+    expect(appointment?.endAt?.toISOString()).toBe("2026-04-02T10:30:00.000Z");
     expect(appointment?.services[0].durationMinutesSnapshot).toBe(30);
 
     // Restaura pro resto da suíte não depender de ordem de execução.
@@ -95,8 +95,8 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
     expect(updated.ok).toBe(true);
 
     const appointment = await getAppointmentById(businessId, created.value.id);
-    expect(appointment?.startAt.toISOString()).toBe("2026-04-03T14:00:00.000Z");
-    expect(appointment?.endAt.toISOString()).toBe("2026-04-03T14:50:00.000Z");
+    expect(appointment?.startAt?.toISOString()).toBe("2026-04-03T14:00:00.000Z");
+    expect(appointment?.endAt?.toISOString()).toBe("2026-04-03T14:50:00.000Z");
     expect(appointment?.services.map((s) => s.productId)).toEqual([haircutId, beardId]);
   });
 

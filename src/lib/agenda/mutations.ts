@@ -5,12 +5,16 @@ import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 // internamente pra validar categoryId (mesma funcao reaproveitada, ver
 // completeAppointment abaixo).
 import { createSale, type CreateSaleInput } from "@/lib/sales/mutations";
-import type { TimeZone } from "@/lib/time/zoned";
+import { dbDateToKey, todayKey, type TimeZone } from "@/lib/time/zoned";
+import { getBusinessTimeZone } from "@/lib/time/businessClock";
 import { dayFromInput } from "@/lib/finance/entryDay";
 import {
+  autoCompleteEligibleAfter,
   canTransition,
+  canTransitionDay,
   computeEndAt,
   detectOverlap,
+  requireTimed,
   resolveSaleDayFromAppointment,
   type ExistingAppointment,
 } from "@/lib/agenda/calculations";
@@ -26,11 +30,13 @@ export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: str
 // lado da funcao pura).
 const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = ["AGENDADO", "CONFIRMADO", "CONCLUIDO"];
 
+// So o fluxo TIMED ocupa horario (o fluxo DAY, Agenda A1, nao tem horario).
 async function fetchActiveAppointments(db: Db, businessId: string): Promise<ExistingAppointment[]> {
-  return db.appointment.findMany({
-    where: { businessId, status: { in: ACTIVE_APPOINTMENT_STATUSES } },
+  const appointments = await db.appointment.findMany({
+    where: { businessId, kind: "TIMED", status: { in: ACTIVE_APPOINTMENT_STATUSES } },
     select: { id: true, startAt: true, endAt: true, status: true },
   });
+  return appointments.map(requireTimed);
 }
 
 // Valida que todo productId pertence a empresa, e do tipo SERVICO e esta
@@ -156,7 +162,7 @@ export async function updateAppointment(
 
   return prisma.$transaction(async (tx) => {
     const claimed = await tx.appointment.updateMany({
-      where: { id, businessId, status: { in: ["AGENDADO", "CONFIRMADO"] } },
+      where: { id, businessId, kind: "TIMED", status: { in: ["AGENDADO", "CONFIRMADO"] } },
       data: { clientId: input.clientId, startAt: input.startAt, endAt, notes: input.notes || null },
     });
 
@@ -204,25 +210,38 @@ export async function changeAppointmentStatus(
     return { ok: true, value: { id } };
   }
 
-  const transition = canTransition(current.status, to, { startAt: current.startAt, now });
-  if (!transition.ok) return { ok: false, error: transition.error };
+  if (current.kind === "DAY") {
+    // Fluxo DAY (Agenda A2): transicoes por DIA no fuso da empresa, sem
+    // horario e sem checagem de sobreposicao.
+    const today = todayKey({ timeZone: await getBusinessTimeZone(businessId), now });
+    const transition = canTransitionDay(current.status, to, { scheduledOn: dbDateToKey(current.scheduledOn!), today });
+    if (!transition.ok) return { ok: false, error: transition.error };
+  } else {
+    const timed = requireTimed(current);
+    const transition = canTransition(current.status, to, { startAt: timed.startAt, now });
+    if (!transition.ok) return { ok: false, error: transition.error };
 
-  // Reabrir (CANCELADO/FALTOU -> AGENDADO) reaplica a checagem de
-  // sobreposicao - o horario nao muda, mas o mundo pode ter mudado desde que
-  // este agendamento foi cancelado/marcado falta (outro agendamento pode ja
-  // ocupar o mesmo horario agora).
-  let conflicts: ExistingAppointment[] | undefined;
-  if (to === "AGENDADO" && !options.allowOverlap) {
-    const existing = await fetchActiveAppointments(prisma, businessId);
-    conflicts = detectOverlap({ startAt: current.startAt, endAt: current.endAt }, existing, { excludeId: id });
-    if (conflicts.length > 0) {
-      return { ok: false, error: "Este horário conflita com outro(s) agendamento(s).", conflicts };
+    // Reabrir (CANCELADO/FALTOU -> AGENDADO) reaplica a checagem de
+    // sobreposicao - o horario nao muda, mas o mundo pode ter mudado desde que
+    // este agendamento foi cancelado/marcado falta (outro agendamento pode ja
+    // ocupar o mesmo horario agora).
+    if (to === "AGENDADO" && !options.allowOverlap) {
+      const existing = await fetchActiveAppointments(prisma, businessId);
+      const conflicts = detectOverlap({ startAt: timed.startAt, endAt: timed.endAt }, existing, { excludeId: id });
+      if (conflicts.length > 0) {
+        return { ok: false, error: "Este horário conflita com outro(s) agendamento(s).", conflicts };
+      }
     }
   }
 
-  const data: { status: AppointmentStatus; cancelledAt?: Date | null } = { status: to };
+  const data: { status: AppointmentStatus; cancelledAt?: Date | null; autoCompleteEligible?: false } = { status: to };
   if (to === "CANCELADO") data.cancelledAt = now;
   if (to === "AGENDADO") data.cancelledAt = null;
+  // Decisao 7: cancelar/faltar/reabrir tira da conclusao automatica para
+  // sempre. TIMED ja e sempre false (CHECK no banco) - gravar false de novo
+  // nao muda nada nele.
+  const eligible = autoCompleteEligibleAfter(current.status, to);
+  if (eligible !== undefined) data.autoCompleteEligible = eligible;
 
   const updated = await prisma.appointment.updateMany({
     where: { id, businessId, status: current.status },
@@ -291,8 +310,9 @@ export async function completeAppointment(
   try {
     const value = await prisma.$transaction(
       async (tx) => {
+        // So TIMED (Agenda A2): o fluxo DAY conclui por completeDayAppointment.
         const claimed = await tx.appointment.updateMany({
-          where: { id: appointmentId, businessId, status: { in: ["AGENDADO", "CONFIRMADO"] } },
+          where: { id: appointmentId, businessId, kind: "TIMED", status: { in: ["AGENDADO", "CONFIRMADO"] } },
           data: { status: "CONCLUIDO", completedAt: now },
         });
 
@@ -308,7 +328,7 @@ export async function completeAppointment(
           throw new Error("Não é possível concluir este agendamento.");
         }
 
-        const appointment = await tx.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
+        const appointment = requireTimed(await tx.appointment.findUniqueOrThrow({ where: { id: appointmentId } }));
 
         // Diretriz aprovada (Etapa 8, incremento 3): o dia da venda (e o dia do
         // recebimento a vista) e o dia do ATENDIMENTO (startAt) no fuso da

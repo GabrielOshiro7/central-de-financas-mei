@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { agendaMonthRange } from "@/lib/agenda/calendar";
+import { requireTimed } from "@/lib/agenda/calculations";
 import type { TimeZone } from "@/lib/time/zoned";
 
 // Inclui o Product atual de cada servico (so defaultPrice) - usado pra
@@ -12,10 +13,12 @@ const APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE = {
 };
 
 // Sempre escopado por businessId - nunca confia so no id do agendamento (ver
-// regra de isolamento cross-empresa da Etapa 8).
+// regra de isolamento cross-empresa da Etapa 8). So o fluxo TIMED (Agenda
+// A1): as telas atuais da Agenda sao do fluxo com horario; o fluxo DAY tem
+// telas proprias em outra etapa.
 export async function listAppointmentsForRange(businessId: string, start: Date, end: Date) {
-  return prisma.appointment.findMany({
-    where: { businessId, startAt: { gte: start, lt: end } },
+  const appointments = await prisma.appointment.findMany({
+    where: { businessId, kind: "TIMED", startAt: { gte: start, lt: end } },
     include: {
       client: true,
       services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
@@ -23,6 +26,7 @@ export async function listAppointmentsForRange(businessId: string, start: Date, 
     },
     orderBy: { startAt: "asc" },
   });
+  return appointments.map(requireTimed);
 }
 
 // Agendamentos do mes inteiro (grade do Calendario e aba Mes) - mesmo range
@@ -44,10 +48,10 @@ export async function getAppointmentById(businessId: string, id: string) {
 // na secao "Histórico de agendamentos" de /clientes/[id] (sem rota de API
 // dedicada, decisao aprovada do incremento 3: reaproveita consulta direta no
 // Server Component, mesmo padrao do historico de vendas ja existente
-// naquela pagina).
+// naquela pagina). So o fluxo TIMED, como listAppointmentsForRange.
 export async function getClientAppointmentHistory(businessId: string, clientId: string) {
-  return prisma.appointment.findMany({
-    where: { businessId, clientId },
+  const appointments = await prisma.appointment.findMany({
+    where: { businessId, clientId, kind: "TIMED" },
     include: {
       services: { orderBy: { position: "asc" } },
       sale: { select: { id: true, saleNumber: true, status: true } },
@@ -55,6 +59,7 @@ export async function getClientAppointmentHistory(businessId: string, clientId: 
     orderBy: { startAt: "desc" },
     take: 20,
   });
+  return appointments.map(requireTimed);
 }
 
 // Ultima categoria REVENUE usada ao concluir um atendimento desta empresa -

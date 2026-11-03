@@ -278,6 +278,7 @@ model Category {
   bills            Bill[]
   recurringBills   RecurringBill[]
   sales            Sale[]
+  appointments     Appointment[]
 
   // So evita duplicata dentro das categorias proprias de uma mesma empresa
   // (businessId preenchido) - Postgres nao trata NULL como igual a NULL, entao
@@ -644,13 +645,21 @@ model Sale {
 
   items       SaleItem[]
   bills       Bill[]
-  appointment Appointment?
+  appointment Appointment? @relation("AppointmentSale")
+
+  // Rastro (Agenda A1): o agendamento DAY cuja conclusao gerou esta venda.
+  // Diferente de Appointment.saleId (a venda ATUAL do agendamento, limpa num
+  // desfazer), este campo fica na venda mesmo depois de cancelada. Nulo em
+  // venda manual e na conclusao TIMED (que nao mudou).
+  appointmentId    String?      @map("appointment_id")
+  traceAppointment Appointment? @relation("SaleAppointmentTrace", fields: [appointmentId], references: [id], onDelete: SetNull)
 
   @@unique([businessId, clientRequestId])
   @@unique([businessId, saleNumber])
   @@index([businessId, saleOn])
   @@index([businessId, status])
   @@index([clientId])
+  @@index([appointmentId])
   @@map("sales")
 }
 
@@ -811,6 +820,29 @@ enum AppointmentStatus {
   @@map("appointment_status")
 }
 
+// Fluxo do agendamento (Agenda A1). TIMED = o fluxo original da Etapa 8
+// (horario de inicio/fim, conclusao manual com modal); todo agendamento que
+// ja existia e TIMED e nao muda de comportamento. DAY = o fluxo novo do plano
+// (secao 4): so o dia (scheduledOn), sem horario, com servicos, valores,
+// categoria e pagamento ja definidos na criacao - e o que permite concluir
+// sem perguntar nada (conclusao automatica no Prompt 4).
+enum AppointmentKind {
+  TIMED
+  DAY
+
+  @@map("appointment_kind")
+}
+
+// Condicao de pagamento do fluxo DAY, nas mesmas condicoes que o app ja tem:
+// AVISTA = uma parcela paga no dia do atendimento; APRAZO = as parcelas de
+// AppointmentInstallment, todas pendentes.
+enum PaymentTiming {
+  AVISTA
+  APRAZO
+
+  @@map("payment_timing")
+}
+
 // Agendamento (Etapa 8). startAt/endAt sao SEMPRE UTC - exibicao e limites de
 // dia/semana/mes sao resolvidos exclusivamente por src/lib/agenda/time.ts
 // (fuso Asia/Tokyo fixo, nunca o fuso local do host - ver limitacao ja
@@ -836,10 +868,34 @@ model Appointment {
   clientId   String   @map("client_id")
   client     Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
 
-  startAt DateTime          @map("start_at")
-  endAt   DateTime          @map("end_at")
+  // Agenda A1: anulaveis desde o fluxo DAY (que nao tem horario). TIMED
+  // continua sempre preenchendo os dois - garantido no banco pela CHECK
+  // appointments_timed_fields_check (ver migracao agenda_day_flow).
+  startAt DateTime?         @map("start_at")
+  endAt   DateTime?         @map("end_at")
   status  AppointmentStatus @default(AGENDADO)
   notes   String?
+
+  // Fluxo (Agenda A1). Campos abaixo so tem sentido em DAY e sao
+  // obrigatorios nele (CHECK appointments_day_fields_check): o dia do
+  // atendimento (sem horario, no fuso da empresa - convencao _on da F6), a
+  // categoria de receita da venda e a condicao de pagamento. TIMED deixa
+  // todos nulos (a conclusao TIMED pergunta categoria/pagamento no modal).
+  kind          AppointmentKind @default(TIMED)
+  scheduledOn   DateTime?       @db.Date @map("scheduled_on")
+  categoryId    String?         @map("category_id")
+  category      Category?       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentTiming PaymentTiming?  @map("payment_timing")
+  paymentMethod String?         @map("payment_method") // PAYMENT_METHOD_OPTIONS
+
+  // Pode ser concluido automaticamente (gatilho no Prompt 4)? true na criacao
+  // DAY; false PARA SEMPRE depois de qualquer desfazer, cancelamento, falta
+  // ou reabertura (nunca volta a true). TIMED: sempre false.
+  autoCompleteEligible Boolean @default(false) @map("auto_complete_eligible")
+  // Quantas vezes a conclusao foi desfeita: entra no clientRequestId da venda
+  // da conclusao DAY ("agenda:<id>:<seq>"), para que reconcluir depois de um
+  // desfazer crie uma venda NOVA em vez de reaproveitar a cancelada.
+  completionSeq        Int     @default(0) @map("completion_seq")
 
   // Preenchidos so na transicao correspondente (ver changeAppointmentStatus/
   // completeAppointment) - nunca os dois ao mesmo tempo, e cancelledAt e
@@ -852,17 +908,43 @@ model Appointment {
   // de idempotencia de completeAppointment (a primeira e o updateMany
   // condicional no status de origem, ver mutations.ts).
   saleId String? @unique @map("sale_id")
-  sale   Sale?   @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  sale   Sale?   @relation("AppointmentSale", fields: [saleId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  services AppointmentService[]
+  services     AppointmentService[]
+  installments AppointmentInstallment[]
+  // Vendas geradas por conclusoes DAY deste atendimento (Sale.appointmentId,
+  // rastro que sobrevive a um desfazer - saleId acima e so a venda atual).
+  tracedSales  Sale[]                   @relation("SaleAppointmentTrace")
 
   @@index([businessId, startAt])
   @@index([businessId, clientId, startAt])
   @@index([businessId, status, startAt])
+  @@index([businessId, scheduledOn])
+  @@index([businessId, kind, status, scheduledOn])
   @@map("appointments")
+}
+
+// Parcelas PLANEJADAS de um agendamento DAY a prazo (Agenda A1, plano 4.1):
+// viram as parcelas (Bill) da venda na conclusao. A vista nao usa esta
+// tabela - a unica parcela e o proprio dia do atendimento, paga. Mesmas
+// regras de validacao das parcelas de venda (soma = total, inteiro em JPY,
+// vencimento >= dia do atendimento), aplicadas na criacao.
+model AppointmentInstallment {
+  id            String      @id @default(uuid())
+  appointmentId String      @map("appointment_id")
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  position Int
+  dueOn    DateTime @db.Date @map("due_on")
+  amount   Decimal  @db.Decimal(14, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([appointmentId, position])
+  @@map("appointment_installments")
 }
 
 // Servicos de um agendamento (Etapa 8). name/durationMinutes sao SEMPRE
@@ -884,8 +966,16 @@ model AppointmentService {
   product       Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   nameSnapshot            String @map("name_snapshot")
-  durationMinutesSnapshot Int    @map("duration_minutes_snapshot")
+  // Anulavel desde a Agenda A1: so TIMED usa duracao (para calcular endAt).
+  durationMinutesSnapshot Int?   @map("duration_minutes_snapshot")
   position                Int
+
+  // Valor do servico neste agendamento DAY (Agenda A1): snapshot do
+  // Product.defaultPrice, editavel na criacao, nunca relido do Product. Total
+  // do agendamento = soma de unitPrice * quantity (derivado, nunca gravado).
+  // TIMED deixa nulo (o preco sai do modal de conclusao).
+  unitPrice Decimal? @map("unit_price") @db.Decimal(14, 2)
+  quantity  Int      @default(1)
 
   @@unique([appointmentId, position])
   @@index([productId])

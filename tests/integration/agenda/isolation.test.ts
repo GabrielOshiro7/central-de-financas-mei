@@ -113,7 +113,7 @@ describe("agenda - isolamento entre empresas", () => {
 
     // Confirma que nada mudou na venda real da empresa A.
     const unchanged = await getAppointmentById(businessAId, created.value.id);
-    expect(unchanged?.startAt.toISOString()).toBe("2026-03-12T10:00:00.000Z");
+    expect(unchanged?.startAt?.toISOString()).toBe("2026-03-12T10:00:00.000Z");
   });
 
   it("excluir fisicamente um cliente com agendamento vinculado é rejeitado pelo banco (P2003, RESTRICT)", async () => {
