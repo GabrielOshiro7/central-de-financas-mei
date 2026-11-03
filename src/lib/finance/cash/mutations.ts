@@ -1,15 +1,15 @@
 import { Prisma, type Business } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import type { DateKey } from "@/lib/time/zoned";
-import { dayColumns } from "@/lib/finance/entryDay";
+import { dbDateOfDaySource, type DaySource } from "@/lib/finance/entryDay";
 
 const { Decimal } = Prisma;
 
-// Dia do saldo inicial (Etapa F6a-2): "openingBalanceOn" (DateKey digitada -
-// o caminho da rota) ou, sem dia de origem, "openingBalanceDate" (instante).
+// Dia do saldo inicial (Etapa F6a-2): a DateKey digitada (o caminho da rota)
+// ou, sem dia de origem, um instante - ver DaySource (entryDay.ts).
 export type OpeningBalanceInput = {
   openingBalance: number | string;
-} & ({ openingBalanceOn: DateKey; openingBalanceDate?: undefined } | { openingBalanceDate: Date; openingBalanceOn?: undefined });
+  openingBalanceOn: DaySource;
+};
 
 export type UpdateOpeningBalanceResult =
   | { ok: true; business: Pick<Business, "id"> }
@@ -26,16 +26,11 @@ export async function updateOpeningBalance(
     return { ok: false, error: "Empresa não encontrada." };
   }
 
-  const day = dayColumns(
-    input.openingBalanceOn !== undefined ? { day: input.openingBalanceOn } : { instant: input.openingBalanceDate },
-    existing.timezone
-  );
   const business = await prisma.business.update({
     where: { userId },
     data: {
       openingBalance: new Decimal(input.openingBalance),
-      openingBalanceDate: day.at,
-      openingBalanceOn: day.on,
+      openingBalanceOn: dbDateOfDaySource(input.openingBalanceOn, existing.timezone),
     },
     select: { id: true },
   });

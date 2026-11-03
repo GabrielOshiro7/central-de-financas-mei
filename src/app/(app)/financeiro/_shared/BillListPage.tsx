@@ -99,7 +99,7 @@ export async function BillListPage({
     issueDateInput: item.issueOn ? dbDateToKey(item.issueOn) : "",
     amount: item.amount.toString(),
     displayStatus: deriveBillStatus(item, clock),
-    paidAtDisplay: item.paidOn ? formatDateKey(dbDateToKey(item.paidOn)) : null,
+    paidOnDisplay: item.paidOn ? formatDateKey(dbDateToKey(item.paidOn)) : null,
     documentNumber: item.documentNumber ?? "",
     paymentMethod: item.paymentMethod ?? "",
     bankAccount: item.bankAccount ?? "",

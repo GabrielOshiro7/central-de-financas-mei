@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateBillOccurrences } from "@/lib/finance/bills/occurrences";
-import { dateKeyToDbDate, dbDateOfInstant, startOfDayInstant, type BusinessClock } from "@/lib/time/zoned";
+import { dateKeyToDbDate, dbDateOfInstant, type BusinessClock } from "@/lib/time/zoned";
 
 // Diferente de materializeRecurringEntries (Etapa 4.1), que so materializa
 // ate "agora" (um RecurringEntry vira dinheiro automaticamente na data,
@@ -53,11 +53,9 @@ export async function materializeRecurringBills(businessId: string, clock: Busin
         categoryId: entry.categoryId,
         description: entry.description,
         amount: entry.amount,
-        // Vencimento = o dia da ocorrencia (dueOn, fonte da verdade desde a
-        // F6b-2); dueDate (gravacao dupla ate a F6d) = 00:00 desse dia no
-        // fuso da empresa. A chave de idempotencia e o dia (Etapa F5).
+        // Vencimento = o dia da ocorrencia; a chave de idempotencia tambem e
+        // o dia (Etapa F5).
         dueOn: dateKeyToDbDate(day),
-        dueDate: startOfDayInstant(day, clock.timeZone),
         occurrenceDate: dateKeyToDbDate(day),
         documentNumber: entry.documentNumber,
         counterpartyName: entry.counterpartyName,

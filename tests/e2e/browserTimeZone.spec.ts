@@ -91,7 +91,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       type: "REVENUE",
       categoryId: revenue.id,
       amount: new Decimal("250.00"),
-      occurredAt: tokyoMidnight, occurredOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
+      occurredOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
       description: "Receita madrugada F4",
     },
   });
@@ -102,7 +102,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       categoryId: cost.id,
       description: "Conta madrugada F4",
       amount: new Decimal("123.45"),
-      dueDate: tokyoMidnight, dueOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
+      dueOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
     },
   });
 
@@ -116,7 +116,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       categoryId: revenue.id,
       userId: user.id,
       saleNumber,
-      saleDate: tokyoMidnight, saleOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
+      saleOn: dbDateOfInstant(tokyoMidnight, E2E_BUSINESS_TZ),
       status: "CONFIRMED",
       subtotal: new Decimal("400.00"),
       total: new Decimal("400.00"),
@@ -136,7 +136,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
       saleId: sale.id,
       description: `Venda #${saleNumber}`,
       amount: new Decimal("400.00"),
-      dueDate: startOfDayInstant(addDays(today, 7), E2E_BUSINESS_TZ), dueOn: dbDateOfInstant(startOfDayInstant(addDays(today, 7), E2E_BUSINESS_TZ), E2E_BUSINESS_TZ),
+      dueOn: dbDateOfInstant(startOfDayInstant(addDays(today, 7), E2E_BUSINESS_TZ), E2E_BUSINESS_TZ),
     },
   });
 

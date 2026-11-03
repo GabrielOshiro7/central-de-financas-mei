@@ -8,6 +8,7 @@ import {
 } from "@/lib/onboarding/options";
 import { EmpresaForm } from "./EmpresaForm";
 import { OpeningBalanceForm } from "./OpeningBalanceForm";
+import { TimeZoneForm } from "./TimeZoneForm";
 import { dbDateToKey } from "@/lib/time/zoned";
 
 // Secao "Empresa" dentro de Configuracoes (Etapa 5.1) - antes era a pagina
@@ -60,6 +61,8 @@ export async function EmpresaSection({ business }: { business: Business }) {
         }}
         currencyLocked={entryCount > 0}
       />
+
+      <TimeZoneForm data={{ country: business.country, timezone: business.timezone }} />
 
       <OpeningBalanceForm
         data={{

@@ -51,7 +51,7 @@ describe("getDailySeriesForRange - granularidade diária para períodos por dia 
         categoryId: revenueCategoryId,
         description: `Venda dia ${i + 1}`,
         amount: String((i + 1) * 10),
-        occurredAt: day, occurredOn: dbDateOfInstant(day, PROCESS_TZ),
+        occurredOn: dbDateOfInstant(day, PROCESS_TZ),
       };
     });
     await prisma.financialEntry.createMany({ data: entries });

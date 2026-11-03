@@ -13,7 +13,7 @@ import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { getFinancialSummaryForRange, listTransactions } from "@/lib/finance/queries";
 import { getBillSummary } from "@/lib/finance/bills/queries";
 import { processClock } from "../../helpers/processClock";
-import { dbDateOfInstant, dbDateToKey, monthRange, startOfDayInstant } from "@/lib/time/zoned";
+import { dbDateOfInstant, dbDateToKey, monthRange } from "@/lib/time/zoned";
 
 describe("contas a pagar/receber (Etapa 5)", () => {
   let userId: string;
@@ -109,10 +109,8 @@ describe("contas a pagar/receber (Etapa 5)", () => {
   });
 
   // Etapa F6b-2 (decisao do dono): o dia do pagamento informado vira
-  // Bill.paidOn e o dia do lancamento (occurredOn; occurredAt = 00:00 desse
-  // dia no fuso da empresa); Bill.paidAt passou a ser o instante REAL do
-  // registro (auditoria), nao mais a data informada. Por isso as asserções de
-  // paidAt/occurredAt abaixo mudaram de forma (o dia esperado nao mudou).
+  // Bill.paidOn e o dia do lancamento (occurredOn); Bill.paidAt passou a ser
+  // o instante REAL do registro (auditoria), nao mais a data informada.
   it("settleBill: type do lançamento = category.type, dia do lançamento = dia do pagamento (não o vencimento)", async () => {
     const created = await createBill(businessId, "PAYABLE", {
       categoryId: expenseCategoryId,
@@ -132,7 +130,6 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     const entry = await prisma.financialEntry.findUnique({ where: { id: settled.value.financialEntryId } });
     expect(entry?.type).toBe("EXPENSE");
     expect(dbDateToKey(entry!.occurredOn)).toBe(paidOn);
-    expect(entry?.occurredAt).toEqual(startOfDayInstant(paidOn, "Asia/Tokyo"));
     expect(entry?.source).toBe("BILL");
     expect(entry?.billId).toBe(created.value.id);
     expect(entry?.amount.toNumber()).toBe(300);
@@ -239,9 +236,8 @@ describe("contas a pagar/receber (Etapa 5)", () => {
         expect(await prisma.financialEntry.count({ where: { businessId } })).toBe(1);
         const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId } });
         expect(entry.billId).toBe(billId);
-        // Dia informado (F6b-2): 00:00 de 12/02 no fuso da empresa (Toquio).
+        // Dia informado (F6b-2): 12/02.
         expect(dbDateToKey(entry.occurredOn)).toBe("2026-02-12");
-        expect(entry.occurredAt.getTime()).toBe(startOfDayInstant("2026-02-12", "Asia/Tokyo").getTime());
       });
     }
 
@@ -272,10 +268,10 @@ describe("contas a pagar/receber (Etapa 5)", () => {
       const target = await createAndSettle("PAYABLE", "Alvo do revert");
       const other = await createAndSettle("RECEIVABLE", "Outra conta");
       const manual = await prisma.financialEntry.create({
-        data: { businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, description: "Manual", amount: 300, occurredAt: new Date(2026, 1, 10), occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "MANUAL" },
+        data: { businessId, userId, type: "EXPENSE", categoryId: expenseCategoryId, description: "Manual", amount: 300, occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "MANUAL" },
       });
       const recurring = await prisma.financialEntry.create({
-        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Recorrente", amount: 300, occurredAt: new Date(2026, 1, 10), occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "RECURRING" },
+        data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Recorrente", amount: 300, occurredOn: dbDateOfInstant(new Date(2026, 1, 10), "Asia/Tokyo"), source: "RECURRING" },
       });
 
       expect((await revertBillSettlement(businessId, target.billId)).ok).toBe(true);
@@ -410,7 +406,7 @@ describe("contas a pagar/receber (Etapa 5)", () => {
     expect(r3.created).toBe(0);
   });
 
-  it("getBillSummary: total vencido considera só PENDING com dueDate no passado", async () => {
+  it("getBillSummary: total vencido considera só PENDING com dueOn no passado", async () => {
     const overdue = await createBill(businessId, "PAYABLE", {
       categoryId: expenseCategoryId,
       description: "Vencida",

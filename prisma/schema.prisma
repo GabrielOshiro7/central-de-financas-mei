@@ -203,19 +203,16 @@ model Business {
   averageMonthlyRevenue Decimal?         @map("average_monthly_revenue") @db.Decimal(14, 2)
 
   // Caixa (Etapa 5.1): posicao de caixa = openingBalance + soma do netProfit
-  // de todos os FinancialEntry com occurredAt ESTRITAMENTE POSTERIOR a
-  // openingBalanceDate (ver calculateAccumulatedBalance em
+  // de todos os FinancialEntry com occurredOn ESTRITAMENTE POSTERIOR a
+  // openingBalanceOn (ver calculateAccumulatedBalance em
   // src/lib/finance/cash/calculations.ts). Editado no mesmo formulario/lugar
   // de currency (secao "Empresa" de Configuracoes), nao no onboarding.
-  // openingBalanceDate nulo = "nao configurado" - a UI usa a data do
-  // primeiro FinancialEntry como base implicita (saldo inicial = 0 nessa
-  // data) e sinaliza isso com um banner, nunca finge que foi configurado.
-  openingBalance     Decimal   @default(0) @map("opening_balance") @db.Decimal(14, 2)
-  openingBalanceDate DateTime? @map("opening_balance_date")
-  // Dia de calendario do saldo inicial (Etapa F6a-1, expandir): gravado junto
-  // com openingBalanceDate (mesmo dia, no fuso da empresa); ninguem le ainda
-  // (F6a-2). Anulavel como openingBalanceDate. Sufixo _on = dia, _at = instante.
-  openingBalanceOn   DateTime? @db.Date @map("opening_balance_on")
+  // openingBalanceOn nulo = "nao configurado" - a UI usa o dia do
+  // primeiro FinancialEntry como base implicita (saldo inicial = 0 nesse
+  // dia) e sinaliza isso com um banner, nunca finge que foi configurado.
+  // Dia de calendario (@db.Date, Etapa F6; sufixo _on = dia, _at = instante).
+  openingBalance   Decimal   @default(0) @map("opening_balance") @db.Decimal(14, 2)
+  openingBalanceOn DateTime? @db.Date @map("opening_balance_on")
 
   // Fuso da EMPRESA (Etapa F2 do plano de fuso): pais ISO 3166-1 alfa-2 e
   // fuso IANA. Default JP/Asia/Tokyo para as linhas existentes e para toda
@@ -301,10 +298,8 @@ model FinancialEntry {
   categoryId  String             @map("category_id")
   category    Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   amount      Decimal            @db.Decimal(14, 2)
-  occurredAt  DateTime           @map("occurred_at")
-  // Dia de calendario do lancamento (Etapa F6a-1, expandir): gravado em todo
-  // caminho junto com occurredAt - o MESMO dia, toDateKey(occurredAt, fuso da
-  // empresa). Ninguem le ainda (F6a-2); occurredAt sai so na F6d.
+  // Dia de calendario do lancamento, no fuso da empresa (Etapa F6; o instante
+  // occurredAt saiu na F6d).
   occurredOn  DateTime           @db.Date @map("occurred_on")
   description String
   notes       String?
@@ -343,7 +338,7 @@ model FinancialEntry {
   // duas materializacoes concorrentes ou com o processo em fusos diferentes
   // (ver materializeRecurringEntries).
   @@unique([recurringEntryId, occurrenceDate])
-  @@index([businessId, occurredAt])
+  @@index([businessId, occurredOn])
   @@index([businessId, type])
   @@index([categoryId])
   @@map("financial_entries")
@@ -374,13 +369,7 @@ model RecurringEntry {
   dayOfMonth Int? @map("day_of_month") // MONTHLY e YEARLY: 1-31
   yearMonth  Int? @map("year_month") // YEARLY: 0=jan..11=dez
 
-  // Sempre meia-noite local (mesmo fuso ja documentado em period.ts) - as
-  // ocorrencias materializadas usam essa mesma convencao de horario, exigido
-  // pra constraint de unicidade acima pegar duplicata de forma confiavel.
-  startDate DateTime  @map("start_date")
-  endDate   DateTime? @map("end_date")
-  // Dias de calendario de inicio/fim (Etapa F6c): fonte da verdade;
-  // startDate/endDate = 00:00 desses dias no fuso da empresa, ate a F6d.
+  // Dias de calendario de inicio/fim, no fuso da empresa (Etapa F6c).
   startOn   DateTime  @db.Date @map("start_on")
   endOn     DateTime? @db.Date @map("end_on")
   isActive  Boolean   @default(true) @map("is_active")
@@ -401,9 +390,8 @@ model RecurringEntry {
 // Etapa 5).
 //
 // "Atrasado" NUNCA e persistido - e sempre derivado em runtime a partir de
-// status===PENDING && dueDate no passado (ver deriveBillStatus em
-// src/lib/finance/bills/status.ts), usando a mesma nocao de "hoje" (fuso
-// local do processo Node) ja estabelecida em period.ts.
+// status===PENDING && dueOn antes de "hoje" no fuso da empresa (ver
+// deriveBillStatus em src/lib/finance/bills/status.ts).
 model Bill {
   id         String   @id @default(uuid())
   businessId String   @map("business_id")
@@ -413,22 +401,16 @@ model Bill {
 
   description String
   amount      Decimal    @db.Decimal(14, 2)
-  issueDate   DateTime?  @map("issue_date")
-  dueDate     DateTime   @map("due_date")
-  // Data REAL do pagamento/recebimento - nunca a data de vencimento. Uma
-  // conta paga com atraso conta no mes em que foi paga (occurredAt do
-  // FinancialEntry gerado usa esta data, nao dueDate).
+  // INSTANTE de auditoria do pagamento/recebimento (momento real do
+  // registro). A logica usa o dia paidOn abaixo; paidAt NULL se e somente se
+  // paidOn for NULL.
   paidAt      DateTime?  @map("paid_at")
   status      BillStatus @default(PENDING)
 
-  // Dias de calendario das datas acima (Etapa F6b-1, expandir): gravados
-  // junto com as colunas de instante, sempre o MESMO dia no fuso da empresa;
-  // ninguem le ainda (F6b-2). Anulabilidade espelhada: dueOn obrigatorio como
-  // dueDate; issueOn so quando ha issueDate; paidOn NULL se e somente se
-  // paidAt for NULL.
-  // - paidAt e o INSTANTE de auditoria (momento real do registro do
-  //   pagamento) e continua existindo depois da F6d; paidOn e o dia usado na
-  //   logica.
+  // Dias de calendario no fuso da empresa (Etapa F6b; as colunas de instante
+  // due_date/issue_date sairam na F6d). paidOn e o dia REAL do pagamento -
+  // nunca o vencimento: uma conta paga com atraso conta no dia em que foi
+  // paga (o occurredOn do FinancialEntry gerado usa paidOn, nao dueOn).
   // - dueOn NAO e occurrenceDate: occurrenceDate (F5) e o dia gerado pela
   //   recorrencia - a identidade da ocorrencia, que nunca muda; dueOn e o
   //   vencimento e acompanha edicoes do usuario. Nao unificar.
@@ -475,7 +457,7 @@ model Bill {
   // FinancialEntry @@unique([recurringEntryId, occurrenceDate]).
   @@unique([recurringBillId, occurrenceDate])
   @@index([businessId, status])
-  @@index([businessId, dueDate])
+  @@index([businessId, dueOn])
   @@index([categoryId])
   @@index([saleId])
   @@map("bills")
@@ -509,10 +491,7 @@ model RecurringBill {
   dayOfMonth Int? @map("day_of_month")
   yearMonth  Int? @map("year_month")
 
-  startDate DateTime  @map("start_date")
-  endDate   DateTime? @map("end_date")
-  // Dias de calendario de startDate/endDate (Etapa F6b-1, expandir): mesmo
-  // dia no fuso da empresa, gravados junto; ninguem le ainda (F6b-2).
+  // Dias de calendario de inicio/fim, no fuso da empresa (Etapa F6b).
   startOn   DateTime  @db.Date @map("start_on")
   endOn     DateTime? @db.Date @map("end_on")
   isActive  Boolean   @default(true) @map("is_active")
@@ -638,9 +617,7 @@ model Sale {
   // de criacao (ver src/lib/sales/mutations.ts). @@unique abaixo e so uma
   // invariante passiva: a alocacao atomica ja impede colisao por construcao.
   saleNumber Int        @map("sale_number")
-  saleDate   DateTime   @map("sale_date")
-  // Dia de calendario da venda (Etapa F6c): fonte da verdade; saleDate
-  // (instante) = 00:00 desse dia no fuso da empresa, gravado ate a F6d.
+  // Dia de calendario da venda, no fuso da empresa (Etapa F6c).
   saleOn     DateTime   @db.Date @map("sale_on")
   status     SaleStatus @default(CONFIRMED)
 
@@ -671,7 +648,7 @@ model Sale {
 
   @@unique([businessId, clientRequestId])
   @@unique([businessId, saleNumber])
-  @@index([businessId, saleDate])
+  @@index([businessId, saleOn])
   @@index([businessId, status])
   @@index([clientId])
   @@map("sales")

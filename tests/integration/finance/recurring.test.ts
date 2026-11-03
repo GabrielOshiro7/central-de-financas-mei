@@ -157,14 +157,14 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
 
     const entries = await prisma.financialEntry.findMany({
       where: { recurringEntryId: molde.value.id },
-      orderBy: { occurredAt: "asc" },
+      orderBy: { occurredOn: "asc" },
     });
     expect(entries).toHaveLength(4);
     expect(entries.slice(0, 3).map((e) => e.amount.toNumber())).toEqual([100, 100, 100]);
     expect(entries[3].amount.toNumber()).toBe(200);
   });
 
-  it("endDate interrompe a geração a partir da ocorrência seguinte a ela", async () => {
+  it("endOn interrompe a geração a partir da ocorrência seguinte a ela", async () => {
     const molde = await createRecurringEntry(businessId, {
       type: "EXPENSE",
       categoryId: expenseCategoryId,

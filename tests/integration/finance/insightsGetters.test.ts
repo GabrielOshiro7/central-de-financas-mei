@@ -51,7 +51,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
     const now = new Date(2026, 8, 15); // 15/09/2026
     const septRange = { start: new Date(2026, 8, 1), end: new Date(2026, 9, 1) };
 
-    it("soma só bills PENDING com dueDate dentro do range E já vencidas hoje", async () => {
+    it("soma só bills PENDING com dueOn dentro do range E já vencidas hoje", async () => {
       await prisma.bill.createMany({
         data: [
           {
@@ -59,7 +59,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
             categoryId: revenueCategoryId,
             description: "Vencida em setembro, dentro do range",
             amount: "300",
-            dueDate: new Date(2026, 8, 5), dueOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo"),
+            dueOn: dbDateOfInstant(new Date(2026, 8, 5), "Asia/Tokyo"),
             status: "PENDING",
           },
           {
@@ -67,7 +67,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
             categoryId: revenueCategoryId,
             description: "A vencer em setembro (ainda não vencida hoje)",
             amount: "500",
-            dueDate: new Date(2026, 8, 20), dueOn: dbDateOfInstant(new Date(2026, 8, 20), "Asia/Tokyo"),
+            dueOn: dbDateOfInstant(new Date(2026, 8, 20), "Asia/Tokyo"),
             status: "PENDING",
           },
           {
@@ -75,7 +75,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
             categoryId: revenueCategoryId,
             description: "Vencida em agosto, fora do range",
             amount: "999",
-            dueDate: new Date(2026, 7, 25), dueOn: dbDateOfInstant(new Date(2026, 7, 25), "Asia/Tokyo"),
+            dueOn: dbDateOfInstant(new Date(2026, 7, 25), "Asia/Tokyo"),
             status: "PENDING",
           },
           {
@@ -83,7 +83,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
             categoryId: revenueCategoryId,
             description: "Vencimento em setembro mas já paga",
             amount: "777",
-            dueDate: new Date(2026, 8, 10), dueOn: dbDateOfInstant(new Date(2026, 8, 10), "Asia/Tokyo"),
+            dueOn: dbDateOfInstant(new Date(2026, 8, 10), "Asia/Tokyo"),
             status: "PAID",
             paidAt: new Date(2026, 8, 10), paidOn: dbDateOfInstant(new Date(2026, 8, 10), "Asia/Tokyo"),
           },
@@ -115,7 +115,7 @@ describe("getters de suporte a Insights (Etapa 7)", () => {
           categoryId: revenueCategoryId,
           description: "Lançamento de agosto",
           amount: "100",
-          occurredAt: new Date(2026, 7, 20), occurredOn: dbDateOfInstant(new Date(2026, 7, 20), "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(new Date(2026, 7, 20), "Asia/Tokyo"),
         },
       });
 

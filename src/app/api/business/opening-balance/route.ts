@@ -30,9 +30,9 @@ export async function PATCH(request: Request) {
 
   const result = await updateOpeningBalance(user.id, {
     openingBalance: parsed.data.openingBalance,
-    ...(isDateKey(parsed.data.openingBalanceDate)
-      ? { openingBalanceOn: parsed.data.openingBalanceDate }
-      : { openingBalanceDate: new Date(parsed.data.openingBalanceDate) }),
+    openingBalanceOn: isDateKey(parsed.data.openingBalanceDate)
+      ? parsed.data.openingBalanceDate
+      : new Date(parsed.data.openingBalanceDate),
   });
 
   if (!result.ok) {

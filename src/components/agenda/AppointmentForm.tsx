@@ -6,6 +6,7 @@ import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
 import { computeEndAt } from "@/lib/agenda/calculations";
 import { formatAgendaTime, parseAgendaDateTimeInput } from "@/lib/agenda/time";
+import { timeZoneCity } from "@/lib/time/countryZones";
 
 const primaryButtonClass =
   "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
@@ -376,7 +377,7 @@ export function AppointmentForm({
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Data e hora</h2>
         <div>
           <label htmlFor="startAt" className={labelClass}>
-            Início (horário de Tóquio)
+            Início (horário de {timeZoneCity(timeZone)})
           </label>
           <input
             id="startAt"

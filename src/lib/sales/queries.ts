@@ -4,8 +4,7 @@ import { dayRangeFilter } from "@/lib/finance/entryDay";
 import { compareKeys, dbDateToKey, todayKey, type BusinessClock, type TimeZone } from "@/lib/time/zoned";
 
 // Leituras de vendas (Etapa F6c): o dia da venda e Sale.saleOn, filtrado por
-// dias (dayRangeFilter, periodos alinhados a 00:00 no fuso da empresa) - sem
-// ler Sale.saleDate.
+// dias (dayRangeFilter, periodos alinhados a 00:00 no fuso da empresa).
 
 const { Decimal } = Prisma;
 

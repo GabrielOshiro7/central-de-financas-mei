@@ -39,7 +39,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("cria um lançamento de receita", async () => {
     const result = await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Venda balcão",
       categoryId: revenueCategoryId,
       amount: 500,
@@ -56,7 +56,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("cria um lançamento de custo", async () => {
     const result = await createTransaction(businessId, userId, {
       type: "COST",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Compra de mercadoria",
       categoryId: costCategoryId,
       amount: 200,
@@ -67,7 +67,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("cria um lançamento de despesa", async () => {
     const result = await createTransaction(businessId, userId, {
       type: "EXPENSE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Aluguel de setembro",
       categoryId: expenseCategoryId,
       amount: 1000,
@@ -78,7 +78,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("rejeita categoria que não corresponde ao tipo do lançamento", async () => {
     const result = await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Venda errada",
       categoryId: expenseCategoryId, // categoria de despesa num lancamento de receita
       amount: 100,
@@ -90,7 +90,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("edita um lançamento existente", async () => {
     const created = await createTransaction(businessId, userId, {
       type: "EXPENSE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Descrição original",
       categoryId: expenseCategoryId,
       amount: 100,
@@ -100,7 +100,7 @@ describe("mutações de lançamentos financeiros", () => {
 
     const updated = await updateTransaction(businessId, created.value.id, {
       type: "EXPENSE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Descrição corrigida",
       categoryId: expenseCategoryId,
       amount: 150,
@@ -116,7 +116,7 @@ describe("mutações de lançamentos financeiros", () => {
   it("exclui um lançamento existente", async () => {
     const created = await createTransaction(businessId, userId, {
       type: "COST",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Para excluir",
       categoryId: costCategoryId,
       amount: 50,
@@ -185,7 +185,7 @@ describe("isolamento de lançamentos entre empresas", () => {
         categoryId: expenseCategory.id,
         description: "Despesa da empresa B",
         amount: "300",
-        occurredAt: new Date(), occurredOn: dbDateOfInstant(new Date(), "Asia/Tokyo"),
+        occurredOn: dbDateOfInstant(new Date(), "Asia/Tokyo"),
       },
     });
     entryOfBId = entryOfB.id;
@@ -194,7 +194,7 @@ describe("isolamento de lançamentos entre empresas", () => {
   it("empresa A não consegue editar um lançamento da empresa B", async () => {
     const result = await updateTransaction(businessAId, entryOfBId, {
       type: "EXPENSE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       description: "Tentativa de alteração indevida",
       categoryId: entryOfBId,
       amount: 1,

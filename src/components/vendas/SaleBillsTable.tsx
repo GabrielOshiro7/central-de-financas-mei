@@ -12,7 +12,7 @@ export type SaleBillRow = {
   dueDateDisplay: string;
   amount: string;
   displayStatus: BillDisplayStatus;
-  paidAtDisplay: string | null;
+  paidOnDisplay: string | null;
 };
 
 // Musgo/Âmbar/Terracota: paleta de status do app (positivo/atenção/crítico).
@@ -51,7 +51,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
       const res = await fetch(`/api/financeiro/bills/${settling.id}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paidAt: settleDate }),
+        body: JSON.stringify({ paidOn: settleDate }),
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -131,7 +131,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
                   {billStatusLabel("RECEIVABLE", bill.displayStatus)}
                 </span>
               </td>
-              <td role="cell" data-label="Recebimento" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Recebimento: </span>{bill.paidAtDisplay ?? "—"}</td>
+              <td role="cell" data-label="Recebimento" className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">Recebimento: </span>{bill.paidOnDisplay ?? "—"}</td>
               <td role="cell" className="px-4 py-3 rt-actions">
                 <div className="flex flex-wrap gap-3">
                   {(bill.displayStatus === "PENDING" || bill.displayStatus === "OVERDUE") && (

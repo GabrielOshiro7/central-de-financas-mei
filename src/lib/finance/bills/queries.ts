@@ -16,7 +16,7 @@ const { Decimal } = Prisma;
 
 // Leituras de contas (Etapa F6b-2): vencimento, emissao e pagamento sao os
 // DIAS gravados em dueOn/issueOn/paidOn, comparados direto com DateKeys (sem
-// conversao de fuso no banco); dueDate/issueDate/paidAt nao sao lidos aqui.
+// conversao de fuso no banco); paidAt (instante de auditoria) nao e lido aqui.
 
 function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
   return direction === "PAYABLE"

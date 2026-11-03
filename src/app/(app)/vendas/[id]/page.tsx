@@ -28,7 +28,7 @@ export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
     dueDateDisplay: formatDateKey(dbDateToKey(bill.dueOn)), // dias gravados (F6b-2)
     amount: bill.amount.toString(),
     displayStatus: deriveBillStatus(bill, clock),
-    paidAtDisplay: bill.paidOn ? formatDateKey(dbDateToKey(bill.paidOn)) : null,
+    paidOnDisplay: bill.paidOn ? formatDateKey(dbDateToKey(bill.paidOn)) : null,
   }));
 
   return (

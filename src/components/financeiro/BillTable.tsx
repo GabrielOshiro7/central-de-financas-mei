@@ -20,7 +20,7 @@ export type BillRow = {
   issueDateInput: string;
   amount: string;
   displayStatus: BillDisplayStatus;
-  paidAtDisplay: string | null;
+  paidOnDisplay: string | null;
   documentNumber: string;
   paymentMethod: string;
   bankAccount: string;
@@ -76,7 +76,7 @@ export function BillTable({
       const res = await fetch(`/api/financeiro/bills/${settling.id}/settle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paidAt: settleDate }),
+        body: JSON.stringify({ paidOn: settleDate }),
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -170,7 +170,7 @@ export function BillTable({
                   {billStatusLabel(direction, row.displayStatus)}
                 </span>
               </td>
-              <td role="cell" data-label={direction === "PAYABLE" ? "Pagamento" : "Recebimento"} className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">{direction === "PAYABLE" ? "Pagamento" : "Recebimento"}: </span>{row.paidAtDisplay ?? "—"}</td>
+              <td role="cell" data-label={direction === "PAYABLE" ? "Pagamento" : "Recebimento"} className="px-4 py-3 text-gray-700 dark:text-neutral-300 rt-sub"><span className="rt-sr">{direction === "PAYABLE" ? "Pagamento" : "Recebimento"}: </span>{row.paidOnDisplay ?? "—"}</td>
               <td role="cell" className="px-4 py-3 rt-actions">
                 <div className="flex flex-wrap gap-3">
                   {(row.displayStatus === "PENDING" || row.displayStatus === "OVERDUE") && (

@@ -48,7 +48,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: revenueCategoryId,
           description: "Venda",
           amount: "1000",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId,
@@ -57,7 +57,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: costCategoryId,
           description: "Mercadoria",
           amount: "400",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId,
@@ -66,7 +66,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
           categoryId: expenseCategoryId,
           description: "Aluguel",
           amount: "100",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
       ],
     });
@@ -93,7 +93,7 @@ describe("resumo financeiro (dados inseridos diretamente no banco de teste)", ()
         categoryId: costCategoryId,
         description: "Mercadoria",
         amount: "200",
-        occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+        occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
       },
     });
 

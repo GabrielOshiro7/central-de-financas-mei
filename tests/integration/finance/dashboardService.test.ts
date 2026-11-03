@@ -65,7 +65,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda A1",
           amount: "1000",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -74,7 +74,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda A2",
           amount: "500",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -83,7 +83,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: costCategoryId,
           description: "Mercadoria A",
           amount: "400",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         {
           businessId: businessAId,
@@ -92,7 +92,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: expenseCategoryId,
           description: "Aluguel A",
           amount: "200",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
         // Empresa B - nunca deveria aparecer no dashboard de A.
         {
@@ -102,7 +102,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
           categoryId: revenueCategoryId,
           description: "Venda B",
           amount: "99999",
-          occurredAt: now, occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
+          occurredOn: dbDateOfInstant(now, "Asia/Tokyo"),
         },
       ],
     });

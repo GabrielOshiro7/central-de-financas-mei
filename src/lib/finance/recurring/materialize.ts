@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { generateOccurrencesForEntry } from "@/lib/finance/recurring/occurrences";
 import { getBusinessClock } from "@/lib/time/businessClock";
-import { dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/time/zoned";
+import { dateKeyToDbDate, todayKey } from "@/lib/time/zoned";
 
 // Materializacao preguicosa (secao "MATERIALIZACAO" da Etapa 4.1): chamada a
 // cada leitura de dados financeiros (Receitas/Custos/Despesas, Caixa,
@@ -18,11 +18,9 @@ import { dateKeyToDbDate, startOfDayInstant, todayKey } from "@/lib/time/zoned";
 // duas chamadas com o processo em fusos diferentes geram a MESMA chave para
 // o mesmo dia; a segunda so tem suas linhas ignoradas pelo skipDuplicates.
 //
-// occurredAt de uma ocorrencia NOVA = 00:00 do dia no fuso da empresa
-// (startOfDayInstant), a mesma representacao das ocorrencias ja gravadas
-// (geradas com o host em JST) - entao toDateKey(occurredAt, fuso) == dia e
-// as consultas por periodo (F3) continuam iguais. Inicio/fim do molde sao os
-// dias gravados em startOn/endOn (Etapa F6c).
+// O dia de uma ocorrencia NOVA (occurredOn) e o proprio dia gerado pelo
+// motor. Inicio/fim do molde sao os dias gravados em startOn/endOn (Etapa
+// F6c).
 export async function materializeRecurringEntries(
   businessId: string,
   userId: string,
@@ -61,8 +59,7 @@ export async function materializeRecurringEntries(
         categoryId: entry.categoryId,
         description: entry.description,
         amount: entry.amount,
-        occurredAt: startOfDayInstant(day, clock.timeZone),
-        occurredOn: dateKeyToDbDate(day), // o dia da ocorrencia e a fonte do dia (F6a-2); occurredAt derivado dele
+        occurredOn: dateKeyToDbDate(day),
         occurrenceDate: dateKeyToDbDate(day),
         source: "RECURRING",
         recurringEntryId: entry.id,

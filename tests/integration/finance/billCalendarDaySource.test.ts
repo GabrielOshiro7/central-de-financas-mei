@@ -6,7 +6,7 @@ import { POST as postRevert } from "@/app/api/financeiro/bills/[id]/revert/route
 import { POST as postRecurring } from "@/app/api/financeiro/bills/recurring/route";
 import { deriveBillStatus } from "@/lib/finance/bills/status";
 import { getBillSummary, getOverdueAmountForDueRange, listBills } from "@/lib/finance/bills/queries";
-import { clockFor, dayRange, dbDateToKey, formatDateKey, monthRange, startOfDayInstant, toDateKey, zonedInstant } from "@/lib/time/zoned";
+import { clockFor, dayRange, dbDateToKey, formatDateKey, monthRange, zonedInstant } from "@/lib/time/zoned";
 
 // Etapa F6b-2: o DIA digitado e a fonte da verdade das contas (dueOn/issueOn/
 // paidOn/startOn/endOn). As rotas sao chamadas de verdade (so a sessao e
@@ -73,9 +73,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia das contas - empresa e
     expect(dbDateToKey(bill.dueOn)).toBe("2026-10-20");
     expect(formatDateKey(dbDateToKey(bill.dueOn))).toBe("20/10/2026"); // exibicao (BillListPage)
     expect(dbDateToKey(bill.issueOn!)).toBe("2026-10-01");
-    // gravacao dupla: a coluna antiga e 00:00 do mesmo dia no fuso da empresa
-    expect(bill.dueDate.toISOString()).toBe(startOfDayInstant("2026-10-20", tz).toISOString());
-    expect(toDateKey(bill.issueDate!, tz)).toBe("2026-10-01");
 
     const day20 = clockFor({ timezone: tz }, zonedInstant(tz, 2026, 10, 20, 0, 30));
     const day21 = clockFor({ timezone: tz }, zonedInstant(tz, 2026, 10, 21, 0, 30));
@@ -112,7 +109,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia das contas - empresa e
     const registeredAt = zonedInstant(tz, 2026, 10, 20, 14, 5);
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(registeredAt);
-    const res = await postSettle(jsonRequest(`http://test/api/financeiro/bills/${bill.id}/settle`, { paidAt: "2026-10-19" }), params(bill.id));
+    const res = await postSettle(jsonRequest(`http://test/api/financeiro/bills/${bill.id}/settle`, { paidOn: "2026-10-19" }), params(bill.id));
     vi.useRealTimers();
     expect(res.status).toBe(200);
 
@@ -121,7 +118,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia das contas - empresa e
     expect(paid.paidAt!.toISOString()).toBe(registeredAt.toISOString()); // auditoria: o instante real
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe("2026-10-19");
-    expect(entry.occurredAt.toISOString()).toBe(startOfDayInstant("2026-10-19", tz).toISOString());
 
     const clock = clockFor({ timezone: tz }, registeredAt);
     expect((await getBillSummary(businessId, "PAYABLE", dayRange("2026-10-19", tz), clock)).totalPaidAmount.toNumber()).toBe(30);
@@ -148,7 +144,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia das contas - empresa e
     const mold = await prisma.recurringBill.findFirstOrThrow({ where: { businessId } });
     expect(dbDateToKey(mold.startOn)).toBe("2026-10-20");
     expect(dbDateToKey(mold.endOn!)).toBe("2026-12-20");
-    expect(mold.startDate.toISOString()).toBe(startOfDayInstant("2026-10-20", tz).toISOString());
     // a rota materializa com o relogio real (horizonte de 90 dias, alem de 20/12)
     const bills = await prisma.bill.findMany({ where: { businessId }, orderBy: { dueOn: "asc" } });
     expect(bills.map((b) => dbDateToKey(b.dueOn))).toEqual(["2026-10-20", "2026-11-20", "2026-12-20"]);
@@ -174,6 +169,5 @@ describe("liquidação sem data na madrugada de Tóquio (00:30 JST = 15:30 UTC d
     expect(paid.paidAt!.toISOString()).toBe(click.toISOString());
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe(expectedDay);
-    expect(entry.occurredAt.toISOString()).toBe(startOfDayInstant(expectedDay, tz).toISOString());
   });
 });

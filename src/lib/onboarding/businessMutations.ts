@@ -2,6 +2,7 @@ import { Prisma, type Business } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import type { z } from "zod";
 import type { businessEditSchema } from "@/lib/onboarding/schema";
+import type { BusinessTimeZoneInput } from "@/lib/time/schema";
 
 const { Decimal } = Prisma;
 
@@ -58,6 +59,34 @@ export async function updateBusinessProfile(
       averageMonthlyRevenue: new Decimal(input.averageMonthlyRevenue),
     },
     select: { id: true, name: true },
+  });
+
+  return { ok: true, business };
+}
+
+export type UpdateBusinessTimeZoneResult =
+  | { ok: true; business: Pick<Business, "country" | "timezone"> }
+  | { ok: false; error: string };
+
+// Pais + fuso da empresa (Etapa F7, PATCH /api/business/timezone), ja
+// validados por businessTimeZoneSchema. Mesmo escopo de updateBusinessProfile:
+// resolvido por where: { userId }, nunca por um id vindo do cliente. Nao ha
+// trava como a da moeda: desde a F6 as datas gravadas sao dias de calendario
+// (@db.Date), entao trocar o fuso muda o "hoje" da empresa sem mover nenhuma
+// data ja lancada.
+export async function updateBusinessTimeZone(
+  userId: string,
+  input: BusinessTimeZoneInput
+): Promise<UpdateBusinessTimeZoneResult> {
+  const existing = await prisma.business.findUnique({ where: { userId }, select: { id: true } });
+  if (!existing) {
+    return { ok: false, error: "Empresa não encontrada." };
+  }
+
+  const business = await prisma.business.update({
+    where: { userId },
+    data: { country: input.country, timezone: input.timezone },
+    select: { country: true, timezone: true },
   });
 
   return { ok: true, business };

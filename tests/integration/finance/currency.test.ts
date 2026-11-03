@@ -114,7 +114,7 @@ describe("moeda e precisao decimal (Etapa 3.1)", () => {
   it("bloqueia a troca de moeda de uma empresa que já tem lançamentos", async () => {
     await createTransaction(brlBusinessId, brlUserId, {
       type: "REVENUE",
-      occurredAt: new Date(),
+      occurredOn: new Date(),
       categoryId: revenueCategoryId,
       description: "Lançamento existente",
       amount: 100,
@@ -180,7 +180,7 @@ describe("moeda e precisao decimal (Etapa 3.1)", () => {
     for (const { description, input } of cases) {
       const result = await createTransaction(brlBusinessId, brlUserId, {
         type: "REVENUE",
-        occurredAt: new Date(),
+        occurredOn: new Date(),
         categoryId: revenueCategoryId,
         description,
         amount: input,

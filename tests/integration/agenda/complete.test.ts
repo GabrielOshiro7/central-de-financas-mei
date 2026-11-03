@@ -5,7 +5,7 @@ import { hashPassword } from "@/lib/auth/password";
 import { createAppointment, changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
 import { getAppointmentById, getLastUsedCompletionCategoryId } from "@/lib/agenda/queries";
 import { resolveSaleDayFromAppointment } from "@/lib/agenda/calculations";
-import { dbDateToKey, startOfDayInstant } from "@/lib/time/zoned";
+import { dbDateToKey } from "@/lib/time/zoned";
 import { createSale } from "@/lib/sales/mutations";
 
 // Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
@@ -82,7 +82,7 @@ describe("agenda - concluir atendimento", () => {
     return created.value.id;
   }
 
-  it("concluir à vista cria Sale CONFIRMED + 1 Bill PAID + FinancialEntry, com Bill.paidAt === saleDate (nunca completedAt)", async () => {
+  it("concluir à vista cria Sale CONFIRMED + 1 Bill PAID + FinancialEntry, com Bill.paidOn = dia da venda (nunca completedAt)", async () => {
     const id = await createOne("2026-06-01T10:00:00Z");
     const startAt = new Date("2026-06-01T10:00:00Z");
 
@@ -100,20 +100,18 @@ describe("agenda - concluir atendimento", () => {
     expect(sale.bills).toHaveLength(1);
     expect(sale.bills[0].status).toBe("PAID");
 
-    // Etapa F6c: o dia da venda (saleOn) e o dia do atendimento; saleDate = 00:00
-    // desse dia no fuso da empresa. Requisito explícito mantido: o recebimento a
+    // Etapa F6c: o dia da venda (saleOn) e o dia do atendimento. Requisito explícito mantido: o recebimento a
     // vista e datado do dia do ATENDIMENTO (Bill.paidOn = saleOn), nunca de
     // "agora"/completedAt. Bill.paidAt passou a ser o instante real do registro
-    // (auditoria, F6b-2), por isso nao e mais comparado com saleDate.
+    // (auditoria, F6b-2), por isso nao e comparado com o dia da venda.
     const expectedSaleDay = resolveSaleDayFromAppointment(startAt, BUSINESS_TZ);
     expect(dbDateToKey(sale.saleOn)).toBe(expectedSaleDay);
-    expect(sale.saleDate.getTime()).toBe(startOfDayInstant(expectedSaleDay, BUSINESS_TZ).getTime());
     expect(sale.bills[0].paidAt).not.toBeNull();
     expect(dbDateToKey(sale.bills[0].paidOn!)).toBe(expectedSaleDay);
 
     const entry = await prisma.financialEntry.findFirst({ where: { billId: sale.bills[0].id } });
     expect(entry).not.toBeNull();
-    expect(entry!.occurredAt.getTime()).toBe(sale.saleDate.getTime());
+    expect(dbDateToKey(entry!.occurredOn)).toBe(expectedSaleDay);
 
     const appointment = await getAppointmentById(businessId, id);
     expect(appointment?.status).toBe("CONCLUIDO");
@@ -142,7 +140,7 @@ describe("agenda - concluir atendimento", () => {
     expect(entries).toHaveLength(0);
   });
 
-  it("diretriz 1: saleDate de uma conclusão é byte-a-byte igual ao de uma venda manual criada no mesmo dia calendário", async () => {
+  it("diretriz 1: o dia da venda (saleOn) de uma conclusão é igual ao de uma venda manual criada no mesmo dia calendário", async () => {
     const id = await createOne("2026-06-03T14:30:00Z"); // 23:30 de 3/jun em Toquio (UTC+9) -> ainda dia 3
 
     const completed = await completeAppointment(businessId, userId, id, {
@@ -172,11 +170,7 @@ describe("agenda - concluir atendimento", () => {
     const manualSaleRow = await prisma.sale.findUniqueOrThrow({ where: { id: manualSale.value.id } });
 
     expect(dbDateToKey(saleFromAgenda.saleOn)).toBe(dbDateToKey(manualSaleRow.saleOn));
-    expect(saleFromAgenda.saleDate.getTime()).toBe(manualSaleRow.saleDate.getTime());
-    // F6c: saleDate = 00:00 de 03/06 no fuso da empresa (antes, a meia-noite
-    // UTC da string "2026-06-03" - a representacao que a F6c substituiu).
     expect(dbDateToKey(saleFromAgenda.saleOn)).toBe("2026-06-03");
-    expect(saleFromAgenda.saleDate.toISOString()).toBe(startOfDayInstant("2026-06-03", BUSINESS_TZ).toISOString());
   });
 
   it("concluir 2x sequencial gera UMA única Sale (idempotente)", async () => {

@@ -6,7 +6,7 @@ import { PATCH as patchOpeningBalance } from "@/app/api/business/opening-balance
 import { createBill } from "@/lib/finance/bills/mutations";
 import { getDailySeriesForRange, getFinancialSummaryForRange, getMonthlySeriesForRange, listTransactions } from "@/lib/finance/queries";
 import { getCurrentCashBalance } from "@/lib/finance/cash/queries";
-import { dayRange, dbDateToKey, monthRange, startOfDayInstant, toDateKey } from "@/lib/time/zoned";
+import { dayRange, dbDateToKey, monthRange } from "@/lib/time/zoned";
 
 // Etapa F6a-2: o DIA digitado pelo usuario e a fonte da verdade
 // (occurredOn / openingBalanceOn). As rotas sao chamadas de verdade (so a
@@ -65,8 +65,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia - empresa em %s", (tz)
 
     const row = await prisma.financialEntry.findFirstOrThrow({ where: { businessId } });
     expect(dbDateToKey(row.occurredOn)).toBe("2026-10-20");
-    expect(toDateKey(row.occurredAt, tz)).toBe("2026-10-20"); // invariante
-    expect(row.occurredAt.toISOString()).toBe(startOfDayInstant("2026-10-20", tz).toISOString());
 
     const october = monthRange(2026, 10, tz);
     const { items } = await listTransactions(businessId, { range: october, pageSize: 100 }, tz);
@@ -88,13 +86,12 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia - empresa em %s", (tz)
     const bill = await createBill(businessId, "PAYABLE", { categoryId: expenseCategoryId, description: "Conta", amount: 30, dueOn: "2026-10-15" });
     expect(bill.ok).toBe(true);
     if (!bill.ok) return;
-    const res = await postSettle(jsonRequest(`http://test/api/financeiro/bills/${bill.value.id}/settle`, "POST", { paidAt: "2026-10-20" }), {
+    const res = await postSettle(jsonRequest(`http://test/api/financeiro/bills/${bill.value.id}/settle`, "POST", { paidOn: "2026-10-20" }), {
       params: Promise.resolve({ id: bill.value.id }),
     });
     expect(res.status).toBe(200);
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.value.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe("2026-10-20");
-    expect(toDateKey(entry.occurredAt, tz)).toBe("2026-10-20");
     expect(userId).toBeTruthy();
   });
 
@@ -106,7 +103,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia - empresa em %s", (tz)
     expect(res.status).toBe(200);
     const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
     expect(dbDateToKey(business.openingBalanceOn!)).toBe("2026-09-30");
-    expect(toDateKey(business.openingBalanceDate!, tz)).toBe("2026-09-30");
     const cash = await getCurrentCashBalance(businessId, business);
     expect(cash?.asOfDay).toBe("2026-09-30");
   });
@@ -129,10 +125,8 @@ describe("madrugada de Tóquio (00:00–09:00 JST)", () => {
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.value.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe("2026-10-27");
     // Etapa F6b-2 (decisao do dono, regra 1.2): o lancamento da liquidacao
-    // segue a regra do DIA - occurredAt = 00:00 de 27/10 em Toquio, nao mais
-    // o instante do clique (o instante real fica em Bill.paidAt, auditoria).
-    // O dia (27/10) e o mesmo de antes.
-    expect(entry.occurredAt.toISOString()).toBe(startOfDayInstant("2026-10-27", tz).toISOString());
+    // fica no DIA de "hoje" da empresa; o instante real do clique fica em
+    // Bill.paidAt (auditoria).
     const bill2 = await prisma.bill.findUniqueOrThrow({ where: { id: bill.value.id } });
     expect(bill2.paidAt!.toISOString()).toBe("2026-10-26T20:30:00.000Z");
   });

@@ -4,8 +4,7 @@ import { listVisibleCategories, findOrCreateCategoryInTx } from "@/lib/finance/c
 import { validateImportRow, type ValidatedImportRow } from "@/lib/finance/importValidation";
 import { markPotentialDuplicates } from "@/lib/finance/duplicates";
 import { groupNewCategories } from "@/lib/finance/importPreview";
-import { toDateKey, type TimeZone } from "@/lib/time/zoned";
-import { dayColumns } from "@/lib/finance/entryDay";
+import { dateKeyToDbDate, toDateKey, type TimeZone } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
 
@@ -121,8 +120,7 @@ export async function confirmImport(
     // 00:00 desse dia no fuso da empresa (importValidation), entao toDateKey
     // devolve exatamente o dia digitado.
     function entryDayFromRow(row: ValidatedImportRow) {
-      const day = dayColumns({ day: toDateKey(row.occurredAt!, timeZone) }, timeZone);
-      return { occurredAt: day.at, occurredOn: day.on };
+      return { occurredOn: dateKeyToDbDate(toDateKey(row.occurredAt!, timeZone)) };
     }
 
     function resolveCategoryId(row: ValidatedImportRow): string {

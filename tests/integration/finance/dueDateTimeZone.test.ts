@@ -10,7 +10,7 @@ import { getClientFinancialSummary } from "@/lib/clients/queries";
 import { createSale } from "@/lib/sales/mutations";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { getMonthlyCashSeries } from "@/lib/finance/cash/queries";
-import { dbDateOfInstant, monthRange } from "@/lib/time/zoned";
+import { clockFor, dbDateOfInstant, monthRange } from "@/lib/time/zoned";
 
 // Etapa F3b: contas, vendas, clientes e caixa no FUSO DA EMPRESA, nunca no do
 // processo. Relogio fixo e instantes em UTC explicito: o resultado e o mesmo
@@ -31,6 +31,11 @@ const emptyPaidRange = (clock: { now: Date; timeZone: string }) => {
 describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", () => {
   let userId: string;
   let businessId: string;
+  // Empresa REALMENTE em America/Sao_Paulo (Etapa F6d): antes o caso de SP
+  // era um relogio de Sao Paulo lendo a empresa de Toquio - combinacao que o
+  // app nunca produz (o relogio sempre sai do fuso da propria empresa).
+  let spUserId: string;
+  let spBusinessId: string;
   let expenseCategoryId: string;
   let revenueCategoryId: string;
 
@@ -50,16 +55,26 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
     });
     userId = user.id;
     businessId = (await prisma.business.create({ data: { userId, name: "Empresa F3b", currency: "BRL" } })).id;
+    const spUser = await prisma.user.create({
+      data: { name: "Teste F3b SP", email: `f3b-sp-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`, passwordHash: "x" },
+    });
+    spUserId = spUser.id;
+    spBusinessId = (
+      await prisma.business.create({
+        data: { userId: spUserId, name: "Empresa F3b SP", currency: "BRL", country: "BR", timezone: "America/Sao_Paulo" },
+      })
+    ).id;
   });
 
   afterAll(async () => {
-    await prisma.financialEntry.deleteMany({ where: { businessId } });
-    await prisma.bill.deleteMany({ where: { businessId } });
-    await prisma.saleItem.deleteMany({ where: { sale: { businessId } } });
-    await prisma.sale.deleteMany({ where: { businessId } });
-    await prisma.client.deleteMany({ where: { businessId } });
-    await prisma.business.deleteMany({ where: { id: businessId } });
-    await prisma.user.deleteMany({ where: { id: userId } });
+    const ids = [businessId, spBusinessId];
+    await prisma.financialEntry.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.bill.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.saleItem.deleteMany({ where: { sale: { businessId: { in: ids } } } });
+    await prisma.sale.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.client.deleteMany({ where: { businessId: { in: ids } } });
+    await prisma.business.deleteMany({ where: { id: { in: ids } } });
+    await prisma.user.deleteMany({ where: { id: { in: [userId, spUserId] } } });
   });
 
   it("contas a pagar às 00:30 JST: a de 26/10 vence hoje e a de 25/10 está vencida (empresa Tóquio); em UTC é o contrário do 'hoje'", async () => {
@@ -91,10 +106,11 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
     expect(utcOverdue.items).toHaveLength(0);
   });
 
-  it("vendas e clientes: parcela de 25/10 conta como vencida em Tóquio às 00:30 JST e como em aberto em UTC", async () => {
-    const client = await createClient(businessId, { name: "Cliente F3b", clientType: "PESSOA_FISICA" });
+  // Venda de 20/10 com parcelas 25/10 (100) e 26/10 (200), pelo caminho real.
+  async function saleWithTwoInstallments(ownerBusinessId: string, ownerUserId: string, clientName: string) {
+    const client = await createClient(ownerBusinessId, { name: clientName, clientType: "PESSOA_FISICA" });
     if (!client.ok) throw new Error(client.error);
-    const sale = await createSale(businessId, userId, {
+    const sale = await createSale(ownerBusinessId, ownerUserId, {
       clientRequestId: randomUUID(),
       status: "CONFIRMED",
       clientId: client.value.id,
@@ -110,6 +126,11 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       notes: null,
     });
     if (!sale.ok) throw new Error(sale.error);
+    return client.value.id;
+  }
+
+  it("vendas e clientes: parcela de 25/10 conta como vencida em Tóquio às 00:30 JST e como em aberto em UTC", async () => {
+    const clientId = await saleWithTwoInstallments(businessId, userId, "Cliente F3b");
 
     // Outubro no fuso de cada relogio (o filtro de periodo exige 00:00 nesse
     // fuso, F6b-2); as vendas de 20/10 caem em outubro nos dois.
@@ -120,20 +141,34 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
     expect(utcSales.totalOverdue.toNumber()).toBe(0);
     expect(utcSales.totalPending.toNumber()).toBe(300);
 
-    const tokyoClient = await getClientFinancialSummary(businessId, client.value.id, TOKYO_0030);
+    const tokyoClient = await getClientFinancialSummary(businessId, clientId, TOKYO_0030);
     expect(tokyoClient.totalOverdueAmount.toNumber()).toBe(100);
     expect(tokyoClient.totalOpenAmount.toNumber()).toBe(200);
-    const spClient = await getClientFinancialSummary(businessId, client.value.id, {
-      now: new Date("2026-10-26T02:00:00Z"), // 23:00 de 25/10 em São Paulo
-      timeZone: "America/Sao_Paulo",
-    });
-    // Etapa F6b-2: o vencimento e o DIA gravado (dueOn = 25/10 e 26/10), nao
-    // mais o instante 00:00Z relido em SP (que fazia de "25/10" o dia 24/10
-    // 21:00 - a dependencia da representacao UTC que este comentario
-    // anunciava para a F6). Às 23:00 de 25/10 em SP, "25/10" vence hoje e
-    // "26/10" amanha: nada vencido.
-    expect(spClient.totalOverdueAmount.toNumber()).toBe(0);
-    expect(spClient.totalOpenAmount.toNumber()).toBe(300);
+  });
+
+  it("empresa em São Paulo: a mesma venda vista pelo relógio da própria empresa vira o dia às 00:00 de SP, não de Tóquio", async () => {
+    const clientId = await saleWithTwoInstallments(spBusinessId, spUserId, "Cliente F3b SP");
+    const sp = (now: string) => clockFor({ timezone: "America/Sao_Paulo" }, new Date(now));
+
+    // O mesmo instante do cenario de Tóquio (00:30 JST de 26/10) ainda é 12:30
+    // de 25/10 em SP: "25/10" vence hoje, nada vencido.
+    const atTokyoMidnight = await getClientFinancialSummary(spBusinessId, clientId, sp("2026-10-25T15:30:00Z"));
+    expect(atTokyoMidnight.totalOverdueAmount.toNumber()).toBe(0);
+    expect(atTokyoMidnight.totalOpenAmount.toNumber()).toBe(300);
+
+    // 23:00 de 25/10 em SP: ainda 25/10.
+    const late = await getClientFinancialSummary(spBusinessId, clientId, sp("2026-10-26T02:00:00Z"));
+    expect(late.totalOverdueAmount.toNumber()).toBe(0);
+    expect(late.totalOpenAmount.toNumber()).toBe(300);
+
+    // 00:30 de 26/10 em SP: "25/10" venceu; "26/10" vence hoje.
+    const clock = sp("2026-10-26T03:30:00Z");
+    const afterMidnight = await getClientFinancialSummary(spBusinessId, clientId, clock);
+    expect(afterMidnight.totalOverdueAmount.toNumber()).toBe(100);
+    expect(afterMidnight.totalOpenAmount.toNumber()).toBe(200);
+    const summary = await getBillSummary(spBusinessId, "RECEIVABLE", emptyPaidRange(clock), clock);
+    expect(summary.dueTodayAmount.toNumber()).toBe(200);
+    expect(summary.totalOverdueAmount.toNumber()).toBe(100);
   });
 
   it("caixa: a virada de mês segue o fuso da empresa (01:00 JST de 01/11 já é novembro em Tóquio, ainda outubro em UTC)", async () => {
@@ -141,14 +176,13 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       where: { id: businessId },
       data: {
         openingBalance: new Prisma.Decimal(1000),
-        openingBalanceDate: new Date("2026-09-30T00:00:00Z"),
         openingBalanceOn: dbDateOfInstant(new Date("2026-09-30T00:00:00Z"), "Asia/Tokyo"),
       },
     });
     await prisma.financialEntry.createMany({
       data: [
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Outubro", amount: "50", occurredAt: new Date("2026-10-15T00:00:00Z") , occurredOn: dbDateOfInstant(new Date("2026-10-15T00:00:00Z"), "Asia/Tokyo")},
-        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "01/11 JST", amount: "100", occurredAt: new Date("2026-10-31T16:00:00Z") , occurredOn: dbDateOfInstant(new Date("2026-10-31T16:00:00Z"), "Asia/Tokyo")},
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "Outubro", amount: "50", occurredOn: dbDateOfInstant(new Date("2026-10-15T00:00:00Z"), "Asia/Tokyo")},
+        { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description: "01/11 JST", amount: "100", occurredOn: dbDateOfInstant(new Date("2026-10-31T16:00:00Z"), "Asia/Tokyo")},
       ],
     });
     const business = await prisma.business.findUniqueOrThrow({ where: { id: businessId } });
@@ -166,13 +200,13 @@ describe("vencimento, vendas, clientes e caixa no fuso da empresa (Etapa F3b)", 
       data: {
         userId: (await prisma.user.create({ data: { name: "F3b UTC", email: `f3b-utc-${Date.now()}@example.com`, passwordHash: "x" } })).id,
         name: "Empresa F3b UTC", currency: "BRL", timezone: "UTC", openingBalance: new Prisma.Decimal(1000),
-        openingBalanceDate: new Date("2026-09-30T00:00:00Z"), openingBalanceOn: dbDateOfInstant(new Date("2026-09-30T00:00:00Z"), "UTC"),
+        openingBalanceOn: dbDateOfInstant(new Date("2026-09-30T00:00:00Z"), "UTC"),
       },
     });
     await prisma.financialEntry.createMany({
       data: [new Date("2026-10-15T00:00:00Z"), new Date("2026-10-31T16:00:00Z")].map((at, i) => ({
         businessId: utcBusiness.id, userId: utcBusiness.userId, type: "REVENUE" as const, categoryId: revenueCategoryId,
-        description: i === 0 ? "Outubro" : "01/11 JST", amount: i === 0 ? "50" : "100", occurredAt: at, occurredOn: dbDateOfInstant(at, "UTC"),
+        description: i === 0 ? "Outubro" : "01/11 JST", amount: i === 0 ? "50" : "100", occurredOn: dbDateOfInstant(at, "UTC"),
       })),
     });
     const utc = await getMonthlyCashSeries(utcBusiness.id, utcBusiness, { now, timeZone: "UTC" });

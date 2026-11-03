@@ -1,8 +1,7 @@
 import { Prisma, type RecurringBillFrequency } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
-import { dateKeyToDbDate, todayKey, type DateKey, type TimeZone } from "@/lib/time/zoned";
-import { dayColumns } from "@/lib/finance/entryDay";
+import { dateKeyToDbDate, todayKey, type DateKey } from "@/lib/time/zoned";
 import { billDirectionForType, type BillDirection } from "@/lib/finance/bills/status";
 
 const { Decimal } = Prisma;
@@ -32,9 +31,7 @@ async function assertCategoryMatchesDirection(
   return null;
 }
 
-// Datas de contas sao DIAS DE CALENDARIO (Etapa F6b-2): dueOn/issueOn sao a
-// fonte da verdade; dueDate/issueDate (gravacao dupla ate a F6d) = 00:00 do
-// mesmo dia no fuso da empresa (dayColumns).
+// Datas de contas sao DIAS DE CALENDARIO (Etapa F6b-2): dueOn/issueOn.
 export type BillInput = {
   categoryId: string;
   description: string;
@@ -49,10 +46,8 @@ export type BillInput = {
   notes?: string | null;
 };
 
-function billDayColumns(input: BillInput, timeZone: TimeZone) {
-  const due = dayColumns({ day: input.dueOn }, timeZone);
-  const issue = input.issueOn ? dayColumns({ day: input.issueOn }, timeZone) : null;
-  return { dueOn: due.on, dueDate: due.at, issueOn: issue?.on ?? null, issueDate: issue?.at ?? null };
+function billDayColumns(input: BillInput) {
+  return { dueOn: dateKeyToDbDate(input.dueOn), issueOn: input.issueOn ? dateKeyToDbDate(input.issueOn) : null };
 }
 
 export async function createBill(
@@ -63,14 +58,13 @@ export async function createBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
-  const timeZone = await getBusinessTimeZone(businessId);
   const bill = await prisma.bill.create({
     data: {
       businessId,
       categoryId: input.categoryId,
       description: input.description,
       amount: new Decimal(input.amount),
-      ...billDayColumns(input, timeZone),
+      ...billDayColumns(input),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -103,14 +97,13 @@ export async function updateBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
-  const timeZone = await getBusinessTimeZone(businessId);
   await prisma.bill.update({
     where: { id },
     data: {
       categoryId: input.categoryId,
       description: input.description,
       amount: new Decimal(input.amount),
-      ...billDayColumns(input, timeZone),
+      ...billDayColumns(input),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -167,8 +160,7 @@ export type SettleBillResult =
 //   quando o dia foi informado. Por isso toDateKey(paidAt, fuso) == paidOn
 //   NAO e invariante (pagamento de ontem registrado hoje); a unica invariante
 //   e paidOn/paidAt ambos NULL ou ambos preenchidos.
-// - O lancamento segue a regra do dia: occurredOn = paidOn, occurredAt =
-//   00:00 desse dia no fuso da empresa (dayColumns).
+// - O lancamento segue a regra do dia: occurredOn = paidOn.
 export async function settleBill(
   businessId: string,
   userId: string,
@@ -189,14 +181,13 @@ export async function settleBill(
   }
 
   const timeZone = await getBusinessTimeZone(businessId);
-  const paidDay = paidOn ?? todayKey({ timeZone, now });
-  const day = dayColumns({ day: paidDay }, timeZone);
+  const paidDay = dateKeyToDbDate(paidOn ?? todayKey({ timeZone, now }));
 
   try {
     const financialEntry = await prisma.$transaction(async (tx) => {
       const updated = await tx.bill.updateMany({
         where: { id, businessId, status: "PENDING" },
-        data: { status: "PAID", paidOn: dateKeyToDbDate(paidDay), paidAt: now },
+        data: { status: "PAID", paidOn: paidDay, paidAt: now },
       });
       if (updated.count === 0) return null;
 
@@ -208,8 +199,7 @@ export async function settleBill(
           categoryId: bill.categoryId,
           description: bill.description,
           amount: bill.amount,
-          occurredAt: day.at,
-          occurredOn: day.on,
+          occurredOn: paidDay,
           source: "BILL",
           billId: bill.id,
         },
@@ -269,8 +259,7 @@ export type RecurringBillInput = {
   dayOfWeek?: number | null;
   dayOfMonth?: number | null;
   yearMonth?: number | null;
-  // Dias de inicio/fim (F6b-2): startOn/endOn sao a fonte da verdade;
-  // startDate/endDate = 00:00 do mesmo dia no fuso da empresa.
+  // Dias de inicio/fim (F6b-2).
   startOn: DateKey;
   endOn?: DateKey | null;
   documentNumber?: string | null;
@@ -303,10 +292,8 @@ function fieldsForFrequency(input: RecurringBillInput) {
   }
 }
 
-function recurringDayColumns(input: RecurringBillInput, timeZone: TimeZone) {
-  const start = dayColumns({ day: input.startOn }, timeZone);
-  const end = input.endOn ? dayColumns({ day: input.endOn }, timeZone) : null;
-  return { startOn: start.on, startDate: start.at, endOn: end?.on ?? null, endDate: end?.at ?? null };
+function recurringDayColumns(input: RecurringBillInput) {
+  return { startOn: dateKeyToDbDate(input.startOn), endOn: input.endOn ? dateKeyToDbDate(input.endOn) : null };
 }
 
 export async function createRecurringBill(
@@ -317,7 +304,6 @@ export async function createRecurringBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
-  const timeZone = await getBusinessTimeZone(businessId);
   const entry = await prisma.recurringBill.create({
     data: {
       businessId,
@@ -326,7 +312,7 @@ export async function createRecurringBill(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      ...recurringDayColumns(input, timeZone),
+      ...recurringDayColumns(input),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,
@@ -354,7 +340,6 @@ export async function updateRecurringBill(
   const categoryError = await assertCategoryMatchesDirection(businessId, input.categoryId, direction);
   if (categoryError) return { ok: false, error: categoryError };
 
-  const timeZone = await getBusinessTimeZone(businessId);
   await prisma.recurringBill.update({
     where: { id },
     data: {
@@ -363,7 +348,7 @@ export async function updateRecurringBill(
       amount: new Decimal(input.amount),
       frequency: input.frequency,
       ...fieldsForFrequency(input),
-      ...recurringDayColumns(input, timeZone),
+      ...recurringDayColumns(input),
       documentNumber: input.documentNumber || null,
       counterpartyName: input.counterpartyName || null,
       paymentMethod: input.paymentMethod || null,

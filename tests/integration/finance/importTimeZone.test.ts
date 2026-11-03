@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { confirmImport, type ImportRowInput } from "@/lib/finance/importConfirm";
 import { previewImport } from "@/lib/finance/importPreview";
-import { dbDateOfInstant } from "@/lib/time/zoned";
+import { dbDateOfInstant, dbDateToKey } from "@/lib/time/zoned";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
 
 // Etapa F3c: importacao no FUSO DA EMPRESA. Duplicata = mesmo dia de
@@ -29,9 +29,9 @@ describe("importação e duplicatas no fuso da empresa (Etapa F3c)", () => {
 
   // Lancamento IMPORT ja gravado num instante arbitrario (ex.: por um
   // servidor em outro fuso, antes desta etapa).
-  async function existingImport(businessId: string, userId: string, occurredAtIso: string, description = "Venda balcão") {
+  async function existingImport(businessId: string, userId: string, instantIso: string, description = "Venda balcão") {
     await prisma.financialEntry.create({
-      data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description, amount: "500", occurredAt: new Date(occurredAtIso), occurredOn: dbDateOfInstant(new Date(occurredAtIso), await getBusinessTimeZone(businessId)), source: "IMPORT" },
+      data: { businessId, userId, type: "REVENUE", categoryId: revenueCategoryId, description, amount: "500", occurredOn: dbDateOfInstant(new Date(instantIso), await getBusinessTimeZone(businessId)), source: "IMPORT" },
     });
   }
 
@@ -55,12 +55,12 @@ describe("importação e duplicatas no fuso da empresa (Etapa F3c)", () => {
     await prisma.user.deleteMany({ where: { id: { in: created.map((c) => c.userId) } } });
   });
 
-  it("empresa Tóquio: grava 00:00 JST (15:00Z do dia anterior), o mesmo valor de antes com o servidor em Tóquio", async () => {
+  it("empresa Tóquio: grava o dia da planilha (20/10)", async () => {
     const { businessId, userId } = await makeBusiness("Asia/Tokyo", "JP");
     const result = await confirmImport(businessId, userId, "BRL", "Asia/Tokyo", [row("2026-10-20")], "import_anyway");
     expect(result.inserted).toBe(1);
     const stored = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, source: "IMPORT" } });
-    expect(stored.occurredAt.toISOString()).toBe("2026-10-19T15:00:00.000Z");
+    expect(dbDateToKey(stored.occurredOn)).toBe("2026-10-20");
   });
 
   it("empresa Tóquio, madrugada JST: lançamento já importado às 00:00 JST de 20/10 (15:00Z de 19/10) é duplicata de '2026-10-20' - com o processo em UTC o código antigo comparava pelo dia UTC (19/10) e não detectava", async () => {
@@ -90,12 +90,12 @@ describe("importação e duplicatas no fuso da empresa (Etapa F3c)", () => {
     expect(result.inserted).toBe(0);
   });
 
-  it("empresa São Paulo: grava 00:00 de SP e a duplicata é pelo dia de SP (23:59 de 19/10 em SP não é duplicata de 20/10)", async () => {
+  it("empresa São Paulo: grava o dia da planilha e a duplicata é pelo dia de SP (23:59 de 19/10 em SP não é duplicata de 20/10)", async () => {
     const { businessId, userId } = await makeBusiness("America/Sao_Paulo", "BR");
     const first = await confirmImport(businessId, userId, "BRL", "America/Sao_Paulo", [row("20/10/2026")], "import_anyway");
     expect(first.inserted).toBe(1);
     const stored = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, source: "IMPORT" } });
-    expect(stored.occurredAt.toISOString()).toBe("2026-10-20T03:00:00.000Z");
+    expect(dbDateToKey(stored.occurredOn)).toBe("2026-10-20");
 
     // Reimportar o mesmo arquivo: duplicata.
     const again = await previewImport(businessId, "BRL", "America/Sao_Paulo", csv("2026-10-20"), "csv");
@@ -112,11 +112,11 @@ describe("importação e duplicatas no fuso da empresa (Etapa F3c)", () => {
     expect(spPrevDay.duplicateCount).toBe(1);
   });
 
-  it("empresa UTC: grava 00:00Z e a duplicata é pelo dia UTC", async () => {
+  it("empresa UTC: grava o dia da planilha e a duplicata é pelo dia UTC", async () => {
     const { businessId, userId } = await makeBusiness("UTC", "GB");
     await confirmImport(businessId, userId, "BRL", "UTC", [row("2026-10-20")], "import_anyway");
     const stored = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, source: "IMPORT" } });
-    expect(stored.occurredAt.toISOString()).toBe("2026-10-20T00:00:00.000Z");
+    expect(dbDateToKey(stored.occurredOn)).toBe("2026-10-20");
 
     // 15:00Z de 19/10 (00:00 JST de 20/10) é 19/10 para a empresa em UTC.
     await existingImport(businessId, userId, "2026-10-19T15:00:00Z", "Tóquio meia-noite");

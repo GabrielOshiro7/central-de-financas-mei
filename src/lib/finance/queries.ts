@@ -214,10 +214,9 @@ export type TransactionListItem = Prisma.FinancialEntryGetPayload<{
   include: { category: { select: { id: true; name: true } } };
 }>;
 
-// Periodo pelo DIA (occurredOn); ordem: dia desc, depois instante desc
-// (mesma ordem de antes dentro do dia), createdAt desc e id desc como
-// desempates (antes, lancamentos no mesmo instante ficavam em ordem
-// indefinida - ex.: varias linhas de um mesmo createMany).
+// Periodo pelo DIA (occurredOn); ordem: dia desc e, dentro do dia, createdAt
+// desc e id desc como desempates deterministicos (Etapa F6d: nao ha mais
+// instante do lancamento para ordenar dentro do dia).
 export async function listTransactions(
   businessId: string,
   filters: TransactionFilters,
@@ -238,7 +237,7 @@ export async function listTransactions(
     prisma.financialEntry.findMany({
       where,
       include: { category: { select: { id: true, name: true } } },
-      orderBy: [{ occurredOn: "desc" }, { occurredAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),

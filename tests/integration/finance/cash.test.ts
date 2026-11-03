@@ -39,7 +39,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
   beforeEach(async () => {
     await prisma.financialEntry.deleteMany({ where: { businessId } });
     await prisma.bill.deleteMany({ where: { businessId } });
-    await prisma.business.update({ where: { id: businessId }, data: { openingBalance: 0, openingBalanceDate: null, openingBalanceOn: null } });
+    await prisma.business.update({ where: { id: businessId }, data: { openingBalance: 0, openingBalanceOn: null } });
   });
 
   afterAll(async () => {
@@ -56,18 +56,18 @@ describe("posição de caixa (Etapa 5.1)", () => {
   });
 
   it("cálculo com openingBalance configurado explicitamente", async () => {
-    await updateOpeningBalance(userId, { openingBalance: 1000, openingBalanceDate: new Date(2026, 0, 1) });
+    await updateOpeningBalance(userId, { openingBalance: 1000, openingBalanceOn: new Date(2026, 0, 1) });
 
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 0, 10),
+      occurredOn: new Date(2026, 0, 10),
       description: "Venda",
       categoryId: revenueCategoryId,
       amount: 500,
     });
     await createTransaction(businessId, userId, {
       type: "EXPENSE",
-      occurredAt: new Date(2026, 0, 15),
+      occurredOn: new Date(2026, 0, 15),
       description: "Aluguel",
       categoryId: expenseCategoryId,
       amount: 200,
@@ -83,14 +83,14 @@ describe("posição de caixa (Etapa 5.1)", () => {
   it("cálculo sem openingBalance configurado usa a data do primeiro lançamento como base implícita (saldo 0)", async () => {
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 1, 1),
+      occurredOn: new Date(2026, 1, 1),
       description: "Primeira venda",
       categoryId: revenueCategoryId,
       amount: 1000,
     });
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 1, 10),
+      occurredOn: new Date(2026, 1, 10),
       description: "Segunda venda",
       categoryId: revenueCategoryId,
       amount: 500,
@@ -105,26 +105,26 @@ describe("posição de caixa (Etapa 5.1)", () => {
     expect(cash!.balance.toNumber()).toBe(500);
   });
 
-  it("lançamentos anteriores ou na própria data de openingBalanceDate são excluídos do acumulado", async () => {
-    await updateOpeningBalance(userId, { openingBalance: 100, openingBalanceDate: new Date(2026, 2, 10) });
+  it("lançamentos anteriores ou no próprio dia de openingBalanceOn são excluídos do acumulado", async () => {
+    await updateOpeningBalance(userId, { openingBalance: 100, openingBalanceOn: new Date(2026, 2, 10) });
 
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 2, 5), // antes - excluido
+      occurredOn: new Date(2026, 2, 5), // antes - excluido
       description: "Antiga",
       categoryId: revenueCategoryId,
       amount: 9999,
     });
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 2, 10), // mesma data - excluido
+      occurredOn: new Date(2026, 2, 10), // mesma data - excluido
       description: "Na data",
       categoryId: revenueCategoryId,
       amount: 8888,
     });
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 2, 11), // depois - contado
+      occurredOn: new Date(2026, 2, 11), // depois - contado
       description: "Depois",
       categoryId: revenueCategoryId,
       amount: 50,
@@ -136,7 +136,7 @@ describe("posição de caixa (Etapa 5.1)", () => {
   });
 
   it("Bill com status PENDING nunca entra no cálculo do Caixa - só depois de confirmada (settleBill) vira FinancialEntry", async () => {
-    await updateOpeningBalance(userId, { openingBalance: 0, openingBalanceDate: new Date(2026, 0, 1) });
+    await updateOpeningBalance(userId, { openingBalance: 0, openingBalanceOn: new Date(2026, 0, 1) });
 
     const bill = await createBill(businessId, "RECEIVABLE", {
       categoryId: revenueCategoryId,
@@ -161,27 +161,27 @@ describe("posição de caixa (Etapa 5.1)", () => {
 
   it("consistência cruzada: o último ponto da série mensal bate exatamente com o saldo atual do card", async () => {
     const openingDate = new Date(2026, 0, 1);
-    await updateOpeningBalance(userId, { openingBalance: 200, openingBalanceDate: openingDate });
+    await updateOpeningBalance(userId, { openingBalance: 200, openingBalanceOn: openingDate });
 
     const now = new Date(2026, 2, 15); // meados de marco/2026
 
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 0, 10),
+      occurredOn: new Date(2026, 0, 10),
       description: "Jan",
       categoryId: revenueCategoryId,
       amount: 300,
     });
     await createTransaction(businessId, userId, {
       type: "EXPENSE",
-      occurredAt: new Date(2026, 1, 5),
+      occurredOn: new Date(2026, 1, 5),
       description: "Fev",
       categoryId: expenseCategoryId,
       amount: 50,
     });
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 2, 10), // dentro do mes de "now", antes de "now"
+      occurredOn: new Date(2026, 2, 10), // dentro do mes de "now", antes de "now"
       description: "Mar",
       categoryId: revenueCategoryId,
       amount: 40,
@@ -217,19 +217,19 @@ describe("posição de caixa (Etapa 5.1)", () => {
       data: { userId: userB.id, name: "Empresa Caixa B", currency: "BRL" },
     });
 
-    await updateOpeningBalance(userId, { openingBalance: 100, openingBalanceDate: new Date(2026, 0, 1) });
-    await updateOpeningBalance(userB.id, { openingBalance: 99999, openingBalanceDate: new Date(2026, 0, 1) });
+    await updateOpeningBalance(userId, { openingBalance: 100, openingBalanceOn: new Date(2026, 0, 1) });
+    await updateOpeningBalance(userB.id, { openingBalance: 99999, openingBalanceOn: new Date(2026, 0, 1) });
 
     await createTransaction(businessId, userId, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 0, 10),
+      occurredOn: new Date(2026, 0, 10),
       description: "Venda A",
       categoryId: revenueCategoryId,
       amount: 50,
     });
     await createTransaction(businessB.id, userB.id, {
       type: "REVENUE",
-      occurredAt: new Date(2026, 0, 10),
+      occurredOn: new Date(2026, 0, 10),
       description: "Venda B",
       categoryId: revenueCategoryId,
       amount: 777777,
@@ -245,10 +245,10 @@ describe("posição de caixa (Etapa 5.1)", () => {
   });
 
   it("precisão decimal preservada no ciclo completo (banco real, não só em memória)", async () => {
-    await updateOpeningBalance(userId, { openingBalance: "100.10", openingBalanceDate: new Date(2026, 0, 1) });
+    await updateOpeningBalance(userId, { openingBalance: "100.10", openingBalanceOn: new Date(2026, 0, 1) });
     await createTransaction(businessId, userId, {
       type: "EXPENSE",
-      occurredAt: new Date(2026, 0, 5),
+      occurredOn: new Date(2026, 0, 5),
       description: "Despesa com centavos",
       categoryId: expenseCategoryId,
       amount: "0.20",

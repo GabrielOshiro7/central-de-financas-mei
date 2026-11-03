@@ -2,33 +2,25 @@ import {
   dateKeyToDbDate,
   dbDateOfInstant,
   isDateKey,
-  startOfDayInstant,
   startOfDayOf,
   toDateKey,
   type DateKey,
   type TimeZone,
 } from "@/lib/time/zoned";
 
-// Dia de calendario dos lancamentos (Etapa F6a-2): FinancialEntry.occurredOn
-// (e Business.openingBalanceOn) e a FONTE DA VERDADE do dia; occurredAt
-// (instante) continua gravado ate a F6d, sempre derivado do dia. Contas
-// (Bill.dueOn/issueOn/paidOn, RecurringBill.startOn/endOn) seguem a mesma
-// regra desde a Etapa F6b-2.
+// Dia de calendario (Etapa F6): FinancialEntry.occurredOn, Business.
+// openingBalanceOn, Bill.dueOn/issueOn/paidOn, Sale.saleOn e os startOn/endOn
+// dos moldes sao colunas @db.Date - o dia no fuso da empresa, sem instante ao
+// lado (as colunas de instante sairam na F6d; so Bill.paidAt fica, como
+// auditoria).
 
 // Origem de um dia gravado: ou o usuario/planilha/molde disse QUAL dia
-// (DateKey), ou so existe um instante real (ex.: liquidacao sem data, que usa
-// o momento do clique).
-export type DaySource = { day: DateKey } | { instant: Date };
+// (DateKey), ou so existe um instante real (Date - ex.: um cliente da API
+// que mandou data com hora), cujo dia e o do fuso da empresa.
+export type DaySource = DateKey | Date;
 
-// Colunas gravadas para um dia, garantindo toDateKey(at, fuso) == on em
-// QUALQUER fuso:
-// - DateKey: on = o proprio dia; at = 00:00 desse dia no fuso da empresa;
-// - instante: on = o dia do instante no fuso da empresa; at = o instante.
-export function dayColumns(source: DaySource, timeZone: TimeZone): { at: Date; on: Date } {
-  if ("day" in source) {
-    return { at: startOfDayInstant(source.day, timeZone), on: dateKeyToDbDate(source.day) };
-  }
-  return { at: source.instant, on: dbDateOfInstant(source.instant, timeZone) };
+export function dbDateOfDaySource(source: DaySource, timeZone: TimeZone): Date {
+  return typeof source === "string" ? dateKeyToDbDate(source) : dbDateOfInstant(source, timeZone);
 }
 
 // Dia de calendario de um valor de data vindo de formulario/API (Etapa

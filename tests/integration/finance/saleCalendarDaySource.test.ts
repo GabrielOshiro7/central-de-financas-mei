@@ -7,7 +7,7 @@ import { POST as postRecurring } from "@/app/api/financeiro/recurring/route";
 import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { getSalesSummary } from "@/lib/sales/queries";
-import { dayRange, dbDateToKey, startOfDayInstant, toDateKey, zonedInstant } from "@/lib/time/zoned";
+import { dayRange, dbDateToKey, zonedInstant } from "@/lib/time/zoned";
 
 // Etapa F6c: o DIA digitado e a fonte da verdade de vendas (saleOn), das
 // parcelas que a venda gera (dueOn/paidOn), do lancamento a vista
@@ -17,9 +17,9 @@ import { dayRange, dbDateToKey, startOfDayInstant, toDateKey, zonedInstant } fro
 // America/Sao_Paulo e 21:00 de 19/10: a venda, a parcela a vista e o
 // lancamento caiam no dia 19, e o molde comecava/terminava um dia antes.
 // Os testes "dia da venda/parcelas/lancamento", "conclusão de agendamento" e
-// "molde recorrente" usam so colunas que ja existiam antes da F6c (saleDate
-// lido no fuso, dueOn/paidOn, occurredOn) e FALHAM no codigo anterior para
-// Sao Paulo; Toquio/UTC nao mudam de dia.
+// "molde recorrente" FALHAVAM no codigo anterior a F6c para Sao Paulo
+// (Toquio/UTC nao mudam de dia). Desde a F6d os dias (saleOn/dueOn/paidOn/
+// occurredOn/startOn/endOn) sao as unicas colunas de data.
 const session = vi.hoisted(() => ({ user: null as null | { id: string; name: string; email: string } }));
 vi.mock("@/lib/auth/cookies", () => ({ getCurrentUser: async () => session.user }));
 
@@ -55,26 +55,15 @@ async function postSaleByRoute(clientId: string, installments: unknown[]) {
   return prisma.sale.findUniqueOrThrow({ where: { id }, include: { bills: { orderBy: { dueOn: "asc" } } } });
 }
 
-// Gravacao dupla: as colunas antigas sao 00:00 do MESMO dia no fuso da empresa
-// (vendas, moldes, contas e lancamentos), e paidOn/paidAt NULL juntos.
-async function assertDualWriteInvariants(businessId: string, tz: string) {
-  const sales = await prisma.sale.findMany({ where: { businessId } });
-  for (const s of sales) {
-    expect(s.saleDate.toISOString(), `venda #${s.saleNumber}`).toBe(startOfDayInstant(dbDateToKey(s.saleOn), tz).toISOString());
-  }
+// Invariante que sobrou da gravacao dupla (F6d): paidOn/paidAt NULL juntos.
+async function assertDayInvariants(businessId: string) {
+  const sales = await prisma.sale.findMany({ where: { businessId }, orderBy: { saleNumber: "asc" } });
   const molds = await prisma.recurringEntry.findMany({ where: { businessId } });
-  for (const m of molds) {
-    expect(m.startDate.toISOString(), m.description).toBe(startOfDayInstant(dbDateToKey(m.startOn), tz).toISOString());
-    expect(m.endDate?.toISOString() ?? null, m.description).toBe(m.endOn ? startOfDayInstant(dbDateToKey(m.endOn), tz).toISOString() : null);
-  }
   const bills = await prisma.bill.findMany({ where: { businessId } });
   for (const b of bills) {
-    expect(b.dueDate.toISOString(), b.description).toBe(startOfDayInstant(dbDateToKey(b.dueOn), tz).toISOString());
     expect(b.paidOn === null, `${b.description} paidOn/paidAt`).toBe(b.paidAt === null);
   }
-  const entries = await prisma.financialEntry.findMany({ where: { businessId } });
-  for (const e of entries) expect(toDateKey(e.occurredAt, tz), e.description).toBe(dbDateToKey(e.occurredOn));
-  return { sales, molds, bills, entries };
+  return { sales, molds, bills };
 }
 
 beforeAll(async () => {
@@ -108,7 +97,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
       { dueDate: "2026-11-20", amount: 150 },
       { dueDate: "2026-12-20", amount: 150 },
     ]);
-    expect(toDateKey(sale.saleDate, tz)).toBe("2026-10-20");
+    expect(dbDateToKey(sale.saleOn)).toBe("2026-10-20");
     expect(sale.bills.map((b) => dbDateToKey(b.dueOn))).toEqual(["2026-11-20", "2026-12-20"]);
     const clock = { timeZone: tz, now: zonedInstant(tz, 2026, 10, 21, 12, 0) };
     expect((await getSalesSummary(businessId, dayRange("2026-10-20", tz), clock)).salesCount).toBe(1);
@@ -127,7 +116,6 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
     expect(dbDateToKey(bill.paidOn!)).toBe("2026-10-20");
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: bill.id } });
     expect(dbDateToKey(entry.occurredOn)).toBe("2026-10-20");
-    expect(entry.occurredAt.toISOString()).toBe(startOfDayInstant("2026-10-20", tz).toISOString());
     // Auditoria (decisao da F6b-2): o instante real do registro.
     expect(bill.paidAt!.toISOString()).toBe(registeredAt.toISOString());
   });
@@ -145,7 +133,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
     expect(done.ok).toBe(true);
     if (!done.ok) return;
     const sale = await prisma.sale.findUniqueOrThrow({ where: { id: done.value.saleId }, include: { bills: true } });
-    expect(toDateKey(sale.saleDate, tz)).toBe("2026-10-20");
+    expect(dbDateToKey(sale.saleOn)).toBe("2026-10-20");
     expect(dbDateToKey(sale.bills[0].dueOn)).toBe("2026-10-20"); // a vista: o dia do atendimento, nao o digitado
     expect(dbDateToKey(sale.bills[0].paidOn!)).toBe("2026-10-20");
     const entry = await prisma.financialEntry.findFirstOrThrow({ where: { businessId, billId: sale.bills[0].id } });
@@ -165,11 +153,11 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
     const entries = await prisma.financialEntry.findMany({ where: { businessId, source: "RECURRING" } });
     expect(entries.map((e) => dbDateToKey(e.occurredOn)).sort()).toEqual(["2026-10-20", "2026-11-20", "2026-12-20"]);
     const mold = await prisma.recurringEntry.findFirstOrThrow({ where: { businessId } });
-    expect(toDateKey(mold.startDate, tz)).toBe("2026-10-20");
-    expect(toDateKey(mold.endDate!, tz)).toBe("2026-12-20");
+    expect(dbDateToKey(mold.startOn)).toBe("2026-10-20");
+    expect(dbDateToKey(mold.endOn!)).toBe("2026-12-20");
   });
 
-  it("gravação dupla: saleOn/startOn/endOn são os dias digitados e as colunas antigas = 00:00 desses dias, em todos os caminhos", async () => {
+  it("saleOn/startOn/endOn são os dias digitados, em todos os caminhos", async () => {
     const { userId, businessId, clientId } = await login(tz);
     await postSaleByRoute(clientId, [{ dueDate: "2026-11-20", amount: 300 }]);
     await postSaleByRoute(clientId, [{ dueDate: "2026-10-20", amount: 300, paidNow: true }]);
@@ -188,7 +176,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
     }, tz);
     expect(done.ok).toBe(true);
 
-    const { sales, molds } = await assertDualWriteInvariants(businessId, tz);
+    const { sales, molds } = await assertDayInvariants(businessId);
     expect(sales.map((s) => dbDateToKey(s.saleOn))).toEqual(["2026-10-20", "2026-10-20", "2026-10-20"]);
     expect(dbDateToKey(molds[0].startOn)).toBe("2026-08-01");
     expect(dbDateToKey(molds[0].endOn!)).toBe("2026-09-30");

@@ -16,13 +16,10 @@ import { createSale } from "@/lib/sales/mutations";
 import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
 import { clockFor, dbDateToKey, toDateKey } from "@/lib/time/zoned";
 
-// Etapa F6b-1 (expandir contas): todo caminho que grava Bill.dueDate/
-// issueDate/paidAt ou RecurringBill.startDate/endDate grava TAMBEM a coluna
-// de dia (dueOn/issueOn/paidOn/startOn/endOn) com o MESMO dia que o app
-// enxerga no instante antigo, no fuso da empresa - e NULL junto com a antiga.
-// Desde a F6b-2 as mutations de contas recebem o DIA (DateKey) e derivam o
-// instante antigo dele; parcelas de venda/agendamento continuam pela regra do
-// instante (F6c). Exercitado pelo codigo real (mutations).
+// Todo caminho que grava contas e moldes grava os dias certos (dueOn/issueOn/
+// paidOn/startOn/endOn, Etapa F6b-1 como gravacao dupla; desde a F6d os dias
+// sao as unicas colunas de data, alem do instante de auditoria paidAt).
+// Exercitado pelo codigo real (mutations).
 const TIME_ZONES = ["Asia/Tokyo", "America/Sao_Paulo", "UTC"] as const;
 // 05:30 JST de 27/10 = 20:30 UTC de 26/10 = 17:30 de 26/10 em Sao Paulo.
 const EARLY_JST = new Date("2026-10-26T20:30:00.000Z");
@@ -41,27 +38,18 @@ async function newBusiness(timezone: string) {
 }
 
 const keyOrNull = (d: Date | null) => (d ? dbDateToKey(d) : null);
-const dayOrNull = (d: Date | null, tz: string) => (d ? toDateKey(d, tz) : null);
 
-// Invariante sobre TODAS as contas e moldes da empresa.
-async function assertBillsInvariant(businessId: string, tz: string) {
-  const bills = await prisma.bill.findMany({ where: { businessId } });
+// Invariante sobre TODAS as contas da empresa. Pagamento (Etapa F6b-2,
+// decisao do dono): paidAt e o instante de AUDITORIA (o momento real do
+// registro) e paidOn o dia informado - um pagamento de ontem registrado hoje
+// tem toDateKey(paidAt) != paidOn, de proposito. A invariante e: os dois NULL
+// ou os dois preenchidos.
+async function assertBillsInvariant(businessId: string) {
+  const bills = await prisma.bill.findMany({ where: { businessId }, orderBy: { createdAt: "asc" } });
   for (const b of bills) {
-    const label = `${b.description} ${b.status}`;
-    expect(dbDateToKey(b.dueOn), `${label} dueOn`).toBe(toDateKey(b.dueDate, tz));
-    expect(keyOrNull(b.issueOn), `${label} issueOn`).toBe(dayOrNull(b.issueDate, tz));
-    // Pagamento (Etapa F6b-2, decisao do dono): paidAt virou o instante de
-    // AUDITORIA (o momento real do registro) e paidOn o dia informado - um
-    // pagamento de ontem registrado hoje tem toDateKey(paidAt) != paidOn, de
-    // proposito. A invariante que sobra e: os dois NULL ou os dois preenchidos.
-    // (A F6b-1 afirmava paidOn == dia de paidAt; deixou de ser verdade.)
-    expect(b.paidOn === null, `${label} paidOn/paidAt ambos NULL ou ambos preenchidos`).toBe(b.paidAt === null);
+    expect(b.paidOn === null, `${b.description} ${b.status} paidOn/paidAt ambos NULL ou ambos preenchidos`).toBe(b.paidAt === null);
   }
   const molds = await prisma.recurringBill.findMany({ where: { businessId } });
-  for (const m of molds) {
-    expect(dbDateToKey(m.startOn), `${m.description} startOn`).toBe(toDateKey(m.startDate, tz));
-    expect(keyOrNull(m.endOn), `${m.description} endOn`).toBe(dayOrNull(m.endDate, tz));
-  }
   return { bills, molds };
 }
 
@@ -84,7 +72,7 @@ afterAll(async () => {
   await prisma.user.deleteMany({ where: { id: { in: created.map((c) => c.userId) } } });
 });
 
-describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s", (tz) => {
+describe.each(TIME_ZONES)("dias gravados nas contas - empresa em %s", (tz) => {
   it("criar e editar conta (vencimento e emissão, com e sem emissão), e cancelar", async () => {
     const { businessId } = await newBusiness(tz);
     const created = await createBill(businessId, "PAYABLE", {
@@ -92,19 +80,20 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
     });
     expect(created.ok).toBe(true);
     if (!created.ok) return;
-    let { bills } = await assertBillsInvariant(businessId, tz);
-    expect(keyOrNull(bills[0].issueOn)).not.toBeNull();
+    let { bills } = await assertBillsInvariant(businessId);
+    expect(keyOrNull(bills[0].issueOn)).toBe("2026-10-01");
+    expect(dbDateToKey(bills[0].dueOn)).toBe("2026-10-20");
 
     const updated = await updateBill(businessId, created.value.id, "PAYABLE", {
       categoryId: expenseCategoryId, description: "Conta editada", amount: 30, dueOn: toDateKey(EARLY_JST, tz), issueOn: null,
     });
     expect(updated.ok).toBe(true);
-    ({ bills } = await assertBillsInvariant(businessId, tz));
+    ({ bills } = await assertBillsInvariant(businessId));
     expect(bills[0].issueOn).toBeNull();
     expect(dbDateToKey(bills[0].dueOn)).toBe(tz === "Asia/Tokyo" ? "2026-10-27" : "2026-10-26");
 
     expect((await cancelBill(businessId, created.value.id)).ok).toBe(true);
-    await assertBillsInvariant(businessId, tz);
+    await assertBillsInvariant(businessId);
   });
 
   it("liquidar com data informada → reverter → liquidar de novo sem data (madrugada JST)", async () => {
@@ -113,20 +102,20 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
     expect(bill.ok).toBe(true);
     if (!bill.ok) return;
 
-    // como a rota faz com "paidAt": "2026-10-20"
+    // como a rota faz com "paidOn": "2026-10-20"
     expect((await settleBill(businessId, userId, bill.value.id, "2026-10-20")).ok).toBe(true);
-    let { bills } = await assertBillsInvariant(businessId, tz);
-    expect(bills[0].paidOn).not.toBeNull();
+    let { bills } = await assertBillsInvariant(businessId);
+    expect(keyOrNull(bills[0].paidOn)).toBe("2026-10-20");
 
     expect((await revertBillSettlement(businessId, bill.value.id)).ok).toBe(true);
-    ({ bills } = await assertBillsInvariant(businessId, tz));
+    ({ bills } = await assertBillsInvariant(businessId));
     expect(bills[0].status).toBe("PENDING");
     expect(bills[0].paidAt).toBeNull();
     expect(bills[0].paidOn).toBeNull();
 
     // sem data: "hoje" no fuso da empresa no instante do clique (05:30 JST)
     expect((await settleBill(businessId, userId, bill.value.id, undefined, EARLY_JST)).ok).toBe(true);
-    ({ bills } = await assertBillsInvariant(businessId, tz));
+    ({ bills } = await assertBillsInvariant(businessId));
     expect(dbDateToKey(bills[0].paidOn!)).toBe(tz === "Asia/Tokyo" ? "2026-10-27" : "2026-10-26");
   });
 
@@ -137,7 +126,8 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
     });
     expect(mold.ok).toBe(true);
     if (!mold.ok) return;
-    let { molds } = await assertBillsInvariant(businessId, tz);
+    let { molds } = await assertBillsInvariant(businessId);
+    expect(dbDateToKey(molds[0].startOn)).toBe("2026-08-01");
     expect(molds[0].endOn).toBeNull();
 
     const updated = await updateRecurringBill(businessId, mold.value.id, "PAYABLE", {
@@ -145,11 +135,11 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
       startOn: "2026-08-01", endOn: toDateKey(EARLY_JST, tz),
     });
     expect(updated.ok).toBe(true);
-    ({ molds } = await assertBillsInvariant(businessId, tz));
-    expect(molds[0].endOn).not.toBeNull();
+    ({ molds } = await assertBillsInvariant(businessId));
+    expect(keyOrNull(molds[0].endOn)).toBe(toDateKey(EARLY_JST, tz));
 
     await materializeRecurringBills(businessId, clockFor({ timezone: tz }, EARLY_JST));
-    const { bills } = await assertBillsInvariant(businessId, tz);
+    const { bills } = await assertBillsInvariant(businessId);
     expect(bills.map((b) => dbDateToKey(b.dueOn)).sort()).toEqual(["2026-08-05", "2026-09-05", "2026-10-05"]);
   });
 
@@ -165,7 +155,7 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
       ...base, clientRequestId: randomUUID(),
       installments: [{ dueOn: "2026-07-10", amount: 300 }, { dueOn: toDateKey(EARLY_JST, tz), amount: 300 }],
     })).ok).toBe(true);
-    const { bills } = await assertBillsInvariant(businessId, tz);
+    const { bills } = await assertBillsInvariant(businessId);
     expect(bills).toHaveLength(3);
     expect(bills.filter((b) => b.paidOn !== null)).toHaveLength(1);
   });
@@ -187,7 +177,7 @@ describe.each(TIME_ZONES)("gravação dupla das datas de contas - empresa em %s"
       }, tz);
       expect(done.ok).toBe(true);
     }
-    const { bills } = await assertBillsInvariant(businessId, tz);
+    const { bills } = await assertBillsInvariant(businessId);
     expect(bills).toHaveLength(3);
   });
 });

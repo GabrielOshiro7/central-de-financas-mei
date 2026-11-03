@@ -105,7 +105,7 @@ describe("vendas (Etapa 6)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    let bills = await prisma.bill.findMany({ where: { saleId: result.value.id }, orderBy: { dueDate: "asc" } });
+    let bills = await prisma.bill.findMany({ where: { saleId: result.value.id }, orderBy: { dueOn: "asc" } });
     expect(bills).toHaveLength(3);
     expect(bills.every((b) => b.status === "PENDING")).toBe(true);
     const sum = bills.reduce((t, b) => t.plus(b.amount), new Decimal(0));

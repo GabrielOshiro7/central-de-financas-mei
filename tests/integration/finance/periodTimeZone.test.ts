@@ -38,8 +38,8 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
       businessByTz[tz] = id;
       await prisma.financialEntry.createMany({
         data: [
-          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredAt: NEAR_MONTH_TURN, occurredOn: dbDateOfInstant(NEAR_MONTH_TURN, tz) },
-          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredAt: EARLY_JST, occurredOn: dbDateOfInstant(EARLY_JST, tz) },
+          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Virada de mês", amount: "100", occurredOn: dbDateOfInstant(NEAR_MONTH_TURN, tz) },
+          { businessId: id, userId: user.id, type: "REVENUE", categoryId: revenueCategoryId, description: "Madrugada JST", amount: "7", occurredOn: dbDateOfInstant(EARLY_JST, tz) },
         ],
       });
     }

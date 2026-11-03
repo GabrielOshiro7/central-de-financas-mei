@@ -19,7 +19,7 @@ export type EffectiveOpeningBalance = {
   configured: boolean;
 };
 
-// Resolve a base real do calculo (Etapa 5.1): se openingBalanceDate estiver
+// Resolve a base real do calculo (Etapa 5.1): se openingBalanceOn estiver
 // configurado, usa exatamente o que a empresa configurou (configured=true).
 // Senao, cai no fallback implicito documentado no schema - data do primeiro
 // FinancialEntry, saldo inicial = 0 nessa data (configured=false, a UI usa

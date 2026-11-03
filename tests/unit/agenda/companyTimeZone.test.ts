@@ -72,7 +72,7 @@ describe("Agenda com empresa em São Paulo", () => {
     );
   });
 
-  it("saleDate de um atendimento às 23:30 de 20/10 em SP é o dia 20/10 (em Tóquio já seria 21/10)", () => {
+  it("o dia da venda de um atendimento às 23:30 de 20/10 em SP é o dia 20/10 (em Tóquio já seria 21/10)", () => {
     const startAt = new Date("2026-10-21T02:30:00Z");
     // F6c: o dia da venda e uma DateKey (antes, a meia-noite UTC desse dia).
     expect(resolveSaleDayFromAppointment(startAt, SP)).toBe("2026-10-20");

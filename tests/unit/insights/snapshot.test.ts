@@ -120,7 +120,7 @@ describe("computeIndicatorSnapshot - hasPreviousPeriod desacoplado do recorte", 
         categoryId: revenueCategoryId,
         description: "Recebimento concentrado no fim de agosto",
         amount: "5000",
-        occurredAt: new Date(2026, 7, 25), occurredOn: dbDateOfInstant(new Date(2026, 7, 25), "Asia/Tokyo"),
+        occurredOn: dbDateOfInstant(new Date(2026, 7, 25), "Asia/Tokyo"),
       },
     });
 
