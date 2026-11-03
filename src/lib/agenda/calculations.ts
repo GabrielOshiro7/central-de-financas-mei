@@ -1,6 +1,7 @@
 import type { AppointmentStatus } from "@prisma/client";
 import { agendaDateKey } from "@/lib/agenda/time";
 import { compareKeys, type DateKey, type TimeZone } from "@/lib/time/zoned";
+import { normalizeCategoryName } from "@/lib/finance/categoryName";
 
 // Tabela EXPLICITA de pares permitidos (nunca uma funcao "generica" com
 // regras soltas) - cada aresta e uma decisao deliberada da Etapa 8, testada
@@ -61,6 +62,15 @@ export function autoCompleteEligibleAfter(from: AppointmentStatus, to: Appointme
   if (to === "CANCELADO" || to === "FALTOU") return false;
   if (to === "AGENDADO" && (from === "CANCELADO" || from === "FALTOU")) return false;
   return undefined;
+}
+
+// Categoria de receita pre-selecionada num agendamento DAY novo (Agenda A3):
+// a categoria padrao de receita de servicos ("Venda de serviços", pelo nome
+// normalizado); sem ela, a primeira categoria de receita visivel.
+const SERVICE_REVENUE_CATEGORY = normalizeCategoryName("Venda de serviços");
+
+export function defaultServiceRevenueCategoryId(categories: { id: string; normalizedName: string }[]): string | null {
+  return (categories.find((c) => c.normalizedName === SERVICE_REVENUE_CATEGORY) ?? categories[0])?.id ?? null;
 }
 
 // startAt/endAt sao anulaveis desde a Agenda A1 (o fluxo DAY nao tem

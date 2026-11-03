@@ -1,7 +1,19 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { agendaMonthRange } from "@/lib/agenda/calendar";
 import { requireTimed } from "@/lib/agenda/calculations";
-import type { TimeZone } from "@/lib/time/zoned";
+import {
+  addDays,
+  addMonthsClamped,
+  dateKeyToDbDate,
+  dbDateToKey,
+  startOfDayInstant,
+  toDateKey,
+  type DateKey,
+  type TimeZone,
+} from "@/lib/time/zoned";
+
+const { Decimal } = Prisma;
 
 // Inclui o Product atual de cada servico (so defaultPrice) - usado pra
 // pre-preencher o preco no dialogo de "concluir atendimento" com o preco
@@ -37,10 +49,91 @@ export async function listAppointmentsForMonth(businessId: string, year: number,
   return listAppointmentsForRange(businessId, start, end);
 }
 
+// --- Telas da Agenda com os dois fluxos (Agenda A3) ------------------------
+
+const AGENDA_ENTRY_INCLUDE = {
+  client: { select: { name: true } },
+  services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
+  sale: { select: { id: true, saleNumber: true, status: true, total: true } },
+  _count: { select: { installments: true } },
+} satisfies Prisma.AppointmentInclude;
+
+type AgendaRow = Prisma.AppointmentGetPayload<{ include: typeof AGENDA_ENTRY_INCLUDE }>;
+
+// Agendamento de qualquer fluxo, com o DIA de calendario (fuso da empresa) e
+// o valor ja resolvidos:
+// - DAY: dia = scheduledOn; valor = soma de unitPrice * quantity (snapshot).
+// - TIMED: dia = dia de startAt no fuso da empresa; valor = total da venda
+//   quando concluido, senao a soma dos precos padrao ATUAIS dos servicos (o
+//   mesmo valor que o modal de conclusao pre-preenche - o TIMED nao grava
+//   valor antes de concluir).
+export type AgendaEntry = AgendaRow & { dayKey: DateKey; amount: Prisma.Decimal };
+
+function toAgendaEntry(row: AgendaRow, timeZone: TimeZone): AgendaEntry {
+  if (row.kind === "DAY") {
+    const amount = row.services.reduce((sum, s) => sum.plus((s.unitPrice ?? new Decimal(0)).times(s.quantity)), new Decimal(0));
+    return { ...row, dayKey: dbDateToKey(row.scheduledOn!), amount };
+  }
+  const amount =
+    row.sale?.total ?? row.services.reduce((sum, s) => sum.plus(s.product?.defaultPrice ?? new Decimal(0)), new Decimal(0));
+  return { ...row, dayKey: toDateKey(requireTimed(row).startAt, timeZone), amount };
+}
+
+// Ordem dentro de um dia: TIMED primeiro, pelo horario; depois DAY, por
+// createdAt e, no empate, id.
+function compareAgendaEntries(a: AgendaEntry, b: AgendaEntry): number {
+  if (a.dayKey !== b.dayKey) return a.dayKey < b.dayKey ? -1 : 1;
+  if (a.kind !== b.kind) return a.kind === "TIMED" ? -1 : 1;
+  if (a.kind === "TIMED") return a.startAt!.getTime() - b.startAt!.getTime();
+  const created = a.createdAt.getTime() - b.createdAt.getTime();
+  return created !== 0 ? created : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+// Agendamentos dos dias [startKey, endKey) - TIMED pelo instante de inicio
+// dentro desses dias no fuso da empresa, DAY pelo proprio dia.
+async function listAgendaEntries(businessId: string, startKey: DateKey, endKey: DateKey, timeZone: TimeZone): Promise<AgendaEntry[]> {
+  const [timed, day] = await Promise.all([
+    prisma.appointment.findMany({
+      where: { businessId, kind: "TIMED", startAt: { gte: startOfDayInstant(startKey, timeZone), lt: startOfDayInstant(endKey, timeZone) } },
+      include: AGENDA_ENTRY_INCLUDE,
+    }),
+    prisma.appointment.findMany({
+      where: { businessId, kind: "DAY", scheduledOn: { gte: dateKeyToDbDate(startKey), lt: dateKeyToDbDate(endKey) } },
+      include: AGENDA_ENTRY_INCLUDE,
+    }),
+  ]);
+  return [...timed, ...day].map((row) => toAgendaEntry(row, timeZone)).sort(compareAgendaEntries);
+}
+
+export function listAgendaForDay(businessId: string, dayKey: DateKey, timeZone: TimeZone) {
+  return listAgendaEntries(businessId, dayKey, addDays(dayKey, 1), timeZone);
+}
+
+// `month` 1-indexado (janeiro=1).
+export function listAgendaForMonth(businessId: string, year: number, month: number, timeZone: TimeZone) {
+  const startKey = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-01`;
+  return listAgendaEntries(businessId, startKey, addMonthsClamped(startKey, 1), timeZone);
+}
+
+export type AgendaTotals = { count: number; amount: Prisma.Decimal };
+
+// Total do dia/mes: quantidade e valor dos agendamentos que nao foram
+// cancelados nem marcados como falta.
+export function summarizeAgenda(entries: AgendaEntry[]): AgendaTotals {
+  return entries
+    .filter((e) => e.status !== "CANCELADO" && e.status !== "FALTOU")
+    .reduce((acc, e) => ({ count: acc.count + 1, amount: acc.amount.plus(e.amount) }), { count: 0, amount: new Decimal(0) });
+}
+
 export async function getAppointmentById(businessId: string, id: string) {
   return prisma.appointment.findFirst({
     where: { id, businessId },
-    include: { client: true, services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE, sale: true },
+    include: {
+      client: true,
+      services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
+      sale: true,
+      installments: { orderBy: { position: "asc" } },
+    },
   });
 }
 
@@ -48,18 +141,31 @@ export async function getAppointmentById(businessId: string, id: string) {
 // na secao "Histórico de agendamentos" de /clientes/[id] (sem rota de API
 // dedicada, decisao aprovada do incremento 3: reaproveita consulta direta no
 // Server Component, mesmo padrao do historico de vendas ja existente
-// naquela pagina). So o fluxo TIMED, como listAppointmentsForRange.
-export async function getClientAppointmentHistory(businessId: string, clientId: string) {
-  const appointments = await prisma.appointment.findMany({
-    where: { businessId, clientId, kind: "TIMED" },
-    include: {
-      services: { orderBy: { position: "asc" } },
-      sale: { select: { id: true, saleNumber: true, status: true } },
-    },
-    orderBy: { startAt: "desc" },
-    take: 20,
-  });
-  return appointments.map(requireTimed);
+// naquela pagina). Os dois fluxos (Agenda A3): cada item traz o dia (fuso da
+// empresa) e, so no TIMED, o horario (`startAt`); DAY mostra so a data.
+// Ordem: dia desc; dentro do dia, TIMED pelo horario desc e DAY por createdAt
+// desc.
+const HISTORY_INCLUDE = {
+  services: { orderBy: { position: "asc" as const } },
+  sale: { select: { id: true, saleNumber: true, status: true } },
+};
+
+export async function getClientAppointmentHistory(businessId: string, clientId: string, timeZone: TimeZone) {
+  const [timed, day] = await Promise.all([
+    prisma.appointment.findMany({ where: { businessId, clientId, kind: "TIMED" }, include: HISTORY_INCLUDE, orderBy: { startAt: "desc" }, take: 20 }),
+    prisma.appointment.findMany({
+      where: { businessId, clientId, kind: "DAY" },
+      include: HISTORY_INCLUDE,
+      orderBy: [{ scheduledOn: "desc" }, { createdAt: "desc" }],
+      take: 20,
+    }),
+  ]);
+  const items = [
+    ...timed.map((a) => ({ ...a, dayKey: toDateKey(requireTimed(a).startAt, timeZone), sortAt: a.startAt!.getTime() })),
+    ...day.map((a) => ({ ...a, dayKey: dbDateToKey(a.scheduledOn!), sortAt: a.createdAt.getTime() })),
+  ];
+  items.sort((a, b) => (a.dayKey !== b.dayKey ? (a.dayKey < b.dayKey ? 1 : -1) : b.sortAt - a.sortAt));
+  return items.slice(0, 20);
 }
 
 // Ultima categoria REVENUE usada ao concluir um atendimento desta empresa -

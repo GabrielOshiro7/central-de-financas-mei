@@ -2,18 +2,27 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import type { AppointmentStatus } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
+import type { Currency } from "@prisma/client";
 import { agendaDateKey, formatAgendaDateLong, formatAgendaMonthYear } from "@/lib/agenda/time";
-import { listAppointmentsForRange, listAppointmentsForMonth, getLastUsedCompletionCategoryId } from "@/lib/agenda/queries";
 import {
-  agendaMonthRange,
-  agendaDayRange,
-  buildMonthGrid,
-  groupAppointmentsByDay,
-  hasVisibleAppointment,
-} from "@/lib/agenda/calendar";
+  getLastUsedCompletionCategoryId,
+  listAgendaForDay,
+  listAgendaForMonth,
+  summarizeAgenda,
+  type AgendaEntry,
+} from "@/lib/agenda/queries";
+import { agendaMonthRange, agendaDayRange, buildMonthGrid, hasVisibleAppointment } from "@/lib/agenda/calendar";
 import { parseMonthParam, parseDayParam } from "@/lib/agenda/schema";
 import { listVisibleCategories } from "@/lib/finance/categories";
-import { AppointmentSimpleList, AppointmentGroupedList, type AppointmentListItem } from "@/components/agenda/AppointmentList";
+import { formatMoney } from "@/lib/money";
+import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
+import {
+  AppointmentSimpleList,
+  AppointmentGroupedList,
+  totalsText,
+  type AgendaTotalsLabel,
+  type AppointmentListItem,
+} from "@/components/agenda/AppointmentList";
 import { AgendaCalendarGrid, type CalendarDayCell } from "@/components/agenda/AgendaCalendarGrid";
 import { MonthSummary } from "@/components/agenda/MonthSummary";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
@@ -46,32 +55,61 @@ function monthParamString(year: number, month: number): string {
   return `${pad(year, 4)}-${pad(month, 2)}`;
 }
 
-type RawAppointment = Awaited<ReturnType<typeof listAppointmentsForRange>>[number];
+const PAYMENT_METHOD_LABELS = new Map(PAYMENT_METHOD_OPTIONS.map((o) => [o.value, o.label]));
 
-// Mesmo mapeamento ja usado pela pagina antes do redesign (view=today/week) -
-// reaproveitado tal como estava, so extraido pra uma funcao porque agora e
-// chamado tanto pro range do mes (Calendario/Mes) quanto pro range do dia
-// (aba Dia).
-function toListItems(appointments: RawAppointment[]): AppointmentListItem[] {
-  return appointments.map((appointment) => ({
-    id: appointment.id,
-    startAt: appointment.startAt,
-    endAt: appointment.endAt,
-    status: appointment.status,
-    clientId: appointment.clientId,
-    clientName: appointment.client.name,
-    serviceNames: appointment.services.map((s) => s.nameSnapshot),
-    serviceIds: appointment.services.map((s) => s.productId).filter((id): id is string => Boolean(id)),
-    saleId: appointment.saleId,
-    saleNumber: appointment.sale?.saleNumber ?? null,
-    saleStatus: appointment.sale?.status ?? null,
-    completeItems: appointment.services.map((s) => ({
-      productId: s.productId,
-      description: s.nameSnapshot,
-      quantity: 1,
-      unitPrice: s.product?.defaultPrice ? Number(s.product.defaultPrice) : 0,
-    })),
+// Condicao/meio de pagamento de um agendamento DAY ("À vista · Pix",
+// "A prazo · 2 parcelas · Boleto").
+function paymentLabel(entry: AgendaEntry): string | null {
+  if (entry.kind !== "DAY") return null;
+  const method = entry.paymentMethod ? (PAYMENT_METHOD_LABELS.get(entry.paymentMethod) ?? entry.paymentMethod) : null;
+  const timing =
+    entry.paymentTiming === "APRAZO"
+      ? `A prazo · ${entry._count.installments} ${entry._count.installments === 1 ? "parcela" : "parcelas"}`
+      : "À vista";
+  return method ? `${timing} · ${method}` : timing;
+}
+
+// Agendamentos (dos dois fluxos, Agenda A3) -> itens da lista, na ordem da
+// consulta (por dia; TIMED pelo horario, depois DAY por createdAt/id). TIMED
+// mantem o mapeamento de antes (itens pre-preenchidos do modal de conclusao).
+function toListItems(entries: AgendaEntry[], currency: Currency): AppointmentListItem[] {
+  return entries.map((entry) => ({
+    id: entry.id,
+    kind: entry.kind,
+    dayKey: entry.dayKey,
+    startAt: entry.startAt,
+    endAt: entry.endAt,
+    status: entry.status,
+    clientId: entry.clientId,
+    clientName: entry.client.name,
+    serviceNames: entry.services.map((s) => (entry.kind === "DAY" && s.quantity > 1 ? `${s.nameSnapshot} × ${s.quantity}` : s.nameSnapshot)),
+    serviceIds: entry.services.map((s) => s.productId).filter((id): id is string => Boolean(id)),
+    amountLabel: formatMoney(entry.amount, currency),
+    paymentLabel: paymentLabel(entry),
+    saleId: entry.saleId,
+    saleNumber: entry.sale?.saleNumber ?? null,
+    saleStatus: entry.sale?.status ?? null,
+    completeItems:
+      entry.kind === "TIMED"
+        ? entry.services.map((s) => ({
+            productId: s.productId,
+            description: s.nameSnapshot,
+            quantity: 1,
+            unitPrice: s.product?.defaultPrice ? Number(s.product.defaultPrice) : 0,
+          }))
+        : [],
   }));
+}
+
+function totalsLabel(entries: AgendaEntry[], currency: Currency): AgendaTotalsLabel {
+  const totals = summarizeAgenda(entries);
+  return { count: totals.count, amountLabel: formatMoney(totals.amount, currency) };
+}
+
+function groupByDay(entries: AgendaEntry[]): Map<string, AgendaEntry[]> {
+  const groups = new Map<string, AgendaEntry[]>();
+  for (const entry of entries) groups.set(entry.dayKey, [...(groups.get(entry.dayKey) ?? []), entry]);
+  return groups;
 }
 
 function NewAppointmentShortcut({ dateKey }: { dateKey: string }) {
@@ -124,7 +162,9 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
 
   // Dia exibido pela aba Dia - sempre hoje por padrao (independente do mes
   // exibido no Calendario), com setas proprias de navegacao dia-a-dia.
-  const dayTabKey = parsedDay ?? todayKey;
+  // ?day= aceita "2026-02-31" (o schema so checa o formato): normaliza pelo
+  // agendaDayRange, como sempre (vira 03/03), antes de consultar por dia.
+  const dayTabKey = parsedDay ? agendaDateKey(agendaDayRange(parsedDay, timeZone).start, timeZone) : todayKey;
 
   const [revenueCategories, defaultCategoryId] = await Promise.all([
     listVisibleCategories(business.id, "REVENUE"),
@@ -150,8 +190,9 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
 
   if (view === "day") {
     const { start, end } = agendaDayRange(dayTabKey, timeZone);
-    const appointments = await listAppointmentsForRange(business.id, start, end);
-    const items = toListItems(appointments);
+    const entries = await listAgendaForDay(business.id, dayTabKey, timeZone);
+    const items = toListItems(entries, business.currency);
+    const dayTotals = totalsLabel(entries, business.currency);
     const previousHref = `/agenda?view=day&day=${agendaDateKey(new Date(start.getTime() - 1), timeZone)}`;
     const nextHref = `/agenda?view=day&day=${agendaDateKey(end, timeZone)}`;
     const emptyMessage = dayTabKey === todayKey ? "Nenhum agendamento para hoje." : "Nenhum agendamento neste dia.";
@@ -174,26 +215,31 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
             Próximo ›
           </Link>
         </div>
+        {items.length > 0 && <p className="text-sm text-gray-600 dark:text-neutral-400">Total do dia: {totalsText(dayTotals)}</p>}
         <AppointmentSimpleList items={items} emptyMessage={emptyMessage} currency={business.currency} revenueCategories={revenueCategoryOptions} defaultCategoryId={defaultCategoryId} timeZone={timeZone} todayKey={todayKey} />
       </div>
     );
   } else {
     // Calendario e Mes compartilham a mesma consulta (o mes inteiro) - a
     // diferenca e so como o resultado e apresentado.
-    const monthAppointments = await listAppointmentsForMonth(business.id, year, month, timeZone);
-    const grouped = groupAppointmentsByDay(monthAppointments, timeZone);
+    const monthAppointments = await listAgendaForMonth(business.id, year, month, timeZone);
+    const grouped = groupByDay(monthAppointments);
 
     if (view === "month") {
-      const items = toListItems(monthAppointments);
+      const items = toListItems(monthAppointments, business.currency);
       const counts: Record<AppointmentStatus, number> = { ...EMPTY_COUNTS };
       for (const appointment of monthAppointments) counts[appointment.status] += 1;
+      const dayTotals = Object.fromEntries([...grouped].map(([key, entries]) => [key, totalsLabel(entries, business.currency)]));
+      const monthTotals = totalsLabel(monthAppointments, business.currency);
 
       content = (
         <div className="flex flex-col gap-6">
           <MonthNav year={year} month={month} monthLabel={monthLabel} />
           <MonthSummary counts={counts} />
+          <p className="text-sm text-gray-600 dark:text-neutral-400">Total do mês: {totalsText(monthTotals)}</p>
           <AppointmentGroupedList
             items={items}
+            dayTotals={dayTotals}
             emptyMessage="Nenhum agendamento neste mês."
             currency={business.currency}
             revenueCategories={revenueCategoryOptions}
@@ -218,7 +264,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
         })
       );
 
-      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? []) : [];
+      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? [], business.currency) : [];
 
       content = (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,480px)_1fr]">

@@ -25,7 +25,7 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
     getClientCommercialSummary(business.id, id),
     getClientFinancialSummary(business.id, id, clock),
     getClientHistory(business.id, id),
-    getClientAppointmentHistory(business.id, id),
+    getClientAppointmentHistory(business.id, id, business.timezone),
   ]);
 
   const currency = business.currency;
@@ -189,7 +189,10 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                 <div className="flex flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-gray-900 dark:text-neutral-100">
-                      {formatAgendaDate(appointment.startAt, business.timezone)} às {formatAgendaTime(appointment.startAt, business.timezone)}
+                      {/* Fluxo por dia (DAY): so a data, sem horario. */}
+                      {appointment.kind === "DAY" || !appointment.startAt
+                        ? formatDateKey(appointment.dayKey)
+                        : `${formatAgendaDate(appointment.startAt, business.timezone)} às ${formatAgendaTime(appointment.startAt, business.timezone)}`}
                     </span>
                     <AppointmentStatusBadge status={appointment.status} />
                   </div>

@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { appointmentCompleteSchema } from "@/lib/agenda/schema";
 import { completeAppointment } from "@/lib/agenda/mutations";
+import { completeDayAppointment } from "@/lib/agenda/dayCompletion";
+import { clockFor } from "@/lib/time/zoned";
 
 // O ponto mais critico da Agenda (ver comentario completo em
 // completeAppointment, src/lib/agenda/mutations.ts): cria Sale+itens+Bill(s)
@@ -21,6 +23,20 @@ export async function POST(request: Request, context: RouteContext<"/api/agenda/
   }
 
   const { id } = await context.params;
+  const appointment = await prisma.appointment.findFirst({ where: { id, businessId: business.id }, select: { kind: true } });
+  if (!appointment) {
+    return NextResponse.json({ error: "Agendamento não encontrado." }, { status: 404 });
+  }
+
+  // Fluxo por dia (DAY, Agenda A3): "Concluir agora" - nada e perguntado,
+  // servicos/valores/categoria/pagamento ja estao no agendamento. Venda no dia
+  // do atendimento, no relogio da empresa (completeDayAppointment).
+  if (appointment.kind === "DAY") {
+    const result = await completeDayAppointment(business.id, id, clockFor(business));
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
+    return NextResponse.json(result.value);
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = appointmentCompleteSchema(business.currency).safeParse(body);
   if (!parsed.success) {

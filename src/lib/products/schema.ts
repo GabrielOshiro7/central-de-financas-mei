@@ -9,11 +9,13 @@ const productTypeValues = ["PRODUTO", "SERVICO"] as const;
 // depois de a venda ser criada (ver SaleItem em schema.prisma).
 //
 // type/durationMinutes (Etapa 8): default PRODUTO preserva o comportamento
-// de todo chamador existente (SaleForm nunca envia esses campos). SERVICO
-// exige durationMinutes (inteiro, 1-720 min = ate 12h) porque a Agenda usa
-// isso pra calcular o fim de um agendamento (ver computeEndAt em
-// src/lib/agenda/calculations.ts). Preco de servico e entendido como preco
-// COM imposto (総額表示) - so rotulado na UI, sem logica de imposto aqui.
+// de todo chamador existente (SaleForm nunca envia esses campos).
+// durationMinutes e opcional para SERVICO desde a Agenda A3 (o fluxo por dia
+// nao tem horario nem duracao); quando informada, inteiro de 1 a 720 min (ate
+// 12h). So o fluxo antigo com horario (TIMED) usa a duracao, e ele recusa
+// servico sem duracao na hora de remarcar (loadServiceProducts em
+// agenda/mutations.ts). Preco de servico e entendido como preco COM imposto
+// (総額表示) - so rotulado na UI, sem logica de imposto aqui.
 export function productSchema(currency: Currency | null) {
   return z
     .object({
@@ -34,10 +36,5 @@ export function productSchema(currency: Currency | null) {
         .positive("A duração precisa ser maior que zero.")
         .max(720, "A duração máxima é 720 minutos (12 horas).")
         .optional(),
-    })
-    .superRefine((data, ctx) => {
-      if (data.type === "SERVICO" && data.durationMinutes === undefined) {
-        ctx.addIssue({ code: "custom", message: "Informe a duração do serviço.", path: ["durationMinutes"] });
-      }
     });
 }

@@ -8,7 +8,7 @@ import { MoneyField, MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS, SALE_DISCOUNT_TYPE_OPTIONS } from "@/lib/sales/options";
-import { addDays, isDateKey } from "@/lib/time/zoned";
+import { InstallmentsEditor, roundMoney, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
 
 // Este componente e "use client" e NUNCA importa nada de @/lib/sales/
 // calculations ou qualquer modulo que importe `Prisma` como VALOR (so
@@ -25,7 +25,7 @@ export type CategoryOption = { id: string; name: string };
 export type ProductOption = { id: string; name: string; defaultPrice: string };
 
 export type SaleFormItem = { productId: string; description: string; quantity: string; unitPrice: string };
-export type SaleFormInstallment = { dueDateInput: string; amount: string };
+export type SaleFormInstallment = InstallmentRow;
 
 export type SaleFormInitial = {
   id: string;
@@ -41,15 +41,7 @@ export type SaleFormInitial = {
   installments: SaleFormInstallment[];
 };
 
-// Soma de dias pura de calendario (zoned.ts), sem fuso nenhum (Etapa F4).
-function addDaysInput(dateInput: string, days: number): string {
-  return isDateKey(dateInput) ? addDays(dateInput, days) : dateInput;
-}
-
-function round(value: number, decimals: number): number {
-  const factor = 10 ** decimals;
-  return Math.round(value * factor) / factor;
-}
+const round = roundMoney;
 
 export function SaleForm({
   mode,
@@ -101,8 +93,6 @@ export function SaleForm({
   const [installments, setInstallments] = useState<SaleFormInstallment[]>(
     () => initial?.installments ?? [{ dueDateInput: todayKey, amount: "" }]
   );
-  const [installmentCount, setInstallmentCount] = useState(2);
-  const [installmentIntervalDays, setInstallmentIntervalDays] = useState(30);
 
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -120,11 +110,6 @@ export function SaleForm({
     const total = round(subtotal - discountAmount, decimals);
     return { subtotal: round(subtotal, decimals), discountAmount: round(discountAmount, decimals), total };
   }, [items, discountType, discountValue, decimals]);
-
-  const installmentsSum = round(
-    installments.reduce((t, i) => t + (Number(i.amount) || 0), 0),
-    decimals
-  );
 
   function updateItem(index: number, patch: Partial<SaleFormItem>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -176,31 +161,6 @@ export function SaleForm({
     } finally {
       setSavingProductIndex(null);
     }
-  }
-
-  function applyEqualSplit() {
-    const count = Math.max(1, installmentCount);
-    const base = round(totals.total / count, decimals);
-    const rows: SaleFormInstallment[] = Array.from({ length: count }, (_, index) => ({
-      dueDateInput: addDaysInput(saleDate, installmentIntervalDays * index),
-      amount: base.toString(),
-    }));
-    const allocated = round(base * count, decimals);
-    const remainder = round(totals.total - allocated, decimals);
-    rows[rows.length - 1].amount = round(base + remainder, decimals).toString();
-    setInstallments(rows);
-  }
-
-  function updateInstallment(index: number, patch: Partial<SaleFormInstallment>) {
-    setInstallments((prev) => prev.map((i, idx) => (idx === index ? { ...i, ...patch } : i)));
-  }
-
-  function addInstallment() {
-    setInstallments((prev) => [...prev, { dueDateInput: todayKey, amount: "" }]);
-  }
-
-  function removeInstallment(index: number) {
-    setInstallments((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   }
 
   // `status` só é relevante no modo "create" (DRAFT vs CONFIRMED direto na
@@ -585,94 +545,15 @@ export function SaleForm({
           </div>
 
           {(mode === "edit" || paymentTiming === "APRAZO") && (
-            <div className="mt-4">
-              {mode === "create" && (
-                <div className="mb-3 flex flex-wrap items-end gap-3 bg-gray-50 p-3 dark:bg-neutral-800">
-                  <div>
-                    <label htmlFor="installmentCount" className={labelClass}>
-                      Nº de parcelas
-                    </label>
-                    <input
-                      id="installmentCount"
-                      type="number"
-                      min={1}
-                      value={installmentCount}
-                      onChange={(e) => setInstallmentCount(Number(e.target.value))}
-                      className={`${inputClass} w-24`}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="installmentIntervalDays" className={labelClass}>
-                      Intervalo (dias)
-                    </label>
-                    <input
-                      id="installmentIntervalDays"
-                      type="number"
-                      min={1}
-                      value={installmentIntervalDays}
-                      onChange={(e) => setInstallmentIntervalDays(Number(e.target.value))}
-                      className={`${inputClass} w-24`}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={applyEqualSplit}
-                    className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                  >
-                    Dividir igualmente
-                  </button>
-                </div>
-              )}
-
-              <div className="flex flex-col gap-2">
-                {installments.map((installment, index) => (
-                  <div key={index} className="grid grid-cols-1 gap-2 sm:grid-cols-12 sm:items-end">
-                    <div className="sm:col-span-5">
-                      <label htmlFor={`due-${index}`} className={labelClass}>
-                        Vencimento
-                      </label>
-                      <input
-                        id={`due-${index}`}
-                        type="date"
-                        value={installment.dueDateInput}
-                        onChange={(e) => updateInstallment(index, { dueDateInput: e.target.value })}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="sm:col-span-5">
-                      <label htmlFor={`amount-${index}`} className={labelClass}>
-                        Valor
-                      </label>
-                      <MoneyInput
-                        id={`amount-${index}`}
-                        currency={currency}
-                        value={installment.amount}
-                        onChange={(value) => updateInstallment(index, { amount: value })}
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <button
-                        type="button"
-                        onClick={() => removeInstallment(index)}
-                        disabled={installments.length === 1}
-                        className="text-sm font-medium text-red-600 hover:underline disabled:opacity-40 dark:text-red-400"
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-sm">
-                <button type="button" onClick={addInstallment} className="font-medium text-gray-600 hover:underline dark:text-neutral-400">
-                  + Adicionar parcela
-                </button>
-                <span className={installmentsSum === totals.total ? "text-gray-500 dark:text-neutral-400" : "font-semibold text-rose-600 dark:text-rose-400"}>
-                  Soma das parcelas: {installmentsSum} / {totals.total}
-                </span>
-              </div>
-            </div>
+            <InstallmentsEditor
+              installments={installments}
+              onChange={setInstallments}
+              currency={currency}
+              total={totals.total}
+              baseDate={saleDate}
+              todayKey={todayKey}
+              showSplit={mode === "create"}
+            />
           )}
         </section>
       )}

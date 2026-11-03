@@ -1,11 +1,12 @@
-import type { AppointmentStatus, Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, type AppointmentStatus, type PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
-// assertCategoryMatches nao e chamado direto aqui - createSale ja a chama
-// internamente pra validar categoryId (mesma funcao reaproveitada, ver
-// completeAppointment abaixo).
+// assertCategoryMatches: na conclusao TIMED, createSale ja a chama; no fluxo
+// DAY a categoria e escolhida na criacao, entao e validada ja ali.
+import { assertCategoryMatches } from "@/lib/finance/mutations";
 import { createSale, type CreateSaleInput } from "@/lib/sales/mutations";
-import { dbDateToKey, todayKey, type TimeZone } from "@/lib/time/zoned";
+import type { DayAppointmentInput } from "@/lib/agenda/schema";
+import { dateKeyToDbDate, dbDateToKey, todayKey, type TimeZone } from "@/lib/time/zoned";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
 import { dayFromInput } from "@/lib/finance/entryDay";
 import {
@@ -20,6 +21,8 @@ import {
 } from "@/lib/agenda/calculations";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+const { Decimal } = Prisma;
 
 export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: string; conflicts?: ExistingAppointment[] };
 
@@ -180,6 +183,118 @@ export async function updateAppointment(
         position: index,
       })),
     });
+
+    return { ok: true, value: { id } };
+  });
+}
+
+// --- Fluxo por dia (DAY, Agenda A3) ---------------------------------------
+
+// Mesma validacao de loadServiceProducts, SEM exigir duracao (o fluxo DAY
+// nao tem horario). Devolve o nome para o snapshot.
+async function loadDayServiceProducts(
+  db: Db,
+  businessId: string,
+  productIds: string[]
+): Promise<{ ok: true; names: Map<string, string> } | { ok: false; error: string }> {
+  const products = await db.product.findMany({
+    where: { id: { in: productIds }, businessId, type: "SERVICO", active: true },
+    select: { id: true, name: true },
+  });
+  if (products.length !== new Set(productIds).size) {
+    return { ok: false, error: "Um ou mais serviços não foram encontrados." };
+  }
+  return { ok: true, names: new Map(products.map((p) => [p.id, p.name])) };
+}
+
+async function validateDayInput(businessId: string, input: DayAppointmentInput) {
+  const clientError = await assertClientBelongsToBusiness(businessId, input.clientId);
+  if (clientError) return { ok: false as const, error: clientError };
+  const categoryError = await assertCategoryMatches(businessId, input.categoryId, "REVENUE");
+  if (categoryError) return { ok: false as const, error: categoryError };
+  return loadDayServiceProducts(prisma, businessId, input.services.map((s) => s.productId));
+}
+
+function dayServiceRows(input: DayAppointmentInput, names: Map<string, string>) {
+  return input.services.map((s, position) => ({
+    productId: s.productId,
+    nameSnapshot: names.get(s.productId)!,
+    durationMinutesSnapshot: null,
+    unitPrice: new Decimal(s.unitPrice),
+    quantity: s.quantity,
+    position,
+  }));
+}
+
+// Parcelas planejadas so a prazo (a vista: a unica parcela e o proprio dia,
+// gerada na conclusao).
+function dayInstallmentRows(input: DayAppointmentInput) {
+  if (input.paymentTiming !== "APRAZO") return [];
+  return input.installments.map((i, position) => ({ position, dueOn: dateKeyToDbDate(i.dueOn), amount: new Decimal(i.amount) }));
+}
+
+function dayAppointmentFields(input: DayAppointmentInput) {
+  return {
+    clientId: input.clientId,
+    scheduledOn: dateKeyToDbDate(input.scheduledOn),
+    categoryId: input.categoryId,
+    paymentTiming: input.paymentTiming,
+    paymentMethod: input.paymentMethod || null,
+    notes: input.notes || null,
+  };
+}
+
+// Criar (Agenda A3): toda criacao nova da Agenda e DAY, AGENDADO e elegivel
+// a conclusao automatica (decisao 7). `input` ja passou por
+// dayAppointmentInputSchema na rota.
+export async function createDayAppointment(businessId: string, input: DayAppointmentInput): Promise<MutationResult<{ id: string }>> {
+  const loaded = await validateDayInput(businessId, input);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+
+  const created = await prisma.appointment.create({
+    data: {
+      businessId,
+      kind: "DAY",
+      status: "AGENDADO",
+      autoCompleteEligible: true,
+      ...dayAppointmentFields(input),
+      services: { create: dayServiceRows(input, loaded.names) },
+      installments: { create: dayInstallmentRows(input) },
+    },
+    select: { id: true },
+  });
+
+  return { ok: true, value: created };
+}
+
+// Editar (Agenda A3): so em AGENDADO, via updateMany condicional (mesmo
+// compare-and-swap de updateAppointment). Substitui servicos e parcelas por
+// inteiro na mesma transacao. NUNCA mexe em autoCompleteEligible (um
+// agendamento reaberto continua fora do automatico depois de editado).
+export async function updateDayAppointment(
+  businessId: string,
+  id: string,
+  input: DayAppointmentInput
+): Promise<MutationResult<{ id: string }>> {
+  const loaded = await validateDayInput(businessId, input);
+  if (!loaded.ok) return { ok: false, error: loaded.error };
+
+  return prisma.$transaction(async (tx) => {
+    const claimed = await tx.appointment.updateMany({
+      where: { id, businessId, kind: "DAY", status: "AGENDADO" },
+      data: dayAppointmentFields(input),
+    });
+    if (claimed.count === 0) {
+      return { ok: false, error: "Só é possível editar agendamentos com status Agendado." };
+    }
+
+    await tx.appointmentService.deleteMany({ where: { appointmentId: id } });
+    await tx.appointmentService.createMany({ data: dayServiceRows(input, loaded.names).map((row) => ({ ...row, appointmentId: id })) });
+    await tx.appointmentInstallment.deleteMany({ where: { appointmentId: id } });
+    const installments = dayInstallmentRows(input);
+    if (installments.length > 0) {
+      await tx.appointmentInstallment.createMany({ data: installments.map((row) => ({ ...row, appointmentId: id })) });
+    }
 
     return { ok: true, value: { id } };
   });

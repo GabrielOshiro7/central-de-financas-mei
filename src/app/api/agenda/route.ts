@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
-import { appointmentInputSchema } from "@/lib/agenda/schema";
-import { createAppointment } from "@/lib/agenda/mutations";
+import { dayAppointmentInputSchema } from "@/lib/agenda/schema";
+import { createDayAppointment } from "@/lib/agenda/mutations";
 import { listAppointmentsForRange } from "@/lib/agenda/queries";
-import { todayRange, agendaWeekRange, parseAgendaDateTimeInput } from "@/lib/agenda/time";
+import { todayRange, agendaWeekRange } from "@/lib/agenda/time";
 
 // Listar por intervalo (hoje/semana, no fuso da empresa - ver time.ts). A
 // pagina /agenda (incremento 5) consulta listAppointmentsForRange direto
@@ -30,9 +30,10 @@ export async function GET(request: Request) {
   return NextResponse.json({ appointments });
 }
 
-// Sobreposicao e AVISO, nao bloqueio (ver detectOverlap em calculations.ts):
-// se createAppointment devolver `conflicts`, a rota responde 409 pra o
-// frontend distinguir "conflito, precisa confirmar" de um erro comum (400).
+// Criar (Agenda A3): toda criacao nova e do fluxo por dia (DAY) - so o dia,
+// com servicos, valores, categoria e pagamento ja definidos. O fluxo com
+// horario (TIMED) nao cria mais; os existentes continuam editaveis em
+// PATCH /api/agenda/[id].
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
@@ -45,22 +46,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
-  const parsed = appointmentInputSchema().safeParse(body);
+  const parsed = dayAppointmentInputSchema(business.currency).safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." }, { status: 400 });
   }
 
-  const data = parsed.data;
-  const result = await createAppointment(business.id, {
-    clientId: data.clientId,
-    startAt: parseAgendaDateTimeInput(data.startAt, business.timezone),
-    services: data.services,
-    notes: data.notes || null,
-    allowOverlap: data.allowOverlap,
-  });
-
+  const result = await createDayAppointment(business.id, parsed.data);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error, conflicts: result.conflicts }, { status: result.conflicts ? 409 : 400 });
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
   return NextResponse.json({ id: result.value.id }, { status: 201 });

@@ -2,36 +2,33 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
+import { listVisibleCategories } from "@/lib/finance/categories";
 import { parseDayParam } from "@/lib/agenda/schema";
-import { AppointmentForm } from "@/components/agenda/AppointmentForm";
+import { defaultServiceRevenueCategoryId } from "@/lib/agenda/calculations";
+import { DayAppointmentForm } from "@/components/agenda/DayAppointmentForm";
+import { clockFor, isDateKey, todayKey } from "@/lib/time/zoned";
 
-// Horario padrao usado ao pre-preencher uma data vinda do atalho "Novo
-// agendamento" do painel do dia no Calendario (redesign) - so um ponto de
-// partida razoavel (horario comercial), o usuario troca livremente no
-// formulario.
-const DEFAULT_PREFILL_TIME = "09:00";
-
+// Criar (Agenda A3): todo agendamento novo e do fluxo por dia (DAY).
 export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo">) {
   const searchParams = await props.searchParams;
   const { business } = await requireOnboardedUser();
 
-  const [clients, services] = await Promise.all([
+  const [clients, services, categories] = await Promise.all([
     listVisibleClients(business.id),
     listVisibleProducts(business.id, undefined, "SERVICO"),
+    listVisibleCategories(business.id, "REVENUE"),
   ]);
 
   // Prefill de "agendar o proximo" (ver AppointmentList.tsx) - mesmo cliente
-  // e servicos do atendimento recem-concluido, so os ids; o usuario ainda
-  // escolhe a data/hora do zero.
+  // e servicos do atendimento recem-concluido.
   const clientIdParam = typeof searchParams.clientId === "string" ? searchParams.clientId : undefined;
   const serviceIdParam = searchParams.serviceId;
   const initialServiceIds = Array.isArray(serviceIdParam) ? serviceIdParam : serviceIdParam ? [serviceIdParam] : undefined;
 
-  // Prefill de data vindo do atalho "+ Novo agendamento nesta data" do
-  // painel do dia no Calendario (redesign) - so a data; hora default
-  // DEFAULT_PREFILL_TIME, o usuario escolhe o horario de verdade.
+  // Dia vindo do atalho "+ Novo agendamento nesta data" (so dias que existem;
+  // senao, hoje da empresa).
   const dateParam = parseDayParam(searchParams.date);
-  const initialStartAt = dateParam ? `${dateParam}T${DEFAULT_PREFILL_TIME}` : undefined;
+  const initialDate = dateParam && isDateKey(dateParam) ? dateParam : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,20 +39,17 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
         </Link>
       </div>
 
-      <AppointmentForm
+      <DayAppointmentForm
         mode="create"
         clients={clients.map((c) => ({ id: c.id, name: c.name, tradeName: c.tradeName ?? "" }))}
-        services={services.map((s) => ({
-          id: s.id,
-          name: s.name,
-          durationMinutes: s.durationMinutes ?? 0,
-          defaultPrice: s.defaultPrice?.toString() ?? "",
-        }))}
+        services={services.map((s) => ({ id: s.id, name: s.name, defaultPrice: s.defaultPrice?.toString() ?? "" }))}
+        categories={categories.map((c) => ({ id: c.id, name: c.name }))}
+        defaultCategoryId={defaultServiceRevenueCategoryId(categories)}
         currency={business.currency}
+        todayKey={todayKey(clockFor(business))}
         initialClientId={clientIdParam}
         initialServiceIds={initialServiceIds}
-        initialStartAt={initialStartAt}
-        timeZone={business.timezone}
+        initialDate={initialDate}
       />
     </div>
   );

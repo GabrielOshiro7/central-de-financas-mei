@@ -1,7 +1,22 @@
 import { test, expect, type Page } from "@playwright/test";
+import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
-import { businessDateTimeInput } from "./helpers/businessDate";
+import { E2E_BUSINESS_TZ, businessToday } from "./helpers/businessDate";
+import { assertTestDatabase, loadTestEnv } from "../testEnv";
+import { formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
+
+// Agenda. Desde a Agenda A3 toda criacao pela tela e do fluxo POR DIA (DAY):
+// cliente, servicos com valor, dia, categoria e pagamento - sem horario. Os
+// agendamentos antigos COM HORARIO (TIMED) continuam visiveis e operaveis;
+// como a tela nao cria mais TIMED, eles sao gravados direto no banco de
+// teste para cobrir exibir / confirmar / concluir / cancelar do legado.
+
+loadTestEnv();
+assertTestDatabase();
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+const { Decimal } = Prisma;
 
 const PASSWORD = "SenhaValida123";
 
@@ -37,176 +52,193 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-// "YYYY-MM-DDTHH:mm" de 30 min atrás no relógio da empresa de teste
-// (Asia/Tokyo) - o formulário interpreta o campo nesse fuso, então montar o
-// valor com o fuso do processo do Playwright quebraria fora de Tóquio. A
-// lógica de fuso em si é coberta pelos testes unitários/integração.
-function pastDateTimeInputValue(): string {
-  return businessDateTimeInput(-30 * 60 * 1000);
+// Formulario por dia: cliente novo + servicos novos (sem duracao), com preco.
+async function fillNewDayAppointment(page: Page, clientName: string, services: { name: string; price: string }[]) {
+  await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
+  await page.getByLabel("Nome do novo cliente").fill(clientName);
+  await page.getByRole("button", { name: "Criar cliente" }).click();
+  await expect(page.getByText(clientName)).toBeVisible();
+
+  for (const [index, service] of services.entries()) {
+    await page.getByRole("button", { name: "Criar novo serviço" }).click();
+    await page.getByLabel("Nome do serviço").fill(service.name);
+    await fillMoney(page.getByLabel("Preço (opcional)"), service.price);
+    await page.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(page.getByLabel("Valor unitário").nth(index)).toBeVisible();
+  }
+  await expect(page.getByLabel("Duração (min)")).toHaveCount(0); // o fluxo por dia nao tem duracao
+  await expect(page.locator("#startAt")).toHaveCount(0); // nem horario
 }
 
-test.describe("Etapa 8 - agenda", () => {
-  test("fluxo feliz: criar agendamento, concluir e ver a venda em Vendas e Contas a Receber", async ({ page }) => {
-    // Timeout maior que o default (30s): este teste é o único que passa por
-    // /agenda, /agenda/novo e as 4 rotas de API novas da Etapa 8 - todas
-    // compiladas pela primeira vez nesta execução do servidor (Turbopack
-    // dev), o que já foi observado levando ~10s+ numa única rota isolada.
-    // Os outros specs de e2e do projeto não precisam disso porque não
-    // acumulam tantas rotas nunca compiladas dentro de um único teste.
-    test.setTimeout(60_000);
+function confirmDialog(page: Page) {
+  return page.getByRole("alertdialog");
+}
 
+function row(page: Page, clientName: string) {
+  return page.getByTestId("appointment-row").filter({ hasText: clientName });
+}
+
+test.describe("Agenda - fluxo por dia", () => {
+  test("à vista: criar pela tela, ver no Dia e no Mês com os totais, editar, concluir agora e conferir Vendas e Receitas no dia do atendimento", async ({ page }) => {
+    test.setTimeout(90_000);
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text());
     });
 
-    const email = uniqueEmail();
-    await register(page, "Dono Agenda E2E", email);
+    await register(page, "Dono Agenda E2E", uniqueEmail());
     await completeOnboarding(page, "Empresa Agenda E2E");
+    const today = businessToday();
 
-    // Criar agendamento - cliente e servico criados na hora, reaproveitando
-    // as mesmas mutations de Client/Product (POST /api/clientes,
-    // POST /api/produtos).
     await gotoHydrated(page, "/agenda");
-    await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
-    // Aba padrao agora e "Calendario" (redesign) - hoje vem pre-selecionado
-    // (secao 4), o painel do dia mostra o mesmo vazio que "Hoje" mostrava
-    // antes.
-    await expect(page.getByRole("link", { name: "Calendário" })).toHaveClass(/bg-gray-900/);
-    await expect(page.getByText("Nenhum agendamento neste dia.")).toBeVisible();
-
-    // exact: o painel do dia vazio tem tambem "+ Novo agendamento nesta data".
-    // O "+" do botao do cabecalho virou icone decorativo (aria-hidden), entao o
-    // nome acessivel e so "Novo agendamento".
     await page.getByRole("link", { name: "Novo agendamento", exact: true }).click();
     await expect(page).toHaveURL(/\/agenda\/novo/);
+    await fillNewDayAppointment(page, "Cliente Dia E2E", [{ name: "Corte Dia E2E", price: "80" }, { name: "Barba Dia E2E", price: "30" }]);
 
-    await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    await page.getByLabel("Nome do novo cliente").fill("Cliente Agenda E2E");
-    await page.getByRole("button", { name: "Criar cliente" }).click();
-    await expect(page.getByText("Cliente Agenda E2E")).toBeVisible();
-
-    await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill("Corte Agenda E2E");
-    await page.getByLabel("Duração (min)").fill("30");
-    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
-    await page.getByRole("button", { name: "Criar serviço" }).click();
-    await expect(page.getByText("Corte Agenda E2E (30 min)")).toBeVisible();
-
-    await page.locator("#startAt").fill(pastDateTimeInputValue());
+    // Padroes: hoje da empresa, categoria de receita de servicos, a vista.
+    await expect(page.getByLabel("Data do atendimento")).toHaveValue(today);
+    await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
+    await expect(page.getByRole("button", { name: "À vista" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("110");
+    await page.getByLabel("Meio de pagamento (opcional)").selectOption({ label: "Dinheiro" });
     await page.getByRole("button", { name: "Agendar" }).click();
 
-    await expect(page).toHaveURL(/\/agenda(\?|$)/);
-    await expect(page.getByText("Cliente Agenda E2E")).toBeVisible();
-    await expect(page.getByText("Agendado", { exact: true })).toBeVisible();
+    // Volta na aba Dia, no dia do atendimento.
+    await expect(page).toHaveURL(new RegExp(`/agenda\\?view=day&day=${today}`));
+    const appointment = row(page, "Cliente Dia E2E");
+    await expect(appointment).toBeVisible();
+    await expect(appointment.getByText("Agendado", { exact: true })).toBeVisible();
+    await expect(appointment.getByText("Corte Dia E2E, Barba Dia E2E")).toBeVisible();
+    await expect(appointment.getByText("· À vista · Dinheiro")).toBeVisible();
+    await expect(page.getByText("Total do dia: 1 atendimento · R$110.00")).toBeVisible();
+    await expect(appointment.getByRole("button", { name: "Confirmar" })).toHaveCount(0); // sem CONFIRMADO no fluxo por dia
 
-    // Confirmar
-    await page.getByRole("button", { name: "Confirmar" }).click();
-    await expect(page.getByText("Confirmado", { exact: true })).toBeVisible();
+    // Editar: 2 cortes -> total 190.
+    await appointment.getByRole("link", { name: "Editar" }).click();
+    await expect(page.getByRole("heading", { name: "Editar agendamento" })).toBeVisible();
+    await page.getByLabel("Quantidade").first().fill("2");
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("190");
+    await page.getByRole("button", { name: "Salvar alterações" }).click();
+    await expect(page).toHaveURL(new RegExp(`view=day&day=${today}`));
+    await expect(row(page, "Cliente Dia E2E").getByText("Corte Dia E2E × 2, Barba Dia E2E")).toBeVisible();
+    await expect(page.getByText("Total do dia: 1 atendimento · R$190.00")).toBeVisible();
 
-    // Concluir - a prazo (2 parcelas), pra depois aparecer como pendente em
-    // Contas a Receber.
-    await page.getByRole("button", { name: "Concluir" }).click();
-    await expect(page.getByRole("heading", { name: "Concluir atendimento" })).toBeVisible();
-    await page.locator("#completeCategoryId").selectOption({ label: "Venda de serviços" });
-    await page.getByRole("button", { name: "A prazo" }).click();
+    // Aba Mes: total do mes e do dia.
+    await page.getByRole("link", { name: "Mês" }).click();
+    await expect(page).toHaveURL(/view=month/);
+    await expect(page.getByText("Total do mês: 1 atendimento · R$190.00")).toBeVisible();
+    await expect(page.getByTestId(`agenda-day-${today}`).getByText("Total do dia: 1 atendimento · R$190.00")).toBeVisible();
 
-    await page.getByRole("button", { name: "Concluir atendimento" }).click();
-
-    const saleLink = page.getByRole("link", { name: /ver venda #\d+/i });
+    // Concluir agora (aba Mes - mesmo componente de linha das outras abas).
+    await row(page, "Cliente Dia E2E").getByRole("button", { name: "Concluir agora" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Concluir agora" }).click();
+    const saleLink = row(page, "Cliente Dia E2E").getByRole("link", { name: /Ver venda #\d+/ });
     await expect(saleLink).toBeVisible();
-    await expect(page.getByText("Concluído", { exact: true })).toBeVisible();
+    await expect(row(page, "Cliente Dia E2E").getByText("Concluído", { exact: true })).toBeVisible();
+    const saleNumber = /#(\d+)/.exec((await saleLink.textContent()) ?? "")![1];
 
-    const saleLinkText = await saleLink.textContent();
-    const saleNumberMatch = /#(\d+)/.exec(saleLinkText ?? "");
-    expect(saleNumberMatch).not.toBeNull();
-    const saleNumber = saleNumberMatch![1];
-
-    // Aparece em Vendas.
+    // Vendas: a venda, paga, no dia do atendimento.
     await gotoHydrated(page, "/vendas");
-    const salesRow = page.getByRole("row", { name: new RegExp(`Cliente Agenda E2E`) });
-    await expect(salesRow).toBeVisible();
+    const salesRow = page.getByRole("row", { name: /Cliente Dia E2E/ });
     await expect(salesRow.getByText(`#${saleNumber}`)).toBeVisible();
-    await expect(salesRow.getByText("Confirmada", { exact: true })).toBeVisible();
-    await expect(salesRow.getByText("Não paga", { exact: true })).toBeVisible();
+    await expect(salesRow.getByText(formatDateKey(today))).toBeVisible();
+    await expect(salesRow.getByText("Paga", { exact: true })).toBeVisible();
 
-    // Aparece em Contas a Receber, como pendente (Bill gerada pela
-    // conclusão do atendimento, descrição "Venda #<numero>" - mesmo padrao
-    // ja usado por generateSaleBills na Etapa 6).
-    await gotoHydrated(page, "/financeiro/receber");
-    await expect(page.getByRole("heading", { name: "Contas a receber" })).toBeVisible();
-    const billRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) }).first();
-    await expect(billRow).toBeVisible();
-    await expect(billRow.getByText("Pendente")).toBeVisible();
+    // Receitas: o lancamento a vista no dia do atendimento.
+    await gotoHydrated(page, "/financeiro/receitas");
+    const revenueRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) });
+    await expect(revenueRow.getByText(formatDateKey(today))).toBeVisible();
+    await expect(revenueRow.getByText("R$190.00")).toBeVisible();
 
     expect(consoleErrors, `Erros de console encontrados: ${consoleErrors.join("; ")}`).toEqual([]);
   });
 
-  // Mesmo calculo que formatTokyoMonthYear (src/lib/agenda/time.ts) faz no
-  // servidor - usado aqui so pra montar um seletor estavel pro botao de
-  // titulo do mes, sem depender de qual mes "hoje" realmente e quando o
-  // teste roda.
-  function currentTokyoMonthLabel(): string {
-    const label = new Intl.DateTimeFormat("pt-BR", { timeZone: "Asia/Tokyo", month: "long", year: "numeric" }).format(new Date());
+  test("a prazo: criar com parcelas pela tela; cancelar e reabrir (sem conclusão automática depois)", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-prazo");
+    await register(page, "Dono Prazo E2E", email);
+    await completeOnboarding(page, "Empresa Prazo E2E");
+    const tomorrow = businessToday(1);
+
+    await gotoHydrated(page, `/agenda/novo?date=${tomorrow}`);
+    await fillNewDayAppointment(page, "Cliente Prazo E2E", [{ name: "Pacote Prazo E2E", price: "300" }]);
+    await expect(page.getByLabel("Data do atendimento")).toHaveValue(tomorrow);
+    await page.getByRole("button", { name: "A prazo" }).click();
+    await page.getByLabel("Nº de parcelas").fill("3");
+    await page.getByRole("button", { name: "Dividir igualmente" }).click();
+    await expect(page.getByText("Soma das parcelas: 300 / 300")).toBeVisible();
+    // Soma diferente do total: o formulario recusa antes de enviar.
+    await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "50");
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (250) não bate com o total do atendimento (300).");
+    await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "100");
+    await page.getByRole("button", { name: "Agendar" }).click();
+
+    await expect(page).toHaveURL(new RegExp(`view=day&day=${tomorrow}`));
+    const appointment = row(page, "Cliente Prazo E2E");
+    await expect(appointment.getByText("· A prazo · 3 parcelas")).toBeVisible();
+    // Antes do dia do atendimento: sem "Concluir agora" nem "Faltou".
+    await expect(appointment.getByRole("button", { name: "Concluir agora" })).toHaveCount(0);
+    await expect(appointment.getByRole("button", { name: "Faltou" })).toHaveCount(0);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
+    const stored = await prisma.appointment.findFirstOrThrow({ where: { businessId: user.business!.id }, include: { installments: true } });
+    expect([stored.kind, stored.autoCompleteEligible, stored.installments.length]).toEqual(["DAY", true, 3]);
+
+    await appointment.getByRole("button", { name: "Cancelar" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Cancelar agendamento" }).click();
+    await expect(appointment.getByText("Cancelado", { exact: true })).toBeVisible();
+    await expect(page.getByText("Total do dia: 0 atendimentos · R$0.00")).toBeVisible();
+
+    await appointment.getByRole("button", { name: "Reabrir" }).click();
+    await expect(confirmDialog(page)).toContainText("NÃO será concluído automaticamente");
+    await confirmDialog(page).getByRole("button", { name: "Reabrir" }).click();
+    await expect(appointment.getByText("Agendado", { exact: true })).toBeVisible();
+    const reopened = await prisma.appointment.findUniqueOrThrow({ where: { id: stored.id } });
+    expect([reopened.status, reopened.autoCompleteEligible]).toEqual(["AGENDADO", false]);
+  });
+
+  // Mesmo calculo de formatAgendaMonthYear (src/lib/agenda/time.ts) no fuso
+  // da empresa de teste - so para um seletor estavel do titulo do mes.
+  function currentMonthLabel(): string {
+    const label = new Intl.DateTimeFormat("pt-BR", { timeZone: E2E_BUSINESS_TZ, month: "long", year: "numeric" }).format(new Date());
     return label.charAt(0).toUpperCase() + label.slice(1);
   }
 
   test("Calendário: navega entre meses, troca de ano pelo seletor, e clica num dia com ponto", async ({ page }) => {
     test.setTimeout(60_000);
-
-    const email = uniqueEmail("agenda-cal");
-    await register(page, "Dono Calendario E2E", email);
+    await register(page, "Dono Calendario E2E", uniqueEmail("agenda-cal"));
     await completeOnboarding(page, "Empresa Calendario E2E");
 
-    // Cria um agendamento hoje (mesmo fluxo da criacao do teste principal),
-    // so pra garantir que o dia de hoje tenha o "pontinho" no calendario.
+    // Um agendamento hoje, so para o dia de hoje ter o "pontinho".
     await gotoHydrated(page, "/agenda/novo");
-    await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    await page.getByLabel("Nome do novo cliente").fill("Cliente Calendario E2E");
-    await page.getByRole("button", { name: "Criar cliente" }).click();
-    await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
-    await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill("Corte Calendario E2E");
-    await page.getByLabel("Duração (min)").fill("30");
-    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
-    await page.getByRole("button", { name: "Criar serviço" }).click();
-    await expect(page.getByText("Corte Calendario E2E (30 min)")).toBeVisible();
-    await page.locator("#startAt").fill(pastDateTimeInputValue());
+    await fillNewDayAppointment(page, "Cliente Calendario E2E", [{ name: "Corte Calendario E2E", price: "80" }]);
     await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/\/agenda(\?|$)/);
+    await expect(page).toHaveURL(/\/agenda\?view=day/);
+    await page.getByRole("link", { name: "Calendário" }).click();
 
-    // exact: cada dia da grade e um botao cujo nome contem o mes/ano
-    // ("1 de outubro de 2026, sem compromissos").
-    const monthTitle = page.getByRole("button", { name: currentTokyoMonthLabel(), exact: true });
+    // exact: cada dia da grade e um botao cujo nome contem o mes/ano.
+    const monthTitle = page.getByRole("button", { name: currentMonthLabel(), exact: true });
     await expect(monthTitle).toBeVisible();
 
-    // Navega mes anterior e depois mes seguinte com as setas - volta pro mes
-    // original.
     await page.getByRole("button", { name: "Mês anterior" }).click();
     await expect(monthTitle).not.toBeVisible();
     await page.getByRole("button", { name: "Próximo mês" }).click();
     await expect(monthTitle).toBeVisible();
 
-    // Troca de ano pelo seletor de mes/ano.
     await monthTitle.click();
     const yearText = page.getByText(new RegExp(`^\\d{4}$`)).first();
     const initialYear = Number(await yearText.textContent());
     await page.getByRole("button", { name: "Próximo ano" }).click();
-    // exact: o titulo ("Outubro de 2026") e o cabecalho do dia tambem contem o ano.
     await expect(page.getByText(String(initialYear + 1), { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Ano anterior" }).click();
     await expect(page.getByText(String(initialYear), { exact: true })).toBeVisible();
-    // Escolhe o mes de Janeiro - navega e fecha o seletor.
     await page.getByRole("button", { name: "Jan", exact: true }).click();
     await expect(page.getByRole("button", { name: "Jan", exact: true })).not.toBeVisible();
 
-    // Volta pro mes/dia de hoje.
     await page.getByRole("button", { name: "Hoje" }).click();
     await expect(monthTitle).toBeVisible();
 
-    // O dia de hoje tem o "pontinho" (aria-current="date") - clica em outro
-    // dia primeiro (painel some o agendamento), depois volta pra hoje (painel
-    // mostra o agendamento de novo).
     const todayCell = page.locator('button[aria-current="date"]');
     await expect(todayCell).toBeVisible();
     await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
@@ -218,33 +250,70 @@ test.describe("Etapa 8 - agenda", () => {
     await todayCell.click();
     await expect(page.getByText("Cliente Calendario E2E")).toBeVisible();
   });
+});
 
-  test("aba Mês mostra as contagens por status", async ({ page }) => {
-    test.setTimeout(60_000);
+test.describe("Agenda - legado com horário (TIMED, gravado no banco)", () => {
+  // A tela nao cria mais TIMED: grava dois agendamentos com horario hoje
+  // (10:00 e 14:00 no fuso da empresa) para a empresa recem-criada.
+  async function seedTimed(email: string) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
+    const businessId = user.business!.id;
+    const client = await prisma.client.create({ data: { businessId, name: "Cliente Legado E2E" } });
+    const service = await prisma.product.create({
+      data: { businessId, name: "Corte Legado E2E", type: "SERVICO", durationMinutes: 30, defaultPrice: new Decimal(80) },
+    });
+    const { year, month, day } = parseDateKey(businessToday());
+    for (const hour of [10, 14]) {
+      const startAt = zonedInstant(E2E_BUSINESS_TZ, year, month, day, hour, 0);
+      await prisma.appointment.create({
+        data: {
+          businessId,
+          clientId: client.id,
+          startAt,
+          endAt: new Date(startAt.getTime() + 30 * 60_000),
+          services: { create: [{ productId: service.id, nameSnapshot: "Corte Legado E2E", durationMinutesSnapshot: 30, position: 0 }] },
+        },
+      });
+    }
+  }
 
-    const email = uniqueEmail("agenda-month");
-    await register(page, "Dono Mes E2E", email);
-    await completeOnboarding(page, "Empresa Mes E2E");
+  test("exibe com horário (antes dos agendamentos por dia), confirma, conclui pelo modal e cancela - como antes", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-legado");
+    await register(page, "Dono Legado E2E", email);
+    await completeOnboarding(page, "Empresa Legado E2E");
+    await seedTimed(email);
 
+    // Um agendamento por dia no mesmo dia: os TIMED vem primeiro, pelo horario.
     await gotoHydrated(page, "/agenda/novo");
-    await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    await page.getByLabel("Nome do novo cliente").fill("Cliente Mes E2E");
-    await page.getByRole("button", { name: "Criar cliente" }).click();
-    await expect(page.getByText("Cliente Mes E2E")).toBeVisible();
-    await page.getByRole("button", { name: "+ Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill("Corte Mes E2E");
-    await page.getByLabel("Duração (min)").fill("30");
-    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
-    await page.getByRole("button", { name: "Criar serviço" }).click();
-    await expect(page.getByText("Corte Mes E2E (30 min)")).toBeVisible();
-    await page.locator("#startAt").fill(pastDateTimeInputValue());
+    await fillNewDayAppointment(page, "Cliente Por Dia E2E", [{ name: "Escova E2E", price: "40" }]);
     await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/\/agenda(\?|$)/);
+    await expect(page).toHaveURL(/view=day/);
 
-    await page.getByRole("link", { name: "Mês" }).click();
-    await expect(page).toHaveURL(/view=month/);
-    await expect(page.getByText("Total")).toBeVisible();
-    await expect(page.getByText("Agendados")).toBeVisible();
-    await expect(page.getByText("Cliente Mes E2E")).toBeVisible();
+    const rows = page.getByTestId("appointment-row");
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0)).toContainText("10:00–10:30");
+    await expect(rows.nth(1)).toContainText("14:00–14:30");
+    await expect(rows.nth(2)).toContainText("Cliente Por Dia E2E");
+
+    const first = rows.nth(0);
+    await first.getByRole("button", { name: "Confirmar" }).click();
+    await expect(first.getByText("Confirmado", { exact: true })).toBeVisible();
+
+    await first.getByRole("button", { name: "Concluir" }).click();
+    await expect(page.getByRole("heading", { name: "Concluir atendimento" })).toBeVisible();
+    await page.locator("#completeCategoryId").selectOption({ label: "Venda de serviços" });
+    await page.getByRole("button", { name: "A prazo" }).click();
+    await page.getByRole("button", { name: "Concluir atendimento" }).click();
+    await expect(page.getByRole("link", { name: /ver venda #\d+/i })).toBeVisible();
+
+    const second = rows.nth(1);
+    await second.getByRole("button", { name: "Cancelar" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Cancelar agendamento" }).click();
+    await expect(second.getByText("Cancelado", { exact: true })).toBeVisible();
   });
+});
+
+test.afterAll(async () => {
+  await prisma.$disconnect();
 });

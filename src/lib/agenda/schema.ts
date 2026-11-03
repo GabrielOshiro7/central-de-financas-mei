@@ -73,6 +73,87 @@ export function appointmentInputSchema() {
   });
 }
 
+// --- Fluxo por dia (DAY, Agenda A3) ---------------------------------------
+
+const DATE_KEY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function moneyAmount(currency: Currency | null) {
+  return z.coerce
+    .number()
+    .refine(Number.isFinite, "Valor inválido.")
+    .refine((n) => !currency || !isIntegerCurrency(currency) || Number.isInteger(n), "Valores em iene não têm casas decimais.");
+}
+
+// Centavos inteiros (2 casas) - soma exata sem ponto flutuante, para comparar
+// a soma das parcelas com o total. O backend grava com Decimal.
+const toCents = (n: number) => Math.round(n * 100);
+
+// Criar/editar um agendamento DAY. Espelha as CHECKs do banco
+// (appointments_day_fields_check: dia, categoria e condicao de pagamento
+// obrigatorios; appointment_installments_amount_check: parcela > 0) e as
+// regras das parcelas de venda: a vista = nenhuma parcela planejada (a unica
+// parcela e o proprio dia, paga na conclusao); a prazo = 1+ parcelas, soma =
+// total, vencimento >= dia do atendimento. `position` dos servicos e das
+// parcelas nunca vem do cliente (indice do array, atribuido no backend).
+export function dayAppointmentInputSchema(currency: Currency | null) {
+  return z
+    .object({
+      clientId: z.string().trim().min(1, "Selecione um cliente."),
+      scheduledOn: z.string().regex(DATE_KEY_REGEX, "Informe a data do atendimento."),
+      services: z
+        .array(
+          z.object({
+            productId: z.string().trim().min(1, "Selecione um serviço."),
+            quantity: z.coerce.number().int("A quantidade deve ser um número inteiro.").min(1, "A quantidade precisa ser ao menos 1."),
+            unitPrice: moneyAmount(currency).pipe(z.number().nonnegative("O valor do serviço não pode ser negativo.")),
+          })
+        )
+        .min(1, "Adicione ao menos um serviço."),
+      categoryId: z.string().trim().min(1, "Selecione uma categoria de receita."),
+      paymentTiming: z.enum(["AVISTA", "APRAZO"], { message: "Escolha a condição de pagamento." }),
+      paymentMethod: z.string().trim().max(50).optional().or(z.literal("")),
+      installments: z
+        .array(
+          z.object({
+            dueOn: z.string().regex(DATE_KEY_REGEX, "Data de vencimento inválida."),
+            amount: moneyAmount(currency).pipe(z.number().positive("O valor da parcela precisa ser maior que zero.")),
+          })
+        )
+        .optional()
+        .default([]),
+      notes: z.string().trim().max(500, "A observação pode ter no máximo 500 caracteres.").optional().or(z.literal("")),
+    })
+    .strict()
+    .superRefine((data, ctx) => {
+      const productIds = data.services.map((s) => s.productId);
+      if (new Set(productIds).size !== productIds.length) {
+        ctx.addIssue({ code: "custom", message: "O mesmo serviço foi adicionado duas vezes - use a quantidade.", path: ["services"] });
+      }
+
+      if (data.paymentTiming === "AVISTA") {
+        if (data.installments.length > 0) {
+          ctx.addIssue({ code: "custom", message: "Pagamento à vista não tem parcelas.", path: ["installments"] });
+        }
+        return;
+      }
+
+      if (data.installments.length === 0) {
+        ctx.addIssue({ code: "custom", message: "Informe ao menos uma parcela.", path: ["installments"] });
+        return;
+      }
+      if (data.installments.some((i) => i.dueOn < data.scheduledOn)) {
+        ctx.addIssue({ code: "custom", message: "O vencimento de uma parcela não pode ser antes do dia do atendimento.", path: ["installments"] });
+      }
+      const total = data.services.reduce((sum, s) => sum + toCents(s.unitPrice) * s.quantity, 0);
+      const installmentsSum = data.installments.reduce((sum, i) => sum + toCents(i.amount), 0);
+      if (installmentsSum !== total) {
+        ctx.addIssue({ code: "custom", message: "A soma das parcelas não bate com o total do atendimento.", path: ["installments"] });
+      }
+    });
+}
+
+export type DayAppointmentInput = z.infer<ReturnType<typeof dayAppointmentInputSchema>>;
+
 export function appointmentStatusChangeSchema() {
   return z.object({
     status: z.enum(appointmentStatusForCreateValues),

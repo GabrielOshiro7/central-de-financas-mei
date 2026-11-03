@@ -61,7 +61,10 @@ async function completeOnboarding(page: Page, name: string) {
 
 const todayIn = (timeZone: string) => todayKey({ timeZone, now: new Date() });
 
-async function expectCompanyClock(page: Page, opts: { today: string; entryDay: string; billDue: string; city: string }) {
+async function expectCompanyClock(
+  page: Page,
+  opts: { today: string; entryDay: string; billDue: string; city: string; timedAppointmentId: string }
+) {
   // Lancamento ja existente: mesmo dia, qualquer que seja o fuso (90 dias:
   // o padrao da lista e o mes corrente, que pode nao conter o dia).
   await gotoHydrated(page, "/financeiro/receitas?period=LAST_90_DAYS");
@@ -81,8 +84,13 @@ async function expectCompanyClock(page: Page, opts: { today: string; entryDay: s
   await expect(billRow).toBeVisible();
   await expect(billRow.getByText(opts.billDue < opts.today ? "Atrasado" : "Pendente", { exact: true })).toBeVisible();
 
-  // Agenda: o rotulo do campo de inicio mostra a cidade do fuso da empresa.
+  // Agenda (desde a Agenda A3 a criacao e por dia, sem horario): o dia
+  // padrao de um agendamento novo e o "hoje" da empresa; o rotulo do horario
+  // so existe no formulario do fluxo com horario (TIMED), ao editar um
+  // agendamento antigo - e mostra a cidade do fuso da empresa.
   await gotoHydrated(page, "/agenda/novo");
+  await expect(page.getByLabel("Data do atendimento")).toHaveValue(opts.today);
+  await gotoHydrated(page, `/agenda/${opts.timedAppointmentId}/editar`);
   await expect(page.getByLabel(`Início (horário de ${opts.city})`)).toBeVisible();
 }
 
@@ -132,17 +140,27 @@ test("Configurações: trocar a empresa para America/Sao_Paulo e voltar; hoje, v
     data: { businessId: business.id, categoryId: expense.id, description: BILL_DESCRIPTION, amount: new Decimal("80.00"), dueOn: dateKeyToDbDate(spToday) },
   });
 
-  await expectCompanyClock(page, { today: tokyoToday, entryDay, billDue: spToday, city: "Tóquio" });
+  // Agendamento antigo com horario (TIMED) - a tela nao cria mais esse fluxo.
+  const client = await prisma.client.create({ data: { businessId: business.id, name: "Cliente Fuso F7" } });
+  const timedStart = new Date(Date.now() + 7 * 86_400_000);
+  const timed = await prisma.appointment.create({
+    data: {
+      businessId: business.id, clientId: client.id, startAt: timedStart, endAt: new Date(timedStart.getTime() + 30 * 60_000),
+      services: { create: [{ nameSnapshot: "Corte F7", durationMinutesSnapshot: 30, position: 0 }] },
+    },
+  });
+
+  await expectCompanyClock(page, { today: tokyoToday, entryDay, billDue: spToday, city: "Tóquio", timedAppointmentId: timed.id });
 
   await saveCountryAndZone(page, "BR", "America/Sao_Paulo");
   const inSp = await prisma.business.findUniqueOrThrow({ where: { id: business.id } });
   expect([inSp.country, inSp.timezone]).toEqual(["BR", "America/Sao_Paulo"]);
-  await expectCompanyClock(page, { today: todayIn("America/Sao_Paulo"), entryDay, billDue: spToday, city: "Brasília" });
+  await expectCompanyClock(page, { today: todayIn("America/Sao_Paulo"), entryDay, billDue: spToday, city: "Brasília", timedAppointmentId: timed.id });
 
   await saveCountryAndZone(page, "JP", null);
   const back = await prisma.business.findUniqueOrThrow({ where: { id: business.id } });
   expect([back.country, back.timezone]).toEqual(["JP", "Asia/Tokyo"]);
-  await expectCompanyClock(page, { today: todayIn("Asia/Tokyo"), entryDay, billDue: spToday, city: "Tóquio" });
+  await expectCompanyClock(page, { today: todayIn("Asia/Tokyo"), entryDay, billDue: spToday, city: "Tóquio", timedAppointmentId: timed.id });
 });
 
 test.afterAll(async () => {
