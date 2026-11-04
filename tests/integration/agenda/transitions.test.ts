@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment, changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
+import { changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { getAppointmentById } from "@/lib/agenda/queries";
 import { cancelSale } from "@/lib/sales/mutations";
 
@@ -48,7 +49,7 @@ describe("agenda - transições de status", () => {
   });
 
   async function createOne(startAt: string) {
-    const created = await createAppointment(businessId, { clientId, startAt: new Date(startAt), services: [{ productId: serviceId }] });
+    const created = await createTimedAppointment(businessId, { clientId, startAt: new Date(startAt), services: [{ productId: serviceId }] });
     if (!created.ok) throw new Error("setup falhou: " + created.error);
     return created.value.id;
   }
@@ -133,7 +134,7 @@ describe("agenda - transições de status", () => {
 
     // Outro agendamento passa a ocupar o mesmo horário enquanto o primeiro
     // estava cancelado.
-    const other = await createAppointment(businessId, {
+    const other = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-05-11T10:00:00Z"),
       services: [{ productId: serviceId }],

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { listAppointmentsForMonth } from "@/lib/agenda/queries";
 
 // Fuso da empresa de teste: Asia/Tokyo (default da F2). Antes da F3c a Agenda
@@ -64,8 +64,8 @@ describe("agenda - consulta do mes (listAppointmentsForMonth)", () => {
   it("nao retorna agendamentos de outro businessId", async () => {
     // 10h de 10/ago/2026 em Toquio = 01:00Z do mesmo dia.
     const startAt = new Date("2026-08-10T01:00:00Z");
-    const resultA = await createAppointment(businessAId, { clientId: clientAId, startAt, services: [{ productId: serviceAId }] });
-    const resultB = await createAppointment(businessBId, { clientId: clientBId, startAt, services: [{ productId: serviceBId }] });
+    const resultA = await createTimedAppointment(businessAId, { clientId: clientAId, startAt, services: [{ productId: serviceAId }] });
+    const resultB = await createTimedAppointment(businessBId, { clientId: clientBId, startAt, services: [{ productId: serviceBId }] });
     expect(resultA.ok).toBe(true);
     expect(resultB.ok).toBe(true);
 
@@ -86,13 +86,13 @@ describe("agenda - consulta do mes (listAppointmentsForMonth)", () => {
     // distancia (servico de 30min) - o teste e sobre o limite do range do
     // mes, nao sobre deteccao de sobreposicao (ja coberta em
     // tests/integration/agenda/mutations.test.ts).
-    const inAugust = await createAppointment(businessAId, {
+    const inAugust = await createTimedAppointment(businessAId, {
       clientId: clientAId,
       startAt: lastMinuteOfAugust,
       services: [{ productId: serviceAId }],
       allowOverlap: true,
     });
-    const inSeptember = await createAppointment(businessAId, {
+    const inSeptember = await createTimedAppointment(businessAId, {
       clientId: clientAId,
       startAt: firstInstantOfSeptember,
       services: [{ productId: serviceAId }],

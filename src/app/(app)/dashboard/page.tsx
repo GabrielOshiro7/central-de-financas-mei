@@ -2,6 +2,7 @@ import { Calculator, DollarSign, FileMinus, PiggyBank } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { getDashboardData } from "@/lib/finance/dashboardService";
 import {
   PERIOD_OPTIONS,
@@ -56,6 +57,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   await materializeRecurringEntries(business.id, user.id);
   const clock = clockFor(business);
   await materializeRecurringBills(business.id, clock);
+  // Agenda A5: conclui os atendimentos de dias ja encerrados antes de ler.
+  await autoCompleteDueAppointments(business.id, clock);
   const searchParams = await props.searchParams;
 
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;

@@ -10,6 +10,7 @@ import { SaleFilters } from "@/components/vendas/SaleFilters";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
 import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -32,6 +33,8 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
   const periodParam = paramString(searchParams, "period");
   const period = (periodParam && VALID_PERIODS.has(periodParam as PeriodKey) ? periodParam : DEFAULT_PERIOD) as PeriodKey;
   const clock = clockFor(business, now);
+  // Agenda A5: conclui os atendimentos de dias ja encerrados antes de ler.
+  await autoCompleteDueAppointments(business.id, clock);
   const range = period === "CUSTOM" ? resolvePeriodRange(DEFAULT_PERIOD, clock) : resolvePeriodRange(period, clock);
 
   const search = paramString(searchParams, "q");

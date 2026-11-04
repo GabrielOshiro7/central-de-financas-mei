@@ -4,7 +4,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { POST as postSale } from "@/app/api/vendas/route";
 import { POST as postRecurring } from "@/app/api/financeiro/recurring/route";
-import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
+import { completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { getSalesSummary } from "@/lib/sales/queries";
 import { dayRange, dbDateToKey, zonedInstant } from "@/lib/time/zoned";
@@ -123,7 +124,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
   it("conclusão de agendamento de 20/10 às 23:30 (no fuso da empresa): venda, parcela à vista e lançamento em 20/10", async () => {
     const { userId, businessId, clientId } = await login(tz);
     const service = await prisma.product.create({ data: { businessId, name: "Corte", type: "SERVICO", durationMinutes: 30, defaultPrice: new Prisma.Decimal(50) } });
-    const appointment = await createAppointment(businessId, { clientId, startAt: zonedInstant(tz, 2026, 10, 20, 23, 30), services: [{ productId: service.id }] });
+    const appointment = await createTimedAppointment(businessId, { clientId, startAt: zonedInstant(tz, 2026, 10, 20, 23, 30), services: [{ productId: service.id }] });
     expect(appointment.ok).toBe(true);
     if (!appointment.ok) return;
     const done = await completeAppointment(businessId, userId, appointment.value.id, {
@@ -168,7 +169,7 @@ describe.each(TIME_ZONES)("dia digitado é a fonte do dia de vendas e recorrente
       })
     );
     const service = await prisma.product.create({ data: { businessId, name: "Barba", type: "SERVICO", durationMinutes: 30, defaultPrice: new Prisma.Decimal(30) } });
-    const appointment = await createAppointment(businessId, { clientId, startAt: zonedInstant(tz, 2026, 10, 20, 0, 15), services: [{ productId: service.id }] });
+    const appointment = await createTimedAppointment(businessId, { clientId, startAt: zonedInstant(tz, 2026, 10, 20, 0, 15), services: [{ productId: service.id }] });
     if (!appointment.ok) throw new Error(appointment.error);
     const done = await completeAppointment(businessId, userId, appointment.value.id, {
       categoryId: revenueCategoryId, items: [{ productId: service.id, description: "Barba", quantity: 1, unitPrice: 30 }],

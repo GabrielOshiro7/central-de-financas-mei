@@ -7,7 +7,8 @@ import { createBill, settleBill } from "@/lib/finance/bills/mutations";
 import { confirmImport } from "@/lib/finance/importConfirm";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { createSale } from "@/lib/sales/mutations";
-import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
+import { completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { updateOpeningBalance } from "@/lib/finance/cash/mutations";
 import { dateKeyToDbDate, dbDateToKey, toDateKey } from "@/lib/time/zoned";
 
@@ -138,7 +139,7 @@ describe.each(TIME_ZONES)("dia gravado em occurredOn - empresa em %s", (tz) => {
     const service = await prisma.product.create({
       data: { businessId, name: "Corte", type: "SERVICO", durationMinutes: 30, defaultPrice: new Prisma.Decimal(50) },
     });
-    const appointment = await createAppointment(businessId, { clientId: client.id, startAt: EARLY_JST, services: [{ productId: service.id }] });
+    const appointment = await createTimedAppointment(businessId, { clientId: client.id, startAt: EARLY_JST, services: [{ productId: service.id }] });
     expect(appointment.ok).toBe(true);
     if (!appointment.ok) return;
     const day = toDateKey(EARLY_JST, tz);

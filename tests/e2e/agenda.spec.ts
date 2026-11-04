@@ -427,6 +427,55 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
     expect(sale.status).toBe("CANCELLED");
   });
 
+  // Agenda A5: conclusao AUTOMATICA na carga de pagina (aqui, o Dashboard).
+  test("conclusão automática: DAY de ontem elegível é concluído ao abrir o Dashboard; desfazer devolve o Caixa e não reconclui", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-auto");
+    await register(page, "Dono Auto E2E", email);
+    await completeOnboarding(page, "Empresa Auto E2E");
+    const businessId = await configureOpeningBalance(email);
+    const yesterday = businessToday(-1);
+
+    const category = await prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE", name: "Venda de serviços" } });
+    const client = await prisma.client.create({ data: { businessId, name: "Cliente Auto E2E" } });
+    const product = await prisma.product.create({ data: { businessId, name: "Corte Auto E2E", type: "SERVICO", defaultPrice: new Decimal(70) } });
+    const seeded = await prisma.appointment.create({
+      data: {
+        businessId, clientId: client.id, kind: "DAY", status: "AGENDADO", autoCompleteEligible: true,
+        scheduledOn: dateKeyToDbDate(yesterday), categoryId: category.id, paymentTiming: "AVISTA", paymentMethod: "PIX",
+        services: { create: [{ productId: product.id, nameSnapshot: "Corte Auto E2E", unitPrice: new Decimal(70), quantity: 1, position: 0 }] },
+      },
+    });
+
+    await gotoHydrated(page, "/dashboard");
+    await expect.poll(async () => (await prisma.appointment.findUniqueOrThrow({ where: { id: seeded.id } })).status).toBe("CONCLUIDO");
+
+    await gotoHydrated(page, `/agenda?view=day&day=${yesterday}`);
+    const appointment = row(page, "Cliente Auto E2E");
+    await expect(appointment.getByText("Concluído", { exact: true })).toBeVisible();
+    const saleNumber = /#(\d+)/.exec((await appointment.getByRole("link", { name: /Ver venda #\d+/ }).textContent()) ?? "")![1];
+
+    // 90 dias: ontem pode ser do mes anterior (o padrao da lista e o mes corrente).
+    await gotoHydrated(page, "/financeiro/receitas?period=LAST_90_DAYS");
+    const revenueRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) });
+    await expect(revenueRow.getByText(formatDateKey(yesterday))).toBeVisible();
+    await expect(revenueRow.getByText("R$70.00")).toBeVisible();
+    await expectCash(page, "R$570.00");
+
+    await gotoHydrated(page, `/agenda?view=day&day=${yesterday}`);
+    await undo(page, "Cliente Auto E2E", "O cliente não veio");
+    await confirmUndo(page);
+    await expect(appointment.getByText("Faltou", { exact: true })).toBeVisible();
+    await expectCash(page, "R$500.00");
+
+    // Recarregar (Dashboard e Agenda) nao reconclui: fica Faltou, so a venda cancelada.
+    await gotoHydrated(page, "/dashboard");
+    await gotoHydrated(page, `/agenda?view=day&day=${yesterday}`);
+    await expect(appointment.getByText("Faltou", { exact: true })).toBeVisible();
+    const sales = await prisma.sale.findMany({ where: { businessId } });
+    expect(sales.map((s) => s.status)).toEqual(["CANCELLED"]);
+  });
+
   test("concluir -> desfazer (concluí por engano) -> concluir de novo: uma venda nova ativa e a antiga cancelada", async ({ page }) => {
     test.setTimeout(90_000);
     const email = uniqueEmail("agenda-reconcluir");

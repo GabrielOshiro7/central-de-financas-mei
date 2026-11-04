@@ -9,11 +9,9 @@ import { formatAgendaTime, parseAgendaDateTimeInput } from "@/lib/agenda/time";
 import { timeZoneCity } from "@/lib/time/countryZones";
 import { ClientPicker, type ClientOption } from "@/components/agenda/ClientPicker";
 
-export type { ClientOption };
-
-// Formulario do fluxo COM HORARIO (TIMED, legado). Desde a Agenda A3 so edita/
-// remarca os agendamentos TIMED que ja existem - toda criacao nova e do fluxo
-// por dia (DayAppointmentForm).
+// Formulario do fluxo COM HORARIO (TIMED, legado): so edita/remarca os
+// agendamentos TIMED que ja existem - toda criacao nova e do fluxo por dia
+// (DayAppointmentForm). O modo de criacao saiu na Agenda A6.
 
 const primaryButtonClass =
   "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
@@ -28,7 +26,6 @@ export type ServiceOption = { id: string; name: string; durationMinutes: number;
 type ConflictAppointment = { id: string; startAt: string; endAt: string };
 
 export function AppointmentForm({
-  mode,
   appointmentId,
   clients,
   services,
@@ -39,28 +36,27 @@ export function AppointmentForm({
   initialNotes,
   timeZone,
 }: {
-  mode: "create" | "edit";
-  appointmentId?: string;
+  appointmentId: string;
   clients: ClientOption[];
   services: ServiceOption[];
   // Moeda da empresa: define simbolo e casas decimais do preco do servico.
   currency: Currency | null;
-  initialClientId?: string;
-  initialServiceIds?: string[];
+  initialClientId: string;
+  initialServiceIds: string[];
   // "YYYY-MM-DDTHH:mm" já no fuso da empresa (ver agendaDateKey +
   // formatAgendaTime na página que monta esse valor) - nunca calculado com
   // fuso local do navegador.
-  initialStartAt?: string;
+  initialStartAt: string;
   initialNotes?: string;
   // Fuso da empresa (Business.timezone, Etapa F3c; antes fixo em Tóquio).
   timeZone: string;
 }) {
   const router = useRouter();
 
-  const [clientId, setClientId] = useState(initialClientId ?? "");
+  const [clientId, setClientId] = useState(initialClientId);
 
   const [localServices, setLocalServices] = useState(services);
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(initialServiceIds ?? []);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(initialServiceIds);
   const [addServiceId, setAddServiceId] = useState("");
   const [showCreateService, setShowCreateService] = useState(false);
   const [newServiceName, setNewServiceName] = useState("");
@@ -68,7 +64,7 @@ export function AppointmentForm({
   const [newServicePrice, setNewServicePrice] = useState("");
   const [savingService, setSavingService] = useState(false);
 
-  const [startAtInput, setStartAtInput] = useState(initialStartAt ?? "");
+  const [startAtInput, setStartAtInput] = useState(initialStartAt);
   const [notes, setNotes] = useState(initialNotes ?? "");
 
   const [conflicts, setConflicts] = useState<ConflictAppointment[] | null>(null);
@@ -156,10 +152,11 @@ export function AppointmentForm({
         notes: notes || undefined,
         allowOverlap,
       };
-      const url = mode === "create" ? "/api/agenda" : `/api/agenda/${appointmentId}`;
-      const method = mode === "create" ? "POST" : "PATCH";
-
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(`/api/agenda/${appointmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       const result = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -325,7 +322,7 @@ export function AppointmentForm({
 
       <div className="flex gap-3">
         <button type="button" onClick={() => submit(false)} disabled={pending} className={primaryButtonClass}>
-          {pending ? "Salvando..." : mode === "create" ? "Agendar" : "Salvar alterações"}
+          {pending ? "Salvando..." : "Salvar alterações"}
         </button>
       </div>
     </form>

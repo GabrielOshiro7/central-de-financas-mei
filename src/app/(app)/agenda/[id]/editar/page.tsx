@@ -80,7 +80,6 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
       <NotEditable />
     ) : (
       <AppointmentForm
-        mode="edit"
         appointmentId={timed.id}
         clients={clientOptions}
         services={services.map((s) => ({

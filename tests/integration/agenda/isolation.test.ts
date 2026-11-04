@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment, updateAppointment } from "@/lib/agenda/mutations";
+import { updateAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { getAppointmentById } from "@/lib/agenda/queries";
 
 // Isolamento cross-empresa (Etapa 8, incremento 3). Teardown na ordem:
@@ -61,26 +62,13 @@ describe("agenda - isolamento entre empresas", () => {
     await prisma.user.deleteMany({ where: { id: { in: [userAId, userBId] } } });
   });
 
-  it("criar agendamento com clientId de outra empresa é rejeitado", async () => {
-    const result = await createAppointment(businessAId, {
-      clientId: clientBId, // cliente da empresa B
-      startAt: new Date("2026-03-10T10:00:00Z"),
-      services: [{ productId: serviceAId }],
-    });
-    expect(result.ok).toBe(false);
-  });
-
-  it("criar agendamento com serviço (productId) de outra empresa é rejeitado", async () => {
-    const result = await createAppointment(businessAId, {
-      clientId: clientAId,
-      startAt: new Date("2026-03-10T10:00:00Z"),
-      services: [{ productId: serviceBId }], // servico da empresa B
-    });
-    expect(result.ok).toBe(false);
-  });
-
+  // Agenda A6: os casos "criar com cliente/servico de outra empresa" sairam
+  // junto com a criacao TIMED; a criacao DAY cobre o
+  // mesmo isolamento em dayAppointmentRoutes.test.ts.
+  // (A funcao de criacao TIMED saiu de mutations.ts; os demais casos gravam
+  // o TIMED com o helper de teste createTimedAppointment.)
   it("getAppointmentById nunca retorna um agendamento de outra empresa", async () => {
-    const created = await createAppointment(businessAId, {
+    const created = await createTimedAppointment(businessAId, {
       clientId: clientAId,
       startAt: new Date("2026-03-11T10:00:00Z"),
       services: [{ productId: serviceAId }],
@@ -96,7 +84,7 @@ describe("agenda - isolamento entre empresas", () => {
   });
 
   it("updateAppointment com id de outra empresa é rejeitado (nao vaza nem edita)", async () => {
-    const created = await createAppointment(businessAId, {
+    const created = await createTimedAppointment(businessAId, {
       clientId: clientAId,
       startAt: new Date("2026-03-12T10:00:00Z"),
       services: [{ productId: serviceAId }],
@@ -117,7 +105,7 @@ describe("agenda - isolamento entre empresas", () => {
   });
 
   it("excluir fisicamente um cliente com agendamento vinculado é rejeitado pelo banco (P2003, RESTRICT)", async () => {
-    const created = await createAppointment(businessAId, {
+    const created = await createTimedAppointment(businessAId, {
       clientId: clientAId,
       startAt: new Date("2026-03-14T10:00:00Z"),
       services: [{ productId: serviceAId }],

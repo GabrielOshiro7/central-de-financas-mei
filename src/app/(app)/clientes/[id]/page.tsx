@@ -11,6 +11,7 @@ import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
@@ -20,6 +21,8 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
 
   const client = await getClientById(business.id, id);
   if (!client) notFound();
+  // Agenda A5: conclui os atendimentos de dias ja encerrados antes de ler.
+  await autoCompleteDueAppointments(business.id, clock);
 
   const [commercial, financial, history, appointmentHistory] = await Promise.all([
     getClientCommercialSummary(business.id, id),

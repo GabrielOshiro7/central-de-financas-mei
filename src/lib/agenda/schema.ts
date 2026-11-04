@@ -42,15 +42,15 @@ export function parseDayParam(value: unknown): string | null {
 
 // Um servico por linha - `position` NUNCA vem do cliente (evita gaps/
 // duplicatas mandados pelo frontend); e sempre atribuido pelo backend como o
-// indice do item no array (ver createAppointment/updateAppointment em
-// mutations.ts).
+// indice do item no array (ver updateAppointment em mutations.ts).
 const appointmentServiceInputSchema = z.object({
   productId: z.string().trim().min(1, "Selecione um serviço."),
 });
 
 const appointmentStatusForCreateValues = ["AGENDADO", "CONFIRMADO", "CONCLUIDO", "CANCELADO", "FALTOU"] as const;
 
-// Payload comum de criar/editar (remarcar) - startAt no formato de
+// Payload de editar/remarcar um TIMED existente (desde a Agenda A6 nao ha
+// criacao TIMED; a rota POST /api/agenda cria DAY) - startAt no formato de
 // <input type="datetime-local"> ("YYYY-MM-DDTHH:mm"), SEMPRE interpretado
 // no fuso da empresa (ver parseAgendaDateTimeInput em time.ts), nunca o
 // fuso do navegador/servidor. `allowOverlap` so importa quando o backend ja

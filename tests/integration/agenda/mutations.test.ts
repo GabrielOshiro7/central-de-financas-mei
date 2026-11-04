@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment, updateAppointment } from "@/lib/agenda/mutations";
+import { updateAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { getAppointmentById } from "@/lib/agenda/queries";
 
 describe("agenda - mutations (criar/editar/remarcar)", () => {
@@ -41,23 +42,13 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
     await prisma.user.delete({ where: { id: userId } }).catch(() => {});
   });
 
-  it("endAt é calculado como startAt + soma das durações no momento da criação", async () => {
-    const result = await createAppointment(businessId, {
-      clientId,
-      startAt: new Date("2026-04-01T10:00:00Z"),
-      services: [{ productId: haircutId }, { productId: beardId }], // 30 + 20 = 50 min
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-
-    const appointment = await getAppointmentById(businessId, result.value.id);
-    expect(appointment?.endAt?.toISOString()).toBe("2026-04-01T10:50:00.000Z");
-    expect(appointment?.services.map((s) => s.nameSnapshot)).toEqual(["Corte", "Barba"]);
-    expect(appointment?.services.map((s) => s.durationMinutesSnapshot)).toEqual([30, 20]);
-  });
-
+  // Agenda A6: os casos de CRIACAO TIMED ("endAt calculado na criacao" e
+  // "sobreposicao na criacao") sairam junto com a criacao TIMED. A conta do
+  // endAt continua coberta por "remarcar recalcula endAt" e pelo teste
+  // unitario de computeEndAt; a sobreposicao, pela remarcacao abaixo e pelo
+  // teste unitario de detectOverlap.
   it("endAt fica CONGELADO: alterar a duração do Product depois não move agendamentos já criados", async () => {
-    const created = await createAppointment(businessId, {
+    const created = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-04-02T10:00:00Z"),
       services: [{ productId: haircutId }],
@@ -79,7 +70,7 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
   });
 
   it("remarcar recalcula endAt a partir do novo startAt e dos serviços enviados", async () => {
-    const created = await createAppointment(businessId, {
+    const created = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-04-03T10:00:00Z"),
       services: [{ productId: haircutId }],
@@ -101,7 +92,7 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
   });
 
   it("editar serviços nunca colide com @@unique(appointmentId, position) - deleteMany + createMany na mesma transação", async () => {
-    const created = await createAppointment(businessId, {
+    const created = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-04-04T10:00:00Z"),
       services: [{ productId: haircutId }, { productId: beardId }],
@@ -129,35 +120,29 @@ describe("agenda - mutations (criar/editar/remarcar)", () => {
     expect(positions.map((p) => p.position)).toEqual([0, 1, 2]);
   });
 
-  it("sobreposição é AVISO: rejeita sem allowOverlap, aceita com allowOverlap:true", async () => {
-    const first = await createAppointment(businessId, {
+  it("sobreposição ao remarcar é AVISO: rejeita sem allowOverlap, aceita com allowOverlap:true", async () => {
+    const first = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-04-05T10:00:00Z"),
       services: [{ productId: haircutId }], // 10:00-10:30
     });
-    expect(first.ok).toBe(true);
-
-    const conflicting = await createAppointment(businessId, {
+    const second = await createTimedAppointment(businessId, {
       clientId,
-      startAt: new Date("2026-04-05T10:15:00Z"), // dentro do intervalo do primeiro
+      startAt: new Date("2026-04-05T12:00:00Z"),
       services: [{ productId: beardId }],
     });
+    if (!first.ok || !second.ok) throw new Error("fixture");
+
+    const moveInto = { clientId, startAt: new Date("2026-04-05T10:15:00Z"), services: [{ productId: beardId }] }; // dentro do primeiro
+    const conflicting = await updateAppointment(businessId, second.value.id, moveInto);
     expect(conflicting.ok).toBe(false);
-    if (!conflicting.ok) {
-      expect(conflicting.conflicts?.length).toBe(1);
-    }
+    if (!conflicting.ok) expect(conflicting.conflicts?.map((c) => c.id)).toEqual([first.value.id]);
 
-    const withOverlapAllowed = await createAppointment(businessId, {
-      clientId,
-      startAt: new Date("2026-04-05T10:15:00Z"),
-      services: [{ productId: beardId }],
-      allowOverlap: true,
-    });
-    expect(withOverlapAllowed.ok).toBe(true);
+    expect((await updateAppointment(businessId, second.value.id, { ...moveInto, allowOverlap: true })).ok).toBe(true);
   });
 
   it("remarcar exclui o próprio agendamento da checagem de sobreposição (remarcar pro mesmo horário não conflita consigo mesmo)", async () => {
-    const created = await createAppointment(businessId, {
+    const created = await createTimedAppointment(businessId, {
       clientId,
       startAt: new Date("2026-04-06T10:00:00Z"),
       services: [{ productId: haircutId }],

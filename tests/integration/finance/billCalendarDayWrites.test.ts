@@ -13,7 +13,8 @@ import {
 } from "@/lib/finance/bills/mutations";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { createSale } from "@/lib/sales/mutations";
-import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
+import { completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { clockFor, dbDateToKey, toDateKey } from "@/lib/time/zoned";
 
 // Todo caminho que grava contas e moldes grava os dias certos (dueOn/issueOn/
@@ -169,7 +170,7 @@ describe.each(TIME_ZONES)("dias gravados nas contas - empresa em %s", (tz) => {
       [0, [{ dueDate: toDateKey(EARLY_JST, tz), amount: 50, paidNow: true }]],
       [2, [{ dueDate: "2026-11-01", amount: 25 }, { dueDate: "2026-12-01", amount: 25 }]],
     ] as const) {
-      const appointment = await createAppointment(businessId, { clientId: client.id, startAt: new Date(EARLY_JST.getTime() + offsetHours * 3600_000), services: [{ productId: service.id }] });
+      const appointment = await createTimedAppointment(businessId, { clientId: client.id, startAt: new Date(EARLY_JST.getTime() + offsetHours * 3600_000), services: [{ productId: service.id }] });
       expect(appointment.ok).toBe(true);
       if (!appointment.ok) return;
       const done = await completeAppointment(businessId, userId, appointment.value.id, {

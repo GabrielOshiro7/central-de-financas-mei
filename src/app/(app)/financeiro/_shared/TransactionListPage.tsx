@@ -1,6 +1,7 @@
 import type { EntrySource, FinancialEntryType } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { listTransactions } from "@/lib/finance/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import {
@@ -43,6 +44,8 @@ export async function TransactionListPage({
 }) {
   const { user, business } = await requireOnboardedUser();
   await materializeRecurringEntries(business.id, user.id);
+  // Agenda A5: a venda de um atendimento concluido gera a receita do dia.
+  await autoCompleteDueAppointments(business.id, clockFor(business));
 
   const periodParam = paramString(searchParams, "period");
   const period: PeriodKey =

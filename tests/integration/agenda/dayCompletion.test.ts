@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma, type PaymentTiming } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { completeDayAppointment, dayCompletionRequestId } from "@/lib/agenda/dayCompletion";
-import { changeAppointmentStatus, completeAppointment, createAppointment } from "@/lib/agenda/mutations";
+import { changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { clockFor, dateKeyToDbDate, dbDateToKey, zonedInstant } from "@/lib/time/zoned";
 
 // Agenda A2: nucleo da conclusao do fluxo DAY (completeDayAppointment). Os
@@ -241,7 +242,7 @@ describe("fuso da empresa decide 'hoje'", () => {
 describe("fluxo TIMED (antigo) inalterado e separado do DAY", () => {
   it("conclusão TIMED continua igual (clientRequestId 'agenda:<id>', sem rastro) e completeDayAppointment recusa TIMED", async () => {
     const biz = await newBusiness("Asia/Tokyo");
-    const timed = await createAppointment(biz.businessId, { clientId: biz.clientId, startAt: new Date("2026-06-01T01:00:00Z"), services: [{ productId: biz.corteId }] });
+    const timed = await createTimedAppointment(biz.businessId, { clientId: biz.clientId, startAt: new Date("2026-06-01T01:00:00Z"), services: [{ productId: biz.corteId }] });
     if (!timed.ok) throw new Error(timed.error);
     const row = await prisma.appointment.findUniqueOrThrow({ where: { id: timed.value.id } });
     expect([row.kind, row.autoCompleteEligible, row.completionSeq, row.scheduledOn, row.categoryId, row.paymentTiming]).toEqual(["TIMED", false, 0, null, null, null]);

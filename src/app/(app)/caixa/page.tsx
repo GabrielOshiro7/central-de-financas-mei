@@ -1,6 +1,7 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { getCurrentCashBalance, getMonthlyCashSeries } from "@/lib/finance/cash/queries";
 import { getForecastBalance } from "@/lib/finance/bills/queries";
 import { PERIOD_OPTIONS, resolvePeriodRange, parseCustomRangeParams, type PeriodKey } from "@/lib/finance/period";
@@ -26,6 +27,8 @@ export default async function CaixaPage(props: PageProps<"/caixa">) {
   await materializeRecurringEntries(business.id, user.id);
   const clock = clockFor(business);
   await materializeRecurringBills(business.id, clock);
+  // Agenda A5: conclui os atendimentos de dias ja encerrados antes de ler.
+  await autoCompleteDueAppointments(business.id, clock);
 
   const searchParams = await props.searchParams;
   const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;

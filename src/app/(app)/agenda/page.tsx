@@ -26,6 +26,8 @@ import {
 import { AgendaCalendarGrid, type CalendarDayCell } from "@/components/agenda/AgendaCalendarGrid";
 import { MonthSummary } from "@/components/agenda/MonthSummary";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
+import { clockFor } from "@/lib/time/zoned";
 
 const tabButtonClass = (active: boolean) =>
   `px-3 py-1.5 text-sm font-medium transition ${
@@ -80,7 +82,10 @@ function receivedLabel(entry: AgendaEntry, currency: Currency): string | null {
 // Agendamentos (dos dois fluxos, Agenda A3) -> itens da lista, na ordem da
 // consulta (por dia; TIMED pelo horario, depois DAY por createdAt/id). TIMED
 // mantem o mapeamento de antes (itens pre-preenchidos do modal de conclusao).
-function toListItems(entries: AgendaEntry[], currency: Currency): AppointmentListItem[] {
+// `todayKey` = hoje da empresa: um DAY de dia passado ainda AGENDADO e
+// elegivel e um que a conclusao automatica nao conseguiu concluir (Agenda A5)
+// - so sinalizado, calculado aqui na leitura, sem gravar nada.
+function toListItems(entries: AgendaEntry[], currency: Currency, todayKey: string): AppointmentListItem[] {
   return entries.map((entry) => ({
     id: entry.id,
     kind: entry.kind,
@@ -98,6 +103,7 @@ function toListItems(entries: AgendaEntry[], currency: Currency): AppointmentLis
     saleNumber: entry.sale?.saleNumber ?? null,
     saleStatus: entry.sale?.status ?? null,
     receivedLabel: receivedLabel(entry, currency),
+    autoCompleteFailed: entry.kind === "DAY" && entry.status === "AGENDADO" && entry.autoCompleteEligible && entry.dayKey < todayKey,
     completeItems:
       entry.kind === "TIMED"
         ? entry.services.map((s) => ({
@@ -139,6 +145,9 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
   const timeZone = business.timezone;
 
   const now = new Date();
+  // Agenda A5: conclui os atendimentos de dias ja encerrados antes de ler
+  // (relogio da empresa ja carregada, sem consulta extra).
+  await autoCompleteDueAppointments(business.id, clockFor(business, now));
   const todayKey = agendaDateKey(now, timeZone);
   const todayYear = Number(todayKey.slice(0, 4));
   const todayMonth = Number(todayKey.slice(5, 7));
@@ -200,7 +209,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
   if (view === "day") {
     const { start, end } = agendaDayRange(dayTabKey, timeZone);
     const entries = await listAgendaForDay(business.id, dayTabKey, timeZone);
-    const items = toListItems(entries, business.currency);
+    const items = toListItems(entries, business.currency, todayKey);
     const dayTotals = totalsLabel(entries, business.currency);
     const previousHref = `/agenda?view=day&day=${agendaDateKey(new Date(start.getTime() - 1), timeZone)}`;
     const nextHref = `/agenda?view=day&day=${agendaDateKey(end, timeZone)}`;
@@ -235,7 +244,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
     const grouped = groupByDay(monthAppointments);
 
     if (view === "month") {
-      const items = toListItems(monthAppointments, business.currency);
+      const items = toListItems(monthAppointments, business.currency, todayKey);
       const counts: Record<AppointmentStatus, number> = { ...EMPTY_COUNTS };
       for (const appointment of monthAppointments) counts[appointment.status] += 1;
       const dayTotals = Object.fromEntries([...grouped].map(([key, entries]) => [key, totalsLabel(entries, business.currency)]));
@@ -273,7 +282,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
         })
       );
 
-      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? [], business.currency) : [];
+      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? [], business.currency, todayKey) : [];
 
       content = (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,480px)_1fr]">

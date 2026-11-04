@@ -471,6 +471,26 @@ A implementação continua sendo uma tabela explícita por fluxo: `TRANSITIONS[f
 
 Cada etapa compila, passa lint e as duas suítes, e pode ser commitada sozinha. Toda migração tem rollback descrito e roda primeiro em `app_db_test` (`npm run test:db:prepare`) e só depois em `app_db`, com backup `pg_dump` antes.
 
+### Andamento (atualizado em 2026-11-04)
+
+Todas as etapas abaixo estão **concluídas**. Na execução, a ordem de A4 e A5 foi invertida em relação a este plano: o **Desfazer** foi entregue como "A4" e a **conclusão automática** como "A5" (os commits usam essa numeração). Os nomes do desenho também mudaram na implementação: `flow`/`DATE_ONLY`/`LEGACY` viraram `kind`/`DAY`/`TIMED`, `date` virou `scheduledOn`, e `autoCompleteDisabledAt` virou o booleano `autoCompleteEligible` (false para sempre depois de desfazer/cancelar/faltar/reabrir).
+
+| Etapa | Situação | Commit |
+|---|---|---|
+| F0 (isolamento de testes, duplicatas) | concluída | anterior a `fb8f82a` |
+| F1 | concluída | `fb8f82a` |
+| F2 | concluída | `537bd5b` |
+| F3 (a, b, c) | concluída | `740ca4a`, `e1b440d`, `b4f6c17` |
+| F4 | concluída | `cb654e3` |
+| F5 | concluída | `473e4c9` |
+| F6 (a-1, a-2, b-1, b-2, c, d) | concluída | `c9ea48e`, `a87c869`, `6b4f983`, `391b876`, `73c37bb`, `0fe92db` |
+| F7 | concluída | `0fe92db` |
+| A1 + A2 | concluída | `81690fd` |
+| A3 | concluída | `5689b2e` |
+| Desfazer (A5 deste plano; "A4" no commit) | concluída | `b46a839` |
+| Conclusão automática (A4 deste plano; "A5" na execução) | concluída | working tree (não commitado em 2026-11-04) |
+| A6 — Limpeza | concluída (escopo reduzido, ver abaixo) | working tree (não commitado em 2026-11-04) |
+
 **F0 — Fechar a Fase 0** (pré-requisito)
 - **Objetivo**: commitar o isolamento de testes; remover as 5 duplicatas (backup já existe).
 - **Arquivos**: os da Fase 0.
@@ -550,6 +570,7 @@ Cada etapa compila, passa lint e as duas suítes, e pode ser commitada sozinha. 
 **A6 — Limpeza**
 - **Objetivo**: remover do código do fluxo novo os caminhos de conflito, "Fim previsto" e CONFIRMADO; atualizar `CLAUDE.md` (seções Agenda e fuso); remover a nota de limitação de fuso de [period.ts:2-9](../src/lib/finance/period.ts#L2).
 - **Risco**: baixo.
+- **Feito (2026-11-04)**: saiu o código que só servia para CRIAR agendamentos TIMED — a função de criação TIMED em `mutations.ts` (com a checagem de conflito na criação) e o modo de criação do `AppointmentForm`; os testes que montavam um TIMED por ela passaram a usar o helper de teste `tests/helpers/timedAppointment.ts`. O fluxo DAY nunca teve conflito, "Fim previsto" nem CONFIRMADO (A3). **Mantido**, porque os TIMED existentes ainda usam: edição/remarcação com checagem de sobreposição, o "Fim previsto" do formulário de edição, CONFIRMADO, concluir pelo modal, cancelar, faltar, reabrir e desfazer. **Não feito nesta etapa** (fora do pedido do Prompt 4): `CLAUDE.md` e a nota de [period.ts](../src/lib/finance/period.ts).
 
 ---
 

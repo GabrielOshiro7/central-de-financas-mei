@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment, changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
+import { changeAppointmentStatus, completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { getAppointmentById, getLastUsedCompletionCategoryId } from "@/lib/agenda/queries";
 import { resolveSaleDayFromAppointment } from "@/lib/agenda/calculations";
 import { dbDateToKey } from "@/lib/time/zoned";
@@ -77,7 +78,7 @@ describe("agenda - concluir atendimento", () => {
   });
 
   async function createOne(startAt: string) {
-    const created = await createAppointment(businessId, { clientId, startAt: new Date(startAt), services: [{ productId: serviceId }] });
+    const created = await createTimedAppointment(businessId, { clientId, startAt: new Date(startAt), services: [{ productId: serviceId }] });
     if (!created.ok) throw new Error("setup falhou: " + created.error);
     return created.value.id;
   }
@@ -301,7 +302,7 @@ describe("agenda - concluir atendimento", () => {
       const before = await getLastUsedCompletionCategoryId(freshBusiness.id);
       expect(before).toBeNull(); // modal exige seleção manual nesse caso
 
-      const created = await createAppointment(freshBusiness.id, {
+      const created = await createTimedAppointment(freshBusiness.id, {
         clientId: freshClient.id,
         startAt: new Date("2026-06-11T10:00:00Z"),
         services: [{ productId: freshService.id }],

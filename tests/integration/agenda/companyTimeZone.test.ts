@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
-import { createAppointment, completeAppointment } from "@/lib/agenda/mutations";
+import { completeAppointment } from "@/lib/agenda/mutations";
+import { createTimedAppointment } from "../../helpers/timedAppointment";
 import { listAppointmentsForMonth } from "@/lib/agenda/queries";
 import { parseAgendaDateTimeInput } from "@/lib/agenda/time";
 import { dbDateToKey } from "@/lib/time/zoned";
@@ -55,7 +56,7 @@ describe("agenda no fuso da empresa (Etapa F3c)", () => {
   it("31/10 22:00 em São Paulo (= 01/11 01:00Z, já novembro em Tóquio/UTC) pertence a outubro para a empresa em SP", async () => {
     const startAt = parseAgendaDateTimeInput("2026-10-31T22:00", "America/Sao_Paulo");
     expect(startAt.toISOString()).toBe("2026-11-01T01:00:00.000Z");
-    const created = await createAppointment(businessId, { clientId, startAt, services: [{ productId: serviceId }] });
+    const created = await createTimedAppointment(businessId, { clientId, startAt, services: [{ productId: serviceId }] });
     if (!created.ok) throw new Error(created.error);
 
     const octoberSp = await listAppointmentsForMonth(businessId, 2026, 10, "America/Sao_Paulo");
@@ -70,7 +71,7 @@ describe("agenda no fuso da empresa (Etapa F3c)", () => {
 
   it("concluir à vista: saleOn e paidOn são o dia do atendimento em São Paulo (31/10), não o de Tóquio (01/11)", async () => {
     const startAt = parseAgendaDateTimeInput("2026-10-31T23:00", "America/Sao_Paulo"); // 01/11 02:00Z
-    const created = await createAppointment(businessId, { clientId, startAt, services: [{ productId: serviceId }], allowOverlap: true });
+    const created = await createTimedAppointment(businessId, { clientId, startAt, services: [{ productId: serviceId }], allowOverlap: true });
     if (!created.ok) throw new Error(created.error);
 
     const result = await completeAppointment(

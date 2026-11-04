@@ -2,6 +2,7 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { resolvePeriodRange } from "@/lib/finance/period";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
+import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { listBills, getBillSummary, hasAnyBillsEver, type BillFilters as BillQueryFilters, startOfBusinessToday } from "@/lib/finance/bills/queries";
 import { listRecurringBills } from "@/lib/finance/bills/mutations";
 import { deriveBillStatus, type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
@@ -44,6 +45,8 @@ export async function BillListPage({
   // dias" sao dias de calendario no fuso dela (Etapa F3b).
   const clock = clockFor(business);
   await materializeRecurringBills(business.id, clock);
+  // Agenda A5: a prazo, a conclusao automatica gera parcelas a receber.
+  await autoCompleteDueAppointments(business.id, clock);
 
   const statusParam = paramString(searchParams, "status");
   const displayStatus: BillDisplayStatus | undefined =

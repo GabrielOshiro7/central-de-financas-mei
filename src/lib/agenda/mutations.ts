@@ -87,51 +87,10 @@ export type AppointmentMutationInput = {
   allowOverlap?: boolean;
 };
 
-// Criar. Overlap e AVISO, nao bloqueio: se `allowOverlap` nao vier true e
-// houver conflito, devolve os conflitos SEM criar nada - o chamador decide
-// se reenvia com allowOverlap:true.
-export async function createAppointment(businessId: string, input: AppointmentMutationInput): Promise<MutationResult<{ id: string }>> {
-  const clientError = await assertClientBelongsToBusiness(businessId, input.clientId);
-  if (clientError) return { ok: false, error: clientError };
-
-  const productIds = input.services.map((s) => s.productId);
-  const loaded = await loadServiceProducts(prisma, businessId, productIds);
-  if (!loaded.ok) return { ok: false, error: loaded.error };
-
-  const endAt = computeEndAt(
-    input.startAt,
-    loaded.products.map((p) => ({ durationMinutesSnapshot: p.durationMinutes }))
-  );
-
-  if (!input.allowOverlap) {
-    const existing = await fetchActiveAppointments(prisma, businessId);
-    const conflicts = detectOverlap({ startAt: input.startAt, endAt }, existing);
-    if (conflicts.length > 0) {
-      return { ok: false, error: "Este horário conflita com outro(s) agendamento(s).", conflicts };
-    }
-  }
-
-  const created = await prisma.appointment.create({
-    data: {
-      businessId,
-      clientId: input.clientId,
-      startAt: input.startAt,
-      endAt,
-      notes: input.notes || null,
-      services: {
-        create: loaded.products.map((p, index) => ({
-          productId: p.id,
-          nameSnapshot: p.name,
-          durationMinutesSnapshot: p.durationMinutes,
-          position: index,
-        })),
-      },
-    },
-  });
-
-  return { ok: true, value: { id: created.id } };
-}
-
+// Fluxo COM HORARIO (TIMED, legado): desde a Agenda A6 nao ha mais criacao -
+// toda criacao nova e DAY (createDayAppointment). Os TIMED existentes ainda
+// sao editados/remarcados aqui, com a mesma checagem de sobreposicao.
+//
 // Editar/remarcar - so em AGENDADO/CONFIRMADO (ver updateMany condicional
 // abaixo, mesmo padrao de compare-and-swap que completeAppointment usa pra
 // mudar status). Sempre substitui o conjunto de servicos por inteiro

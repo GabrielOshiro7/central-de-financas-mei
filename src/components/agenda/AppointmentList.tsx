@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import type { AppointmentKind, AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
 import { formatAgendaTime } from "@/lib/agenda/time";
 import { formatDateKey } from "@/lib/time/zoned";
@@ -33,6 +34,9 @@ export type AppointmentListItem = {
   // Soma das parcelas ja recebidas da venda, formatada (null: nada recebido)
   // - o que um Desfazer tira do Caixa e do Dashboard (Agenda A4).
   receivedLabel: string | null;
+  // So DAY: dia ja encerrado, ainda AGENDADO e elegivel - a conclusao
+  // automatica nao conseguiu concluir (Agenda A5).
+  autoCompleteFailed: boolean;
   // So TIMED: itens pre-preenchidos do modal de conclusao.
   completeItems: CompleteDialogItem[];
 };
@@ -80,6 +84,12 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
             <span className="font-medium">{item.amountLabel}</span>
             {item.paymentLabel ? ` · ${item.paymentLabel}` : ""}
           </p>
+          {item.autoCompleteFailed && (
+            <p data-testid="auto-complete-failed" className="flex items-center gap-1 text-sm text-gray-700 dark:text-neutral-300">
+              <AlertTriangle size={14} aria-hidden="true" />
+              Não foi possível concluir automaticamente — verifique.
+            </p>
+          )}
         </div>
         <DayAppointmentActions
           appointmentId={item.id}
