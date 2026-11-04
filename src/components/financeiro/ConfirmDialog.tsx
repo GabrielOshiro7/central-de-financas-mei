@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 export function ConfirmDialog({
   open,
   title,
@@ -9,6 +11,7 @@ export function ConfirmDialog({
   pending,
   onConfirm,
   onCancel,
+  children,
 }: {
   open: boolean;
   title: string;
@@ -21,6 +24,9 @@ export function ConfirmDialog({
   pending: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  // Conteudo extra entre a mensagem e os botoes (ex.: escolha do destino ao
+  // desfazer um atendimento, Agenda A4). Os dialogos existentes nao passam.
+  children?: ReactNode;
 }) {
   if (!open) return null;
 
@@ -37,6 +43,7 @@ export function ConfirmDialog({
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2>
         <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">{message}</p>
+        {children}
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"

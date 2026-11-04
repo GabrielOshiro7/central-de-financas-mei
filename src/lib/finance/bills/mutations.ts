@@ -242,13 +242,18 @@ export async function revertBillSettlement(businessId: string, id: string): Prom
     return { ok: false, error: "Só é possível reverter uma conta já confirmada." };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.financialEntry.deleteMany({ where: { billId: id, businessId, source: "BILL" } });
-    // paidOn e paidAt voltam a NULL juntos (F6b-1/F6b-2).
-    await tx.bill.update({ where: { id }, data: { status: "PENDING", paidOn: null, paidAt: null } });
-  });
+  await prisma.$transaction((tx) => reverseBillSettlementTx(tx, businessId, id));
 
   return { ok: true, value: { id } };
+}
+
+// Corpo transacional de revertBillSettlement, compartilhado com o desfazer
+// de atendimento (Agenda A4, undoAppointmentCompletion) - a MESMA regra nos
+// dois caminhos. O chamador ja conferiu que a Bill e da empresa e esta PAID.
+export async function reverseBillSettlementTx(tx: Prisma.TransactionClient, businessId: string, billId: string) {
+  await tx.financialEntry.deleteMany({ where: { billId, businessId, source: "BILL" } });
+  // paidOn e paidAt voltam a NULL juntos (F6b-1/F6b-2).
+  await tx.bill.update({ where: { id: billId }, data: { status: "PENDING", paidOn: null, paidAt: null } });
 }
 
 export type RecurringBillInput = {

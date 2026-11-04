@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import type { AppointmentStatus } from "@prisma/client";
+import { Prisma, type AppointmentStatus } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import type { Currency } from "@prisma/client";
 import { agendaDateKey, formatAgendaDateLong, formatAgendaMonthYear } from "@/lib/agenda/time";
@@ -69,6 +69,14 @@ function paymentLabel(entry: AgendaEntry): string | null {
   return method ? `${timing} · ${method}` : timing;
 }
 
+// Soma das parcelas ja recebidas da venda (Agenda A4) - o que um Desfazer
+// estorna. null quando nao ha venda ativa ou nada foi recebido.
+function receivedLabel(entry: AgendaEntry, currency: Currency): string | null {
+  if (!entry.sale || entry.sale.status === "CANCELLED") return null;
+  const received = entry.sale.bills.reduce((sum, b) => sum.plus(b.amount), new Prisma.Decimal(0));
+  return received.isZero() ? null : formatMoney(received, currency);
+}
+
 // Agendamentos (dos dois fluxos, Agenda A3) -> itens da lista, na ordem da
 // consulta (por dia; TIMED pelo horario, depois DAY por createdAt/id). TIMED
 // mantem o mapeamento de antes (itens pre-preenchidos do modal de conclusao).
@@ -89,6 +97,7 @@ function toListItems(entries: AgendaEntry[], currency: Currency): AppointmentLis
     saleId: entry.saleId,
     saleNumber: entry.sale?.saleNumber ?? null,
     saleStatus: entry.sale?.status ?? null,
+    receivedLabel: receivedLabel(entry, currency),
     completeItems:
       entry.kind === "TIMED"
         ? entry.services.map((s) => ({

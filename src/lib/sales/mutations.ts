@@ -408,12 +408,19 @@ export async function cancelSale(businessId: string, id: string): Promise<Mutati
     };
   }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.bill.updateMany({ where: { saleId: id, status: "PENDING" }, data: { status: "CANCELLED" } });
-    await tx.sale.update({ where: { id }, data: { status: "CANCELLED" } });
-  });
+  await prisma.$transaction((tx) => cancelSaleTx(tx, id));
 
   return { ok: true, value: { id } };
+}
+
+// Corpo transacional de cancelSale, compartilhado com o desfazer de
+// atendimento (Agenda A4, undoAppointmentCompletion), que antes estorna as
+// parcelas PAID com reverseBillSettlementTx - assim a venda desfeita fica no
+// MESMO estado de uma cancelada pelo botao depois de reverter os pagamentos.
+// O chamador ja conferiu que a venda e da empresa e nao tem parcela PAID.
+export async function cancelSaleTx(tx: Prisma.TransactionClient, saleId: string) {
+  await tx.bill.updateMany({ where: { saleId, status: "PENDING" }, data: { status: "CANCELLED" } });
+  await tx.sale.update({ where: { id: saleId }, data: { status: "CANCELLED" } });
 }
 
 export async function setSaleCompleted(businessId: string, id: string): Promise<MutationResult<{ id: string }>> {

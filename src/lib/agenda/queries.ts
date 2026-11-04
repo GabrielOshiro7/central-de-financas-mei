@@ -54,7 +54,8 @@ export async function listAppointmentsForMonth(businessId: string, year: number,
 const AGENDA_ENTRY_INCLUDE = {
   client: { select: { name: true } },
   services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
-  sale: { select: { id: true, saleNumber: true, status: true, total: true } },
+  // bills PAID: o valor ja recebido, avisado no dialogo de Desfazer (Agenda A4).
+  sale: { select: { id: true, saleNumber: true, status: true, total: true, bills: { where: { status: "PAID" }, select: { amount: true } } } },
   _count: { select: { installments: true } },
 } satisfies Prisma.AppointmentInclude;
 

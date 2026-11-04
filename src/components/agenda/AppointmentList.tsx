@@ -30,6 +30,9 @@ export type AppointmentListItem = {
   saleId: string | null;
   saleNumber: number | null;
   saleStatus: SaleStatus | null;
+  // Soma das parcelas ja recebidas da venda, formatada (null: nada recebido)
+  // - o que um Desfazer tira do Caixa e do Dashboard (Agenda A4).
+  receivedLabel: string | null;
   // So TIMED: itens pre-preenchidos do modal de conclusao.
   completeItems: CompleteDialogItem[];
 };
@@ -86,6 +89,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
           saleId={item.saleId}
           saleNumber={item.saleNumber}
           saleStatus={item.saleStatus}
+          receivedLabel={item.receivedLabel}
         />
       </li>
     );
@@ -119,6 +123,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
         saleId={item.saleId}
         saleNumber={item.saleNumber}
         saleStatus={item.saleStatus}
+        receivedLabel={item.receivedLabel}
         currency={ctx.currency}
         revenueCategories={ctx.revenueCategories}
         defaultCategoryId={ctx.defaultCategoryId}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { CompleteAppointmentDialog, type CompleteDialogItem } from "@/components/agenda/CompleteAppointmentDialog";
+import { UndoCompletionAction } from "@/components/agenda/UndoCompletionAction";
 
 // Botoes com cantos retos (regra de design da Etapa 8).
 const straightButtonBase = "px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
@@ -27,12 +28,15 @@ export function AppointmentActions({
   completeItems,
   nextAppointmentHref,
   todayKey,
+  receivedLabel,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
   saleId: string | null;
   saleNumber: number | null;
   saleStatus: SaleStatus | null;
+  // Valor ja recebido da venda, formatado (aviso do Desfazer, Agenda A4).
+  receivedLabel: string | null;
   currency: Currency;
   revenueCategories: { id: string; name: string }[];
   defaultCategoryId: string | null;
@@ -79,25 +83,36 @@ export function AppointmentActions({
     }
   }
 
+  // Recem-concluido pelo modal: ja mostra a venda e o Desfazer, sem esperar o
+  // router.refresh() (que traz o status CONCLUIDO e o valor recebido).
   if (completedResult) {
     return (
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="text-gray-700 dark:text-neutral-300">
-          Atendimento concluído -{" "}
-          <Link href={`/vendas/${completedResult.saleId}`} className="font-medium text-gray-900 hover:underline dark:text-neutral-100">
-            ver venda #{completedResult.saleNumber}
+      <div className="flex flex-col gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-gray-700 dark:text-neutral-300">
+            Atendimento concluído -{" "}
+            <Link href={`/vendas/${completedResult.saleId}`} className="font-medium text-gray-900 hover:underline dark:text-neutral-100">
+              ver venda #{completedResult.saleNumber}
+            </Link>
+          </span>
+          <Link href={nextAppointmentHref} className={secondaryButtonClass}>
+            Agendar o próximo
           </Link>
-        </span>
-        <Link href={nextAppointmentHref} className={secondaryButtonClass}>
-          Agendar o próximo
-        </Link>
+        </div>
+        <UndoCompletionAction
+          appointmentId={appointmentId}
+          saleNumber={completedResult.saleNumber}
+          saleActive
+          receivedLabel={status === "CONCLUIDO" ? receivedLabel : null}
+          onUndone={() => setCompletedResult(null)}
+        />
       </div>
     );
   }
 
   if (status === "CONCLUIDO") {
     return (
-      <div className="text-sm">
+      <div className="flex flex-col gap-2 text-sm">
         {saleId ? (
           <Link href={`/vendas/${saleId}`} className="text-gray-600 hover:underline dark:text-neutral-400">
             Ver venda{saleNumber ? ` #${saleNumber}` : ""}
@@ -106,12 +121,13 @@ export function AppointmentActions({
         ) : (
           <span className="text-gray-500 dark:text-neutral-400">Sem venda vinculada.</span>
         )}
-        {saleStatus === "CANCELLED" && (
-          <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
-            A venda foi cancelada, mas o atendimento continua concluído - não é possível desfazer a conclusão de um agendamento com pagamento já
-            registrado anteriormente.
-          </p>
-        )}
+        {/* Desfazer (Agenda A4): tambem nos concluidos do legado TIMED. */}
+        <UndoCompletionAction
+          appointmentId={appointmentId}
+          saleNumber={saleNumber}
+          saleActive={Boolean(saleId) && saleStatus !== "CANCELLED"}
+          receivedLabel={receivedLabel}
+        />
       </div>
     );
   }
@@ -212,6 +228,8 @@ export function AppointmentActions({
           onCompleted={(result) => {
             setCompleting(false);
             setCompletedResult(result);
+            // Mesmo comportamento do DAY: recarrega os dados da linha.
+            router.refresh();
           }}
         />
       )}

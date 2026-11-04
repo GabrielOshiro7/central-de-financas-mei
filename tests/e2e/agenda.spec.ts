@@ -5,7 +5,7 @@ import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { E2E_BUSINESS_TZ, businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
-import { formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
+import { dateKeyToDbDate, formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
 
 // Agenda. Desde a Agenda A3 toda criacao pela tela e do fluxo POR DIA (DAY):
 // cliente, servicos com valor, dia, categoria e pagamento - sem horario. Os
@@ -311,6 +311,147 @@ test.describe("Agenda - legado com horário (TIMED, gravado no banco)", () => {
     await second.getByRole("button", { name: "Cancelar" }).click();
     await confirmDialog(page).getByRole("button", { name: "Cancelar agendamento" }).click();
     await expect(second.getByText("Cancelado", { exact: true })).toBeVisible();
+  });
+
+  // Agenda A4: depois de concluir pelo modal, o Desfazer aparece na linha sem
+  // recarregar a pagina (a linha recarrega os dados como no fluxo por dia).
+  test("concluir pelo modal (à vista) mostra Desfazer sem recarregar; desfazer volta para Agendado", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-legado-desfazer");
+    await register(page, "Dono Legado Desfazer E2E", email);
+    await completeOnboarding(page, "Empresa Legado Desfazer E2E");
+    await seedTimed(email);
+
+    await gotoHydrated(page, `/agenda?view=day&day=${businessToday()}`);
+    const first = page.getByTestId("appointment-row").nth(0);
+    await expect(first).toContainText("10:00–10:30");
+    await first.getByRole("button", { name: "Concluir" }).click();
+    await page.locator("#completeCategoryId").selectOption({ label: "Venda de serviços" });
+    await page.getByRole("button", { name: "Concluir atendimento" }).click();
+    await expect(first.getByRole("link", { name: /ver venda #\d+/i })).toBeVisible();
+
+    // Sem reload: o Desfazer ja esta la e, com os dados recarregados, o
+    // dialogo mostra o valor recebido a vista.
+    await expect(first.getByText("Concluído", { exact: true })).toBeVisible();
+    await first.getByRole("button", { name: "Desfazer" }).click();
+    const dialog = confirmDialog(page);
+    await expect(dialog.getByTestId("undo-received-amount")).toContainText("R$80.00");
+    await dialog.getByLabel("Concluí por engano").check();
+    await dialog.getByRole("button", { name: "Desfazer conclusão" }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 30_000 }); // 1a chamada da rota /undo compila no `next dev`
+    await expect(first.getByText("Agendado", { exact: true })).toBeVisible();
+    await expect(first.getByRole("button", { name: "Concluir" })).toBeVisible();
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
+    const sales = await prisma.sale.findMany({ where: { businessId: user.business!.id } });
+    expect(sales.map((s) => s.status)).toEqual(["CANCELLED"]);
+  });
+});
+
+test.describe("Agenda - desfazer conclusão (A4)", () => {
+  // Saldo inicial configurado (500, 30 dias atras): o Caixa mostra 500 + o
+  // que for recebido.
+  async function configureOpeningBalance(email: string) {
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
+    await prisma.business.update({
+      where: { id: user.business!.id },
+      data: { openingBalance: new Decimal(500), openingBalanceOn: dateKeyToDbDate(businessToday(-30)) },
+    });
+    return user.business!.id;
+  }
+
+  async function expectCash(page: Page, amount: string) {
+    await gotoHydrated(page, "/caixa");
+    await expect(page.getByText("Caixa atual (histórico e realizado)").locator("xpath=following-sibling::p[1]")).toHaveText(amount);
+  }
+
+  async function createAndCompleteToday(page: Page, clientName: string) {
+    await gotoHydrated(page, "/agenda/novo");
+    await fillNewDayAppointment(page, clientName, [{ name: `Serviço ${clientName}`, price: "100" }]);
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page).toHaveURL(/view=day/);
+    return completeNow(page, clientName);
+  }
+
+  async function completeNow(page: Page, clientName: string) {
+    await row(page, clientName).getByRole("button", { name: "Concluir agora" }).click();
+    await confirmDialog(page).getByRole("button", { name: "Concluir agora" }).click();
+    const saleLink = row(page, clientName).getByRole("link", { name: /Ver venda #\d+/ });
+    await expect(saleLink).toBeVisible();
+    return /#(\d+)/.exec((await saleLink.textContent()) ?? "")![1];
+  }
+
+  async function undo(page: Page, clientName: string, option: string) {
+    await row(page, clientName).getByRole("button", { name: "Desfazer" }).click();
+    const dialog = confirmDialog(page);
+    await expect(dialog).toContainText("não será mais concluído automaticamente");
+    await dialog.getByLabel(option).check();
+    return dialog;
+  }
+
+  // O dialogo fecha quando a rota responde. Espera maior: a primeira chamada
+  // da rota /undo no `next dev` inclui a compilacao dela.
+  async function confirmUndo(page: Page) {
+    await confirmDialog(page).getByRole("button", { name: "Desfazer conclusão" }).click();
+    await expect(confirmDialog(page)).toHaveCount(0, { timeout: 30_000 });
+  }
+
+  test("concluir agora -> desfazer (o cliente não veio): Caixa e receita do dia voltam ao valor anterior", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-desfazer");
+    await register(page, "Dono Desfazer E2E", email);
+    await completeOnboarding(page, "Empresa Desfazer E2E");
+    const businessId = await configureOpeningBalance(email);
+    await expectCash(page, "R$500.00");
+
+    const saleNumber = await createAndCompleteToday(page, "Cliente Desfazer E2E");
+    await expectCash(page, "R$600.00");
+    await gotoHydrated(page, "/financeiro/receitas");
+    await expect(page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) })).toBeVisible();
+
+    await gotoHydrated(page, `/agenda?view=day&day=${businessToday()}`);
+    const dialog = await undo(page, "Cliente Desfazer E2E", "O cliente não veio");
+    await expect(dialog.getByTestId("undo-received-amount")).toHaveText(
+      "O recebimento de R$100.00 será estornado: o valor sai do Caixa e do Dashboard."
+    );
+    await expect(dialog).toContainText(`A venda #${saleNumber} será cancelada.`);
+    await confirmUndo(page);
+    await expect(row(page, "Cliente Desfazer E2E").getByText("Faltou", { exact: true })).toBeVisible();
+    await expect(row(page, "Cliente Desfazer E2E").getByRole("button", { name: "Reabrir" })).toBeVisible();
+
+    await expectCash(page, "R$500.00");
+    await gotoHydrated(page, "/financeiro/receitas");
+    await expect(page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) })).toHaveCount(0);
+
+    const sale = await prisma.sale.findFirstOrThrow({ where: { businessId, saleNumber: Number(saleNumber) } });
+    expect(sale.status).toBe("CANCELLED");
+  });
+
+  test("concluir -> desfazer (concluí por engano) -> concluir de novo: uma venda nova ativa e a antiga cancelada", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-reconcluir");
+    await register(page, "Dono Reconcluir E2E", email);
+    await completeOnboarding(page, "Empresa Reconcluir E2E");
+    const businessId = await configureOpeningBalance(email);
+
+    const firstNumber = await createAndCompleteToday(page, "Cliente Reconcluir E2E");
+    await undo(page, "Cliente Reconcluir E2E", "Concluí por engano");
+    await confirmUndo(page);
+    await expect(row(page, "Cliente Reconcluir E2E").getByText("Agendado", { exact: true })).toBeVisible();
+
+    const secondNumber = await completeNow(page, "Cliente Reconcluir E2E");
+    expect(secondNumber).not.toBe(firstNumber);
+
+    const sales = await prisma.sale.findMany({ where: { businessId }, orderBy: { saleNumber: "asc" } });
+    expect(sales.map((s) => [s.saleNumber, s.status])).toEqual([
+      [Number(firstNumber), "CANCELLED"],
+      [Number(secondNumber), "CONFIRMED"],
+    ]);
+    const appointment = await prisma.appointment.findFirstOrThrow({ where: { businessId } });
+    expect([appointment.status, appointment.saleId, appointment.completionSeq, appointment.autoCompleteEligible]).toEqual([
+      "CONCLUIDO", sales[1].id, 1, false,
+    ]);
+    await expectCash(page, "R$600.00");
   });
 });
 

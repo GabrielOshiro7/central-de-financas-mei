@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { AppointmentStatus, SaleStatus } from "@prisma/client";
 import { CircleCheck, Pencil, RotateCcw } from "lucide-react";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
+import { UndoCompletionAction } from "@/components/agenda/UndoCompletionAction";
 
 // Botoes com cantos retos (mesmo padrao de AppointmentActions).
 const straightButtonBase = "inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
@@ -20,7 +21,7 @@ type Pending = "complete" | "CANCELADO" | "FALTOU" | "AGENDADO";
 //   atendimento (no fuso da empresa); Cancelar.
 // - CANCELADO/FALTOU: Reabrir (o reaberto nunca mais e concluido
 //   automaticamente - decisao 7).
-// - CONCLUIDO: so o link da venda (o Desfazer e de outra etapa).
+// - CONCLUIDO: o link da venda e Desfazer (Agenda A4).
 // Sem "Confirmar": CONFIRMADO nao existe no fluxo DAY.
 export function DayAppointmentActions({
   appointmentId,
@@ -30,6 +31,7 @@ export function DayAppointmentActions({
   saleId,
   saleNumber,
   saleStatus,
+  receivedLabel,
 }: {
   appointmentId: string;
   status: AppointmentStatus;
@@ -39,6 +41,8 @@ export function DayAppointmentActions({
   saleId: string | null;
   saleNumber: number | null;
   saleStatus: SaleStatus | null;
+  // Valor ja recebido da venda, formatado (aviso do Desfazer).
+  receivedLabel: string | null;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState<Pending | null>(null);
@@ -74,7 +78,7 @@ export function DayAppointmentActions({
 
   if (status === "CONCLUIDO") {
     return (
-      <div className="text-sm">
+      <div className="flex flex-col gap-2 text-sm">
         {saleId ? (
           <Link href={`/vendas/${saleId}`} className="text-gray-600 hover:underline dark:text-neutral-400">
             Ver venda{saleNumber ? ` #${saleNumber}` : ""}
@@ -83,6 +87,12 @@ export function DayAppointmentActions({
         ) : (
           <span className="text-gray-500 dark:text-neutral-400">Concluído sem venda (valor zero).</span>
         )}
+        <UndoCompletionAction
+          appointmentId={appointmentId}
+          saleNumber={saleNumber}
+          saleActive={Boolean(saleId) && saleStatus !== "CANCELLED"}
+          receivedLabel={receivedLabel}
+        />
       </div>
     );
   }

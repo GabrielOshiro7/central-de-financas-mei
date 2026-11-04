@@ -390,6 +390,15 @@ export type CompleteAppointmentInput = {
   installments: CompleteAppointmentInstallmentInput[];
 };
 
+// clientRequestId da venda de uma conclusao TIMED (Agenda A4): "agenda:<id>"
+// enquanto a conclusao nunca foi desfeita (mantem as vendas ja gravadas) e
+// "agenda:<id>:<seq>" depois de um desfazer - senao createSale reaproveitaria
+// a venda cancelada pelo desfazer em vez de criar uma nova (mesma regra de
+// dayCompletionRequestId no fluxo DAY).
+export function timedCompletionRequestId(appointmentId: string, completionSeq: number): string {
+  return completionSeq > 0 ? `agenda:${appointmentId}:${completionSeq}` : `agenda:${appointmentId}`;
+}
+
 export type CompleteAppointmentResult = {
   id: string;
   saleId: string;
@@ -452,7 +461,7 @@ export async function completeAppointment(
         const saleOn = resolveSaleDayFromAppointment(appointment.startAt, timeZone);
 
         const saleInput: CreateSaleInput = {
-          clientRequestId: `agenda:${appointmentId}`,
+          clientRequestId: timedCompletionRequestId(appointmentId, appointment.completionSeq),
           status: "CONFIRMED",
           clientId: appointment.clientId,
           categoryId: input.categoryId,

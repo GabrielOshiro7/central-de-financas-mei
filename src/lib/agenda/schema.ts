@@ -163,6 +163,15 @@ export function appointmentStatusChangeSchema() {
   });
 }
 
+// Desfazer uma conclusao (Agenda A4): o destino escolhido pelo usuario -
+// AGENDADO = "concluí por engano", FALTOU = "o cliente não veio", CANCELADO.
+export const UNDO_TARGETS = ["AGENDADO", "FALTOU", "CANCELADO"] as const;
+export type UndoTarget = (typeof UNDO_TARGETS)[number];
+
+export function undoCompletionSchema() {
+  return z.object({ to: z.enum(UNDO_TARGETS, { message: "Escolha para qual situação o atendimento volta." }) }).strict();
+}
+
 // Item final de "concluir atendimento" - quantidade SEMPRE inteira (>0),
 // diferente do item de venda geral (src/lib/sales/schema.ts), que so exige
 // inteiro quando a moeda e sem casas decimais: um servico e sempre uma
