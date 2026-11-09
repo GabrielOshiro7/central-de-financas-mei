@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { profileSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function ProfileForm({ user }: { user: { name: string; email: string } }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
@@ -47,7 +49,7 @@ export function ProfileForm({ user }: { user: { name: string; email: string } })
   }
 
   return (
-    <form
+    <form {...enterNav}
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >

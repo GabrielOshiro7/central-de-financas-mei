@@ -6,6 +6,7 @@ import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
@@ -51,6 +52,7 @@ export function CompleteAppointmentDialog({
   const router = useRouter();
   const decimals = isIntegerCurrency(currency) ? 0 : 2;
 
+  const enterNav = useEnterToNextField<HTMLDivElement>();
   const [categoryId, setCategoryId] = useState(defaultCategoryId ?? "");
   const [items, setItems] = useState(
     initialItems.map((item) => ({ ...item, quantityInput: String(item.quantity), unitPriceInput: String(item.unitPrice) }))
@@ -148,6 +150,7 @@ export function CompleteAppointmentDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !pending && onClose()}>
       <div
+        {...enterNav}
         role="dialog"
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
@@ -309,7 +312,7 @@ export function CompleteAppointmentDialog({
           <button type="button" onClick={onClose} disabled={pending} className={secondaryButtonClass}>
             Cancelar
           </button>
-          <button type="button" onClick={handleSubmit} disabled={pending} className={primaryButtonClass}>
+          <button type="button" data-enter-submit="" onClick={handleSubmit} disabled={pending} className={primaryButtonClass}>
             {pending ? "Concluindo..." : "Concluir atendimento"}
           </button>
         </div>

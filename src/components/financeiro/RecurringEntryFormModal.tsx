@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
 import type { CategoryOption } from "@/components/financeiro/TransactionFormModal";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type RecurringEntryFormInitial = {
   id: string;
@@ -43,6 +44,7 @@ export function RecurringEntryFormModal({
   currency: Currency | null;
   initial: RecurringEntryFormInitial;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
 
   const [type, setType] = useState<FinancialEntryType>(initial.type);
@@ -111,7 +113,7 @@ export function RecurringEntryFormModal({
           As alterações valem só para as próximas ocorrências - o que já foi lançado não muda.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <div>
             <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">Tipo</span>
             <div className="flex gap-2">

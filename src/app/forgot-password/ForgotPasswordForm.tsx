@@ -5,8 +5,10 @@ import Link from "next/link";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { forgotPasswordSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function ForgotPasswordForm() {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -57,7 +59,7 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <FormField
         id="email"
         label="E-mail"

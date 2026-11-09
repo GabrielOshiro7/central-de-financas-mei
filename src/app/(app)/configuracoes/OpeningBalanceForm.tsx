@@ -6,6 +6,7 @@ import type { Currency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type OpeningBalanceData = {
   openingBalance: string;
@@ -16,6 +17,7 @@ export type OpeningBalanceData = {
 // atalho de link pra cá, nunca uma copia deste formulario (ver ADENDO
 // "evite duplicar o formulário em dois lugares").
 export function OpeningBalanceForm({ data, currency }: { data: OpeningBalanceData; currency: Currency | null }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [openingBalance, setOpeningBalance] = useState(data.openingBalance);
   const [openingBalanceDate, setOpeningBalanceDate] = useState(data.openingBalanceDate);
@@ -55,7 +57,7 @@ export function OpeningBalanceForm({ data, currency }: { data: OpeningBalanceDat
   }
 
   return (
-    <form
+    <form {...enterNav}
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >

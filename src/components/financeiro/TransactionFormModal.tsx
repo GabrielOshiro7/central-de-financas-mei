@@ -8,6 +8,7 @@ import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS, NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type CategoryOption = { id: string; name: string; type: FinancialEntryType };
 
@@ -54,6 +55,7 @@ export function TransactionFormModal({
   // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
   todayKey: string;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const titleId = useId();
   const isEditing = Boolean(initial);
@@ -218,7 +220,7 @@ export function TransactionFormModal({
           {title}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           {!typeLocked && (
             <div>
               <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">Tipo</span>
@@ -280,7 +282,7 @@ export function TransactionFormModal({
             </select>
 
             {categoryId === NEW_CATEGORY_VALUE && (
-              <div className="mt-2 flex gap-2">
+              <div data-enter-group="" className="mt-2 flex gap-2">
                 <input
                   type="text"
                   value={newCategoryName}
@@ -290,6 +292,7 @@ export function TransactionFormModal({
                 />
                 <button
                   type="button"
+                  data-enter-confirm=""
                   onClick={handleCreateCategory}
                   disabled={creatingCategory || !newCategoryName.trim()}
                   className="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"

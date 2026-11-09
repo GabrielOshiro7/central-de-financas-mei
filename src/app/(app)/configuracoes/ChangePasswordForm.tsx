@@ -4,8 +4,10 @@ import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { changePasswordSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function ChangePasswordForm() {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -52,7 +54,7 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form
+    <form {...enterNav}
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Caminho de edicao para uma venda "travada" (ja tem parcela PAID) - so
 // observacoes podem mudar (ADENDO item 2). A rota PATCH /api/vendas/[id] ja
@@ -10,6 +11,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 // reduzido ou o completo - este componente so existe pra nao mostrar ao
 // usuario campos que ele nao pode mais editar.
 export function SaleNotesForm({ saleId, initialNotes }: { saleId: string; initialNotes: string }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [notes, setNotes] = useState(initialNotes);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function SaleNotesForm({ saleId, initialNotes }: { saleId: string; initia
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-3">
       <p className="text-sm text-amber-700 dark:text-amber-400">
         Esta venda já tem parcela recebida - só é possível editar as observações.
       </p>

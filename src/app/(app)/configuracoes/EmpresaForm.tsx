@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { ChoiceButton } from "@/components/onboarding/ChoiceButton";
 import { CURRENCY_OPTIONS, YEARS_IN_BUSINESS_OPTIONS } from "@/lib/onboarding/options";
 import { businessEditSchema } from "@/lib/onboarding/schema";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Props em forma serializavel - nunca o objeto Business do Prisma direto,
 // que carrega um Decimal (nao suportado ao cruzar a fronteira server/client).
@@ -27,6 +28,7 @@ export function EmpresaForm({
   business: EmpresaFormData;
   currencyLocked?: boolean;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [name, setName] = useState(business.name ?? "");
   const [yearsInBusiness, setYearsInBusiness] = useState(business.yearsInBusiness);
@@ -80,7 +82,7 @@ export function EmpresaForm({
   }
 
   return (
-    <form
+    <form {...enterNav}
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >

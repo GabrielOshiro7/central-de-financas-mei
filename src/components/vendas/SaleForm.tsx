@@ -9,6 +9,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS, SALE_DISCOUNT_TYPE_OPTIONS } from "@/lib/sales/options";
 import { InstallmentsEditor, roundMoney, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Este componente e "use client" e NUNCA importa nada de @/lib/sales/
 // calculations ou qualquer modulo que importe `Prisma` como VALOR (so
@@ -62,6 +63,7 @@ export function SaleForm({
   // dela e recebido por prop (Etapa F4) - nunca o relogio/fuso do navegador.
   todayKey: string;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const isEditingConfirmed = mode === "edit" && initial?.status === "CONFIRMED";
   const decimals = isIntegerCurrency(currency) ? 0 : 2;
@@ -294,7 +296,7 @@ export function SaleForm({
   const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300";
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
       <section className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Informações</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

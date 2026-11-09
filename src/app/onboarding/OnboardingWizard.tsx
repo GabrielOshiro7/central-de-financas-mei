@@ -18,6 +18,7 @@ import {
   TOTAL_ONBOARDING_STEPS,
   type RevenueBusinessType,
 } from "@/lib/onboarding/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 type OnboardingData = {
   businessType: BusinessType | null;
@@ -40,6 +41,7 @@ export function OnboardingWizard({
   initialData: OnboardingData;
 }) {
   const router = useRouter();
+  const enterNav = useEnterToNextField<HTMLDivElement>();
   const [step, setStep] = useState(Math.min(Math.max(initialStep, 1), FINALIZE_STEP));
   const [data, setData] = useState<OnboardingData>(initialData);
   const [error, setError] = useState<string | null>(null);
@@ -167,7 +169,7 @@ export function OnboardingWizard({
           <ProgressIndicator current={step} total={TOTAL_ONBOARDING_STEPS} />
         )}
 
-        <div className="flex flex-col gap-4">
+        <div {...enterNav} className="flex flex-col gap-4">
           {renderStepContent()}
 
           {error && (
@@ -361,6 +363,7 @@ function SubmitButtonLike({
   return (
     <button
       type="button"
+      data-enter-submit=""
       disabled={pending || disabled}
       onClick={onClick}
       className="w-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"

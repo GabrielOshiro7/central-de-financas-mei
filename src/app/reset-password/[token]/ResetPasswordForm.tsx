@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { resetPasswordSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function ResetPasswordForm({ token }: { token: string }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -65,7 +67,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <FormField
         id="password"
         label="Nova senha"

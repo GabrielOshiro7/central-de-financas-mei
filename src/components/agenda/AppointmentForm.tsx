@@ -8,6 +8,7 @@ import { computeEndAt } from "@/lib/agenda/calculations";
 import { formatAgendaTime, parseAgendaDateTimeInput } from "@/lib/agenda/time";
 import { timeZoneCity } from "@/lib/time/countryZones";
 import { ClientPicker, type ClientOption } from "@/components/agenda/ClientPicker";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Formulario do fluxo COM HORARIO (TIMED, legado): so edita/remarca os
 // agendamentos TIMED que ja existem - toda criacao nova e do fluxo por dia
@@ -51,6 +52,7 @@ export function AppointmentForm({
   // Fuso da empresa (Business.timezone, Etapa F3c; antes fixo em Tóquio).
   timeZone: string;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
 
   const [clientId, setClientId] = useState(initialClientId);
@@ -179,7 +181,7 @@ export function AppointmentForm({
   }
 
   return (
-    <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6" noValidate>
+    <form {...enterNav} onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6" noValidate>
       <ClientPicker clients={clients} clientId={clientId} onChange={setClientId} onError={setError} />
 
       <section className="border border-gray-200 p-6 dark:border-neutral-800">
@@ -222,7 +224,7 @@ export function AppointmentForm({
             + Criar novo serviço
           </button>
         ) : (
-          <div className="mt-2 flex flex-col gap-2 border border-gray-200 p-3 dark:border-neutral-800">
+          <div data-enter-group="" className="mt-2 flex flex-col gap-2 border border-gray-200 p-3 dark:border-neutral-800">
             <div>
               <label htmlFor="newServiceName" className={labelClass}>
                 Nome do serviço
@@ -258,7 +260,7 @@ export function AppointmentForm({
             </div>
             <p className="text-xs text-gray-500 dark:text-neutral-400">Preço com imposto incluído (総額表示).</p>
             <div className="flex gap-2">
-              <button type="button" onClick={createServiceInline} disabled={savingService} className={primaryButtonClass}>
+              <button type="button" data-enter-confirm="" onClick={createServiceInline} disabled={savingService} className={primaryButtonClass}>
                 {savingService ? "Salvando..." : "Criar serviço"}
               </button>
               <button type="button" onClick={() => setShowCreateService(false)} className={secondaryButtonClass}>

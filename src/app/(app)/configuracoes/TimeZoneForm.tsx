@@ -6,6 +6,7 @@ import { AlertCircle, Check, Info } from "lucide-react";
 import { SubmitButton } from "@/components/SubmitButton";
 import { COUNTRY_ZONES, findCountry, zoneForCountry } from "@/lib/time/countryZones";
 import { businessTimeZoneSchema } from "@/lib/time/schema";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 const selectClass =
   "h-10 w-full border border-gray-300 bg-white px-3 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
@@ -19,6 +20,7 @@ export type TimeZoneFormData = { country: string; timezone: string };
 // fuso atual (se for do país) ou o padrao do país. Datas ja lancadas sao dias
 // de calendario (@db.Date, Etapa F6) e nao mudam com a troca.
 export function TimeZoneForm({ data }: { data: TimeZoneFormData }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const initialCountry = findCountry(data.country) ? data.country : "";
   const [country, setCountry] = useState(initialCountry);
@@ -70,7 +72,7 @@ export function TimeZoneForm({ data }: { data: TimeZoneFormData }) {
   }
 
   return (
-    <form
+    <form {...enterNav}
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900"
     >

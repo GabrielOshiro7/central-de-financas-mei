@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { BillFormModal, type BillCategoryOption, type BillFormInitial } from "@/components/financeiro/BillFormModal";
 import { billStatusLabel, type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
 import { BILL_DIRECTION_LABELS } from "@/lib/finance/bills/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type BillRow = {
   id: string;
@@ -57,6 +58,7 @@ export function BillTable({
   const directionLabels = BILL_DIRECTION_LABELS[direction];
   const counterpartyHeader = direction === "PAYABLE" ? "Fornecedor" : "Cliente";
 
+  const enterNav = useEnterToNextField<HTMLDivElement>();
   const [editing, setEditing] = useState<BillRow | null>(null);
   const [settling, setSettling] = useState<BillRow | null>(null);
   const [settleDate, setSettleDate] = useState(todayKey);
@@ -263,6 +265,7 @@ export function BillTable({
           onClick={() => !settlePending && setSettling(null)}
         >
           <div
+            {...enterNav}
             role="alertdialog"
             aria-modal="true"
             className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
@@ -302,6 +305,7 @@ export function BillTable({
               </button>
               <button
                 type="button"
+                data-enter-submit=""
                 onClick={handleConfirmSettle}
                 disabled={settlePending}
                 className="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"

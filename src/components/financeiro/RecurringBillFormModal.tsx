@@ -14,6 +14,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/finance/bills/options";
 import type { BillCategoryOption } from "@/components/financeiro/BillFormModal";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type RecurringBillFormInitial = {
   id: string;
@@ -53,6 +54,7 @@ export function RecurringBillFormModal({
   currency: Currency | null;
   initial: RecurringBillFormInitial;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
 
   const [categoryId, setCategoryId] = useState(initial.categoryId);
@@ -134,7 +136,7 @@ export function RecurringBillFormModal({
           As alterações valem só para as próximas ocorrências - o que já foi gerado não muda.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <FormField
             id="description"
             label="Descrição"

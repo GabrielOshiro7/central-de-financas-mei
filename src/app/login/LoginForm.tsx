@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { loginSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,7 +51,7 @@ export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       {sessionMessage && (
         <p
           role="status"

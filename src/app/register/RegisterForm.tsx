@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { registerSchema } from "@/lib/validation/auth";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export function RegisterForm() {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,7 +52,7 @@ export function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       <FormField
         id="name"
         label="Nome"

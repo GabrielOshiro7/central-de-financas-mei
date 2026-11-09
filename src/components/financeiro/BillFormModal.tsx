@@ -13,6 +13,7 @@ import {
   MONTH_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/finance/bills/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type BillCategoryOption = { id: string; name: string };
 
@@ -61,6 +62,7 @@ export function BillFormModal({
   initial?: BillFormInitial | null;
   onSaved?: () => void;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const isEditing = Boolean(initial);
   const counterpartyLabel = COUNTERPARTY_LABEL[direction];
@@ -196,7 +198,7 @@ export function BillFormModal({
           {isEditing ? "Editar conta" : direction === "PAYABLE" ? "Nova conta a pagar" : "Nova conta a receber"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <FormField
             id="description"
             label="Descrição"

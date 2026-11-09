@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from "react";
+import { focusNextFieldAfter, isImeComposing } from "@/lib/forms/enterNavigation";
 
 export type ClientOption = { id: string; name: string; tradeName: string };
 
@@ -16,6 +17,13 @@ const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-neutr
 // Escolha de cliente da Agenda (busca + criacao rapida, POST /api/clientes) -
 // extraida do formulario com horario (Agenda A3) para o formulario por dia
 // usar exatamente o mesmo comportamento.
+//
+// A busca e um combobox acessivel (role="combobox" + listbox/option): ao
+// digitar, o primeiro resultado fica destacado; Setas mudam o destaque; Enter
+// seleciona o destacado e leva o foco ao proximo campo do formulario; Esc fecha
+// a lista; sem resultado (ou sem destaque), Enter nao faz nada. O Enter da
+// busca NUNCA envia o formulario da pagina. "Criar novo cliente" e um
+// mini-formulario (data-enter-group): Enter no ultimo campo cria o cliente.
 export function ClientPicker({
   clients,
   clientId,
@@ -29,15 +37,84 @@ export function ClientPicker({
 }) {
   const [localClients, setLocalClients] = useState(clients);
   const [clientSearch, setClientSearch] = useState("");
+  const [listOpen, setListOpen] = useState(true);
+  // -1: nada destacado (campo vazio, ainda sem digitar nem usar as setas).
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [savingClient, setSavingClient] = useState(false);
+
+  const sectionRef = useRef<HTMLElement>(null);
+  // Depois de escolher (Enter) ou criar um cliente, o foco vai para o proximo
+  // campo do formulario - so depois do render que troca a busca pelo cliente.
+  const moveFocusAfterPick = useRef(false);
+  const listboxId = useId();
+  const optionId = (id: string) => `${listboxId}-option-${id}`;
 
   const filteredClients = useMemo(() => {
     if (!clientSearch.trim()) return localClients;
     const term = clientSearch.trim().toLowerCase();
     return localClients.filter((c) => c.name.toLowerCase().includes(term) || c.tradeName.toLowerCase().includes(term));
   }, [localClients, clientSearch]);
+
+  const showList = listOpen && filteredClients.length > 0;
+  const activeClient = showList && activeIndex >= 0 ? filteredClients[activeIndex] : undefined;
+
+  useEffect(() => {
+    if (clientId && moveFocusAfterPick.current) {
+      moveFocusAfterPick.current = false;
+      if (sectionRef.current) focusNextFieldAfter(sectionRef.current);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!activeClient) return;
+    document.getElementById(optionId(activeClient.id))?.scrollIntoView?.({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- so quando o destaque muda
+  }, [activeClient?.id]);
+
+  function pick(id: string, moveFocus: boolean) {
+    moveFocusAfterPick.current = moveFocus;
+    setActiveIndex(-1);
+    onChange(id);
+  }
+
+  function handleSearchChange(event: ChangeEvent<HTMLInputElement>) {
+    const text = event.target.value;
+    setClientSearch(text);
+    setListOpen(true);
+    setActiveIndex(text.trim() ? 0 : -1);
+  }
+
+  function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (isImeComposing(event.nativeEvent)) return;
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (filteredClients.length === 0) return;
+      event.preventDefault();
+      const last = filteredClients.length - 1;
+      if (!listOpen) {
+        setListOpen(true);
+        setActiveIndex(event.key === "ArrowDown" ? 0 : last);
+        return;
+      }
+      setActiveIndex((current) => {
+        if (event.key === "ArrowDown") return current >= last ? 0 : current + 1;
+        return current <= 0 ? last : current - 1;
+      });
+    } else if (event.key === "Escape") {
+      if (!showList) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setListOpen(false);
+      setActiveIndex(-1);
+    } else if (event.key === "Enter") {
+      // O Enter da busca e sempre tratado aqui (preventDefault): nunca envia o
+      // formulario e, sem resultado destacado, nao faz nada.
+      event.preventDefault();
+      if (activeClient) pick(activeClient.id, true);
+    }
+  }
 
   async function createClientInline() {
     if (!newClientName.trim()) return;
@@ -56,7 +133,7 @@ export function ClientPicker({
       }
       const created = { id: result.id, name: newClientName, tradeName: "" };
       setLocalClients((prev) => [...prev, created]);
-      onChange(created.id);
+      pick(created.id, true);
       setNewClientName("");
       setShowCreateClient(false);
       setClientSearch("");
@@ -68,7 +145,7 @@ export function ClientPicker({
   }
 
   return (
-    <section className="border border-gray-200 p-6 dark:border-neutral-800">
+    <section ref={sectionRef} className="border border-gray-200 p-6 dark:border-neutral-800">
       <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Cliente</h2>
 
       {!clientId ? (
@@ -79,23 +156,40 @@ export function ClientPicker({
           <input
             id="clientSearch"
             type="text"
+            role="combobox"
+            aria-expanded={showList}
+            aria-controls={showList ? listboxId : undefined}
+            aria-activedescendant={activeClient ? optionId(activeClient.id) : undefined}
+            aria-autocomplete="list"
+            autoComplete="off"
             value={clientSearch}
-            onChange={(e) => setClientSearch(e.target.value)}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
             placeholder="Digite o nome..."
             className={inputClass}
           />
-          {filteredClients.length > 0 && (
-            <ul className="flex max-h-48 flex-col overflow-y-auto border border-gray-200 dark:border-neutral-800">
-              {filteredClients.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => onChange(c.id)}
-                    className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800"
-                  >
-                    {c.name}
-                    {c.tradeName ? ` (${c.tradeName})` : ""}
-                  </button>
+          {showList && (
+            <ul
+              id={listboxId}
+              role="listbox"
+              aria-label="Clientes encontrados"
+              className="flex max-h-48 flex-col overflow-y-auto border border-gray-200 dark:border-neutral-800"
+            >
+              {filteredClients.map((c, index) => (
+                <li
+                  key={c.id}
+                  id={optionId(c.id)}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  // Mouse: escolhe sem tirar o foco da busca antes da hora.
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => pick(c.id, false)}
+                  className={`block w-full cursor-pointer px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-neutral-300 dark:hover:bg-neutral-800 ${
+                    index === activeIndex ? "bg-gray-100 dark:bg-neutral-800" : ""
+                  }`}
+                >
+                  {c.name}
+                  {c.tradeName ? ` (${c.tradeName})` : ""}
                 </li>
               ))}
             </ul>
@@ -106,7 +200,7 @@ export function ClientPicker({
               + Criar novo cliente
             </button>
           ) : (
-            <div className="flex flex-col gap-2 border border-gray-200 p-3 dark:border-neutral-800">
+            <div data-enter-group="" className="flex flex-col gap-2 border border-gray-200 p-3 dark:border-neutral-800">
               <label htmlFor="newClientName" className={labelClass}>
                 Nome do novo cliente
               </label>
@@ -118,7 +212,7 @@ export function ClientPicker({
                 className={inputClass}
               />
               <div className="flex gap-2">
-                <button type="button" onClick={createClientInline} disabled={savingClient} className={primaryButtonClass}>
+                <button type="button" data-enter-confirm="" onClick={createClientInline} disabled={savingClient} className={primaryButtonClass}>
                   {savingClient ? "Salvando..." : "Criar cliente"}
                 </button>
                 <button type="button" onClick={() => setShowCreateClient(false)} className={secondaryButtonClass}>

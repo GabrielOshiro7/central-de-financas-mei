@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Modal generico de reautenticacao (step-up/"sudo mode") - um componente
 // so, reaproveitado por qualquer acao sensivel (Etapa sessao-expiracao-
@@ -20,6 +21,7 @@ export function ReauthModal({
   onConfirmed: () => void;
   onCancel: () => void;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -81,7 +83,7 @@ export function ReauthModal({
           Por segurança, confirme sua senha para {actionLabel}.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <FormField
             id="reauth-password"
             label="Senha"

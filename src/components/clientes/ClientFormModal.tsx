@@ -6,6 +6,7 @@ import type { ClientType } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type ClientFormInitial = {
   id: string;
@@ -37,6 +38,7 @@ export function ClientFormModal({
   initial?: ClientFormInitial | null;
   onSaved?: () => void;
 }) {
+  const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const isEditing = Boolean(initial);
 
@@ -138,7 +140,7 @@ export function ClientFormModal({
           {isEditing ? "Editar cliente" : "Novo cliente"}
         </h2>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
+        <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <FormField id="name" label="Nome" placeholder="Ex.: João Silva" value={name} onChange={(e) => setName(e.target.value)} />
 
           <FormField

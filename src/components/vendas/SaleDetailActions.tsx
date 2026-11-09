@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { MoneyInput } from "@/components/MoneyInput";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { isIntegerCurrency } from "@/lib/money";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
@@ -37,6 +38,7 @@ export function SaleDetailActions({
   const router = useRouter();
   const decimals = isIntegerCurrency(currency) ? 0 : 2;
 
+  const enterNav = useEnterToNextField<HTMLDivElement>();
   const [confirming, setConfirming] = useState(false);
   const [paymentTiming, setPaymentTiming] = useState<"AVISTA" | "APRAZO">("AVISTA");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -216,6 +218,7 @@ export function SaleDetailActions({
       {confirming && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !confirmPending && setConfirming(false)}>
           <div
+            {...enterNav}
             role="dialog"
             aria-modal="true"
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
@@ -338,6 +341,7 @@ export function SaleDetailActions({
               </button>
               <button
                 type="button"
+                data-enter-submit=""
                 onClick={handleConfirmSale}
                 disabled={confirmPending}
                 className="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"

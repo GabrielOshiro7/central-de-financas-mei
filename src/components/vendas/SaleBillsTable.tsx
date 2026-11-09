@@ -6,6 +6,7 @@ import type { Currency } from "@prisma/client";
 import { formatMoney } from "@/lib/money";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { billStatusLabel, type BillDisplayStatus } from "@/lib/finance/bills/status";
+import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 export type SaleBillRow = {
   id: string;
@@ -33,6 +34,7 @@ const STATUS_BADGE_STYLE: Record<BillDisplayStatus, string> = {
 // `todayKey`: "hoje" da EMPRESA (DateKey), calculado no servidor (Etapa F4).
 export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillRow[]; currency: Currency; todayKey: string }) {
   const router = useRouter();
+  const enterNav = useEnterToNextField<HTMLDivElement>();
   const [settling, setSettling] = useState<SaleBillRow | null>(null);
   const [settleDate, setSettleDate] = useState(todayKey);
   const [settlePending, setSettlePending] = useState(false);
@@ -190,6 +192,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
           onClick={() => !settlePending && setSettling(null)}
         >
           <div
+            {...enterNav}
             role="alertdialog"
             aria-modal="true"
             className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
@@ -227,6 +230,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
               </button>
               <button
                 type="button"
+                data-enter-submit=""
                 onClick={handleConfirmSettle}
                 disabled={settlePending}
                 className="bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
