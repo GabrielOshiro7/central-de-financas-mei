@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
 import { businessToday } from "./helpers/businessDate";
+import { expectCards } from "./helpers/responsiveTable";
 
 // Lote 3 do audit de UX: abaixo de 768px cada linha de tabela vira um card
 // (CSS puro em .rtable, src/app/globals.css). Os specs de desktop continuam
@@ -78,28 +79,14 @@ async function createClientAndSale(page: Page, label: string) {
   return { clientId, saleId: (sale.sale?.id ?? sale.id) as string };
 }
 
-// O layout de card em si: cabeçalho fora da tela, <tr> como bloco com cantos
-// arredondados, e a tabela inteira cabendo na largura (sem rolagem lateral).
-async function expectCards(page: Page, table: Locator) {
-  await expect(table.locator("thead")).toBeHidden();
-  const card = table.locator("tbody tr").first();
-  await expect(card).toBeVisible();
-  const style = await card.evaluate((el) => {
-    const cs = getComputedStyle(el);
-    return { display: cs.display, radius: cs.borderTopLeftRadius };
-  });
-  expect(style.display).toBe("grid");
-  expect(style.radius).not.toBe("0px");
-  const box = await table.boundingBox();
-  expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-  return card;
-}
-
 // Rótulo da coluna lido por leitor de tela (span .rt-sr), não só o visual.
-async function expectCellLabel(card: Locator, label: string, value: RegExp | string) {
+// `timeout`: depois de uma acao que chama a API pela primeira vez (ex.: Pausar),
+// o `next dev` compila a rota a frio e o router.refresh() leva mais que os 5 s
+// padrao da assercao.
+async function expectCellLabel(card: Locator, label: string, value: RegExp | string, timeout?: number) {
   const cell = card.getByRole("cell", { name: new RegExp(`^${label}: `) });
   await expect(cell).toBeVisible();
-  await expect(cell).toContainText(value);
+  await expect(cell).toContainText(value, { timeout });
 }
 
 test.describe("tabelas em tela estreita (390px)", () => {
@@ -186,7 +173,7 @@ test.describe("tabelas em tela estreita (390px)", () => {
     await expectCellLabel(recurringCard, "Valor", /900/);
     await expectCellLabel(recurringCard, "Frequência", /Mensal/);
     await recurringCard.getByRole("button", { name: "Pausar" }).click();
-    await expectCellLabel(recurringCard, "Status", "Pausada");
+    await expectCellLabel(recurringCard, "Status", "Pausada", 30_000);
   });
 
   test("4. lançamentos recorrentes: card e Pausar", async ({ page }) => {
@@ -212,7 +199,7 @@ test.describe("tabelas em tela estreita (390px)", () => {
     await expectCellLabel(card, "Valor", /50/);
     await expectCellLabel(card, "Tipo", "Despesa");
     await card.getByRole("button", { name: "Pausar" }).click();
-    await expectCellLabel(card, "Status", "Pausada");
+    await expectCellLabel(card, "Status", "Pausada", 30_000);
   });
 
   test("5. clientes: card e Ver abre o cliente", async ({ page }) => {
