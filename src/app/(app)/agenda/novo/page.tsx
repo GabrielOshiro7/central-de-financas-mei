@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth/guards";
-import { listVisibleClients } from "@/lib/clients/queries";
+import { getClientPickerOption } from "@/lib/clients/picker";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { parseDayParam } from "@/lib/agenda/schema";
@@ -13,15 +13,15 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
   const searchParams = await props.searchParams;
   const { business } = await requireOnboardedUser();
 
-  const [clients, services, categories] = await Promise.all([
-    listVisibleClients(business.id),
+  // Prefill de "agendar o proximo" (ver AppointmentList.tsx) - mesmo cliente
+  // e servicos do atendimento recem-concluido. So o cliente do prefill vai
+  // para a tela: a busca de clientes e feita no servidor pelo ClientPicker.
+  const clientIdParam = typeof searchParams.clientId === "string" ? searchParams.clientId : undefined;
+  const [initialClient, services, categories] = await Promise.all([
+    clientIdParam ? getClientPickerOption(business.id, clientIdParam) : Promise.resolve(null),
     listVisibleProducts(business.id, undefined, "SERVICO"),
     listVisibleCategories(business.id, "REVENUE"),
   ]);
-
-  // Prefill de "agendar o proximo" (ver AppointmentList.tsx) - mesmo cliente
-  // e servicos do atendimento recem-concluido.
-  const clientIdParam = typeof searchParams.clientId === "string" ? searchParams.clientId : undefined;
   const serviceIdParam = searchParams.serviceId;
   const initialServiceIds = Array.isArray(serviceIdParam) ? serviceIdParam : serviceIdParam ? [serviceIdParam] : undefined;
 
@@ -41,13 +41,12 @@ export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo
 
       <DayAppointmentForm
         mode="create"
-        clients={clients.map((c) => ({ id: c.id, name: c.name, tradeName: c.tradeName ?? "" }))}
+        initialClient={initialClient}
         services={services.map((s) => ({ id: s.id, name: s.name, defaultPrice: s.defaultPrice?.toString() ?? "" }))}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
         defaultCategoryId={defaultServiceRevenueCategoryId(categories)}
         currency={business.currency}
         todayKey={todayKey(clockFor(business))}
-        initialClientId={clientIdParam}
         initialServiceIds={initialServiceIds}
         initialDate={initialDate}
       />

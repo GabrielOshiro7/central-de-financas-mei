@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { getAppointmentById } from "@/lib/agenda/queries";
-import { listVisibleClients } from "@/lib/clients/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { agendaDateKey, formatAgendaTime } from "@/lib/agenda/time";
@@ -28,11 +27,10 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
   const appointment = await getAppointmentById(business.id, id);
   if (!appointment) notFound();
 
-  const [clients, services] = await Promise.all([
-    listVisibleClients(business.id),
-    listVisibleProducts(business.id, undefined, "SERVICO"),
-  ]);
-  const clientOptions = clients.map((c) => ({ id: c.id, name: c.name, tradeName: c.tradeName ?? "" }));
+  const services = await listVisibleProducts(business.id, undefined, "SERVICO");
+  // So o cliente do agendamento (ativo ou nao): a busca de clientes e feita no
+  // servidor pelo ClientPicker.
+  const clientOption = { id: appointment.client.id, name: appointment.client.name, tradeName: appointment.client.tradeName ?? "" };
 
   let content;
   if (appointment.kind === "DAY") {
@@ -64,7 +62,7 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
             installments: appointment.installments.map((i) => ({ dueDateInput: dbDateToKey(i.dueOn), amount: i.amount.toString() })),
             notes: appointment.notes ?? "",
           }}
-          clients={clientOptions}
+          initialClient={clientOption}
           services={serviceOptions}
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           defaultCategoryId={appointment.categoryId}
@@ -81,7 +79,7 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
     ) : (
       <AppointmentForm
         appointmentId={timed.id}
-        clients={clientOptions}
+        initialClient={clientOption}
         services={services.map((s) => ({
           id: s.id,
           name: s.name,
@@ -89,7 +87,6 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
           defaultPrice: s.defaultPrice?.toString() ?? "",
         }))}
         currency={business.currency}
-        initialClientId={timed.clientId}
         initialServiceIds={timed.services.map((s) => s.productId).filter((sid): sid is string => Boolean(sid))}
         initialStartAt={initialStartAt}
         initialNotes={timed.notes ?? ""}

@@ -28,21 +28,21 @@ type ConflictAppointment = { id: string; startAt: string; endAt: string };
 
 export function AppointmentForm({
   appointmentId,
-  clients,
+  initialClient,
   services,
   currency,
-  initialClientId,
   initialServiceIds,
   initialStartAt,
   initialNotes,
   timeZone,
 }: {
   appointmentId: string;
-  clients: ClientOption[];
+  // Cliente do agendamento (a lista de clientes nao vem mais da pagina - o
+  // ClientPicker busca no servidor).
+  initialClient: ClientOption;
   services: ServiceOption[];
   // Moeda da empresa: define simbolo e casas decimais do preco do servico.
   currency: Currency | null;
-  initialClientId: string;
   initialServiceIds: string[];
   // "YYYY-MM-DDTHH:mm" já no fuso da empresa (ver agendaDateKey +
   // formatAgendaTime na página que monta esse valor) - nunca calculado com
@@ -55,7 +55,7 @@ export function AppointmentForm({
   const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
 
-  const [clientId, setClientId] = useState(initialClientId);
+  const [clientId, setClientId] = useState(initialClient.id);
 
   const [localServices, setLocalServices] = useState(services);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(initialServiceIds);
@@ -182,7 +182,7 @@ export function AppointmentForm({
 
   return (
     <form {...enterNav} onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6" noValidate>
-      <ClientPicker clients={clients} clientId={clientId} onChange={setClientId} onError={setError} />
+      <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} />
 
       <section className="border border-gray-200 p-6 dark:border-neutral-800">
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Serviços</h2>

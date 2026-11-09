@@ -137,7 +137,9 @@ function setHint(field: FieldElement, hint: "next" | "done") {
 }
 
 export function applyEnterKeyHint(field: Element, root: Element): void {
-  if (!isNavigable(field)) return;
+  // Foco vindo de fora do contenedor (ex.: um modal em portal, cujo evento
+  // sobe pela arvore do React): nao e deste formulario.
+  if (!root.contains(field) || !isNavigable(field)) return;
   const fields = navigableFields(scopeOf(field, root));
   setHint(field, fields[fields.length - 1] === field ? "done" : "next");
 }

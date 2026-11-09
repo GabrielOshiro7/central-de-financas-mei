@@ -164,15 +164,21 @@ test.describe("Enter nos formulários", () => {
     await expect(page).toHaveURL(/\/agenda\/novo/);
   });
 
-  test("d) Mini-formulário Criar novo cliente: Enter no último campo cria o cliente e NÃO envia o agendamento", async ({ page }) => {
+  test("d) Criar novo cliente (pop-up): Enter só navega nele; salvar cria o cliente e NÃO envia o agendamento; o mini-formulário de serviço confirma com Enter", async ({ page }) => {
     test.setTimeout(90_000);
     const { businessId } = await setupBusiness(page, "enter-mini");
     await prisma.product.create({ data: { businessId, name: "Corte Mini E2E", type: "SERVICO", defaultPrice: new Decimal(50) } });
 
     await gotoHydrated(page, "/agenda/novo");
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    await page.getByLabel("Nome do novo cliente").fill("Cliente Mini E2E");
-    await page.getByLabel("Nome do novo cliente").press("Enter");
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByLabel("Nome", { exact: true })).toBeFocused(); // pop-up abre com o foco no Nome
+    await dialog.getByLabel("Nome", { exact: true }).fill("Cliente Mini E2E");
+    await dialog.getByLabel("Nome", { exact: true }).press("Enter");
+    await expect(dialog.getByLabel("Nome fantasia (opcional)")).toBeFocused(); // Enter so navega
+    expect(await prisma.client.count({ where: { businessId, name: "Cliente Mini E2E" } })).toBe(0);
+    await dialog.getByRole("button", { name: "Salvar" }).click();
+    await expect(dialog).toHaveCount(0);
 
     await expect(page.getByText("Cliente Mini E2E")).toBeVisible();
     await expect(page.getByRole("button", { name: "Trocar" })).toBeVisible();

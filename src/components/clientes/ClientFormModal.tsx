@@ -24,25 +24,42 @@ export type ClientFormInitial = {
   notes: string;
 };
 
+// Cliente salvo, devolvido a quem abriu o modal (ex.: a escolha de cliente da
+// Agenda seleciona o recem-criado).
+export type SavedClient = { id: string; name: string; tradeName: string };
+
 // Cadastro/edicao de cliente (Etapa 6). So `name` e obrigatorio - o restante
 // e deliberadamente opcional (nao assume CPF/CNPJ nem formato de telefone de
 // nenhum pais especifico, ver clientSchema).
+//
+// Compartilhado pela pagina Clientes e pela Agenda (ClientPicker). Os props
+// opcionais abaixo existem so para a Agenda e nao mudam o uso na pagina
+// Clientes: `initialName` pre-preenche o Nome de um cliente NOVO (so vale na
+// montagem - quem usa monta o modal ao abrir), `autoFocusName` poe o foco no
+// Nome e `refreshOnSave={false}` evita o router.refresh() (a Agenda nao
+// mostra a lista de clientes).
 export function ClientFormModal({
   open,
   onClose,
   initial,
   onSaved,
+  initialName,
+  autoFocusName = false,
+  refreshOnSave = true,
 }: {
   open: boolean;
   onClose: () => void;
   initial?: ClientFormInitial | null;
-  onSaved?: () => void;
+  onSaved?: (client: SavedClient) => void;
+  initialName?: string;
+  autoFocusName?: boolean;
+  refreshOnSave?: boolean;
 }) {
   const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
   const isEditing = Boolean(initial);
 
-  const [name, setName] = useState(initial?.name ?? "");
+  const [name, setName] = useState(initial?.name ?? initialName ?? "");
   const [tradeName, setTradeName] = useState(initial?.tradeName ?? "");
   const [clientType, setClientType] = useState<ClientType>(initial?.clientType ?? "PESSOA_FISICA");
   const [document, setDocument] = useState(initial?.document ?? "");
@@ -117,9 +134,10 @@ export function ClientFormModal({
         setError(result.error ?? "Não foi possível salvar o cliente.");
         return;
       }
+      const saved: SavedClient = { id: isEditing ? initial!.id : result.id, name: name.trim(), tradeName: tradeName.trim() };
       if (!isEditing) reset();
-      onSaved?.();
-      router.refresh();
+      onSaved?.(saved);
+      if (refreshOnSave) router.refresh();
       onClose();
     } catch {
       setError("Erro de conexão. Tente novamente.");
@@ -141,7 +159,14 @@ export function ClientFormModal({
         </h2>
 
         <form {...enterNav} onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
-          <FormField id="name" label="Nome" placeholder="Ex.: João Silva" value={name} onChange={(e) => setName(e.target.value)} />
+          <FormField
+            id="name"
+            label="Nome"
+            placeholder="Ex.: João Silva"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus={autoFocusName}
+          />
 
           <FormField
             id="tradeName"

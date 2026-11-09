@@ -54,9 +54,12 @@ async function completeOnboarding(page: Page, name: string) {
 
 // Formulario por dia: cliente novo + servicos novos (sem duracao), com preco.
 async function fillNewDayAppointment(page: Page, clientName: string, services: { name: string; price: string }[]) {
+  // "Criar novo cliente" abre o MESMO pop-up de cadastro da pagina Clientes.
   await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-  await page.getByLabel("Nome do novo cliente").fill(clientName);
-  await page.getByRole("button", { name: "Criar cliente" }).click();
+  const clientDialog = page.getByRole("dialog");
+  await clientDialog.getByLabel("Nome", { exact: true }).fill(clientName);
+  await clientDialog.getByRole("button", { name: "Salvar" }).click();
+  await expect(clientDialog).toHaveCount(0);
   await expect(page.getByText(clientName)).toBeVisible();
 
   for (const [index, service] of services.entries()) {

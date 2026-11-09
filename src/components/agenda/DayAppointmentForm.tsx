@@ -53,19 +53,20 @@ const timingButtonClass = (active: boolean) =>
 export function DayAppointmentForm({
   mode,
   initial,
-  clients,
+  initialClient,
   services,
   categories,
   defaultCategoryId,
   currency,
   todayKey,
-  initialClientId,
   initialServiceIds,
   initialDate,
 }: {
   mode: "create" | "edit";
   initial?: DayAppointmentInitial;
-  clients: ClientOption[];
+  // Cliente ja escolhido ao abrir a tela (edicao, ou "agendar o proximo"); a
+  // lista de clientes nao vem mais da pagina - o ClientPicker busca no servidor.
+  initialClient?: ClientOption | null;
   services: DayServiceOption[];
   categories: DayCategoryOption[];
   // Categoria de receita pre-selecionada na criacao ("Venda de serviços").
@@ -73,9 +74,8 @@ export function DayAppointmentForm({
   currency: Currency;
   // "Hoje" da EMPRESA (DateKey), calculado no servidor - nunca o do navegador.
   todayKey: string;
-  // Prefills da criacao: "agendar o proximo" (cliente/servicos) e o dia
-  // clicado em "+ Novo agendamento nesta data".
-  initialClientId?: string;
+  // Prefills da criacao: "agendar o proximo" (servicos; o cliente vem em
+  // `initialClient`) e o dia clicado em "+ Novo agendamento nesta data".
   initialServiceIds?: string[];
   initialDate?: string;
 }) {
@@ -84,7 +84,7 @@ export function DayAppointmentForm({
   const decimals = isIntegerCurrency(currency) ? 0 : 2;
 
   const [localServices, setLocalServices] = useState(services);
-  const [clientId, setClientId] = useState(initial?.clientId ?? initialClientId ?? "");
+  const [clientId, setClientId] = useState(initial?.clientId ?? initialClient?.id ?? "");
   const [rows, setRows] = useState<DayServiceRow[]>(
     () =>
       initial?.services ??
@@ -206,7 +206,7 @@ export function DayAppointmentForm({
 
   return (
     <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-      <ClientPicker clients={clients} clientId={clientId} onChange={setClientId} onError={setError} />
+      <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} />
 
       <section className={sectionClass}>
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Serviços</h2>
