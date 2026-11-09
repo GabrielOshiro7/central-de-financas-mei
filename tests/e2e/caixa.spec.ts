@@ -68,7 +68,7 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     // implicito (primeiro lancamento = base, excluido; so o segundo conta).
     await page.getByRole("link", { name: "Caixa", exact: true }).click();
     await expect(page.getByText("Saldo inicial não configurado")).toBeVisible();
-    await expect(page.getByText("R$500.00", { exact: false })).toBeVisible();
+    await expect(page.getByText("R$ 500,00", { exact: false })).toBeVisible();
 
     // Aviso permanente - requisito mais importante da etapa: SEMPRE visivel,
     // nao atras de um icone/tooltip.
@@ -91,6 +91,6 @@ test.describe("Etapa 5.1 - aba Caixa", () => {
     // lancamentos contam (ambos posteriores a 01/jan) -> 2000+1000+500=3500.
     await page.getByRole("link", { name: "Caixa", exact: true }).click();
     await expect(page.getByText("Saldo inicial não configurado")).toHaveCount(0);
-    await expect(page.getByText("R$3,500.00", { exact: false })).toBeVisible();
+    await expect(page.getByText("R$ 3.500,00", { exact: false })).toBeVisible();
   });
 });

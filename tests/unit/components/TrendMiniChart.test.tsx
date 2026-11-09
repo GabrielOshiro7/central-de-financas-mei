@@ -5,6 +5,9 @@ import "@testing-library/jest-dom/vitest";
 import { Prisma } from "@prisma/client";
 import { TrendMiniChart } from "@/components/dashboard/TrendMiniChart";
 import { formatMoney } from "@/lib/money";
+
+// toHaveTextContent normaliza o espaco sem quebra (U+00A0) do DOM para espaco comum.
+const textMoney = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\u00a0/g, " ");
 import { describeSignedGrowth } from "@/lib/finance/calculations";
 import { formatSignedGrowthText } from "@/lib/finance/insights";
 
@@ -34,9 +37,9 @@ describe("TrendMiniChart - tooltip", () => {
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toHaveTextContent("09/09");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(45000), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(45000), "BRL"));
     // Valor de outro ponto não deve aparecer.
-    expect(tooltip).not.toHaveTextContent(formatMoney(new Decimal(1000), "BRL"));
+    expect(tooltip).not.toHaveTextContent(textMoney(new Decimal(1000), "BRL"));
   });
 
   it("com comparação ativa, mostra os dois valores rotulados e a variação (nunca dois números sem indicar qual é qual)", () => {
@@ -55,10 +58,10 @@ describe("TrendMiniChart - tooltip", () => {
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).toHaveTextContent("09/09");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(45000), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(45000), "BRL"));
     expect(tooltip).toHaveTextContent("vs período anterior");
     expect(tooltip).toHaveTextContent("02/09");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(12000), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(12000), "BRL"));
 
     // Variação reaproveita describeSignedGrowth/formatSignedGrowthText (não
     // reimplementada) - confere que o texto exibido bate com o que essas
@@ -67,7 +70,7 @@ describe("TrendMiniChart - tooltip", () => {
       describeSignedGrowth(new Decimal(45000), new Decimal(12000)),
       "BRL"
     );
-    expect(tooltip).toHaveTextContent(expectedGrowth);
+    expect(tooltip).toHaveTextContent(expectedGrowth.replace(/ /g, " "));
   });
 
   it("pontos diferentes mostram a comparação correta correspondente (sem índice trocado entre as duas séries)", () => {
@@ -84,16 +87,16 @@ describe("TrendMiniChart - tooltip", () => {
 
     fireEvent.mouseEnter(triggers[0]); // 02/09: 1000 vs 26/08: 800
     let tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(1000), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(1000), "BRL"));
     expect(tooltip).toHaveTextContent("26/08");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(800), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(800), "BRL"));
     fireEvent.mouseLeave(triggers[0]);
 
     fireEvent.mouseEnter(triggers[1]); // 05/09: 3000 vs 29/08: 2500
     tooltip = screen.getByRole("tooltip");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(3000), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(3000), "BRL"));
     expect(tooltip).toHaveTextContent("29/08");
-    expect(tooltip).toHaveTextContent(formatMoney(new Decimal(2500), "BRL"));
+    expect(tooltip).toHaveTextContent(textMoney(new Decimal(2500), "BRL"));
   });
 
   it("trata corretamente a troca de sinal (prejuízo -> lucro) na variação exibida", () => {
@@ -119,7 +122,7 @@ describe("TrendMiniChart - tooltip", () => {
 
     const tooltip = screen.getByRole("tooltip");
     const expectedGrowth = formatSignedGrowthText(describeSignedGrowth(new Decimal(300), new Decimal(-500)), "BRL");
-    expect(tooltip).toHaveTextContent(expectedGrowth);
+    expect(tooltip).toHaveTextContent(expectedGrowth.replace(/ /g, " "));
     expect(expectedGrowth).toMatch(/prejuízo/i);
   });
 

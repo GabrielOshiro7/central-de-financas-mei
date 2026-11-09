@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
-import { isIntegerCurrency } from "@/lib/money";
+import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { addDays, isDateKey } from "@/lib/time/zoned";
 
 // Editor de parcelas "a prazo" - extraido do SaleForm (Agenda A3) para ser o
@@ -173,7 +173,7 @@ export function InstallmentsEditor({
           + Adicionar parcela
         </button>
         <span className={installmentsSum === total ? "text-gray-500 dark:text-neutral-400" : mismatchClassName}>
-          Soma das parcelas: {installmentsSum} / {total}
+          Soma das parcelas: {formatMoney(installmentsSum, currency)} / {formatMoney(total, currency)}
         </span>
       </div>
     </div>

@@ -6,6 +6,9 @@ import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import type { EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 import { formatMoney } from "@/lib/money";
 
+// toHaveTextContent normaliza o espaco sem quebra (U+00A0) do DOM para espaco comum.
+const textMoney = (...args: Parameters<typeof formatMoney>) => formatMoney(...args).replace(/\u00a0/g, " ");
+
 afterEach(() => cleanup());
 
 function point(overrides: Partial<EvolutionPoint> & { key: string; label: string }): EvolutionPoint {
@@ -48,15 +51,15 @@ describe("FinancialChart - tooltip", () => {
     // Custos/Despesas trocadas mesmo que os dois valores apareçam em algum
     // lugar do tooltip (o que um simples toHaveTextContent global não pegaria).
     expect(within(tooltip).getByText("Faturamento").closest("div")).toHaveTextContent(
-      formatMoney(2000, "BRL")
+      textMoney(2000, "BRL")
     );
-    expect(within(tooltip).getByText("Custos").closest("div")).toHaveTextContent(formatMoney(700, "BRL"));
-    expect(within(tooltip).getByText("Despesas").closest("div")).toHaveTextContent(formatMoney(250, "BRL"));
-    expect(within(tooltip).getByText("Lucro").closest("div")).toHaveTextContent(formatMoney(1050, "BRL"));
+    expect(within(tooltip).getByText("Custos").closest("div")).toHaveTextContent(textMoney(700, "BRL"));
+    expect(within(tooltip).getByText("Despesas").closest("div")).toHaveTextContent(textMoney(250, "BRL"));
+    expect(within(tooltip).getByText("Lucro").closest("div")).toHaveTextContent(textMoney(1050, "BRL"));
 
     // Valores do OUTRO dia não devem aparecer no tooltip.
-    expect(tooltip).not.toHaveTextContent(formatMoney(1000, "BRL"));
-    expect(tooltip).not.toHaveTextContent(formatMoney(300, "BRL"));
+    expect(tooltip).not.toHaveTextContent(textMoney(1000, "BRL"));
+    expect(tooltip).not.toHaveTextContent(textMoney(300, "BRL"));
   });
 
   it("hover em pontos diferentes mostra valores diferentes (sem índice preso)", () => {

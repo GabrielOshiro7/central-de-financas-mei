@@ -109,7 +109,7 @@ test.describe("MoneyInput - digitação real no navegador", () => {
 
     const row = page.getByRole("row", { name: /Receita digitada no teclado E2E/ });
     await expect(row).toBeVisible();
-    await expect(row.getByText("R$1,500.00")).toBeVisible();
+    await expect(row.getByText("R$ 1.500,00")).toBeVisible();
 
     // Reabrir para editar: o valor salvo ("1500") volta formatado no primeiro render.
     await row.getByRole("button", { name: "Editar" }).click();

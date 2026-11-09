@@ -6,7 +6,7 @@ import type { Currency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { MoneyField, MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
-import { isIntegerCurrency } from "@/lib/money";
+import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS, SALE_DISCOUNT_TYPE_OPTIONS } from "@/lib/sales/options";
 import { InstallmentsEditor, roundMoney, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
@@ -203,7 +203,9 @@ export function SaleForm({
         decimals
       );
       if (finalSum !== totals.total) {
-        return setError(`A soma das parcelas (${finalSum}) não bate com o total da venda (${totals.total}).`);
+        return setError(
+          `A soma das parcelas (${formatMoney(finalSum, currency)}) não bate com o total da venda (${formatMoney(totals.total, currency)}).`
+        );
       }
     }
 
@@ -480,15 +482,15 @@ export function SaleForm({
         <div className="mt-4 flex flex-col gap-1 bg-gray-50 p-4 text-sm dark:bg-neutral-800">
           <div className="flex justify-between text-gray-600 dark:text-neutral-400">
             <span>Subtotal</span>
-            <span>{totals.subtotal}</span>
+            <span>{formatMoney(totals.subtotal, currency)}</span>
           </div>
           <div className="flex justify-between text-gray-600 dark:text-neutral-400">
             <span>Desconto</span>
-            <span>{totals.discountAmount}</span>
+            <span>{formatMoney(totals.discountAmount, currency)}</span>
           </div>
           <div className="flex justify-between text-base font-semibold text-gray-900 dark:text-neutral-100">
             <span>Total</span>
-            <span>{totals.total}</span>
+            <span>{formatMoney(totals.total, currency)}</span>
           </div>
         </div>
       </section>

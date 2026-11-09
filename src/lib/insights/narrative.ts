@@ -14,8 +14,10 @@ function extractNumberTokens(text: string): string[] {
 // independente de convencao de separador decimal/milhar (en-US: "1,234.56"
 // vs. pt-BR: "1.234,56") - a IA e instruida a escrever em portugues natural
 // e pode reformatar um numero para a convencao pt-BR mesmo copiando o MESMO
-// valor que recebeu (formatMoney deste projeto usa convencao en-US, ver
-// src/lib/money.ts). Retorna null quando o token nao e um numero valido.
+// valor que recebeu (formatMoney deste projeto usa pt-BR, ver
+// src/lib/money.ts, mas o texto da IA e as vezes escrito em en-US, e insights
+// antigos guardados no banco ainda tem numeros en-US). Retorna null quando o
+// token nao e um numero valido.
 function normalizeNumberToken(raw: string): string | null {
   let s = raw;
   const hasComma = s.includes(",");

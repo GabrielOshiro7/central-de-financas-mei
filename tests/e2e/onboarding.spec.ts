@@ -90,8 +90,8 @@ test.describe("onboarding", () => {
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Importar dados" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Adicionar lançamento" })).toBeVisible();
-    await expect(page.getByText("15,000")).toHaveCount(0);
-    await expect(page.getByText("R$15,000")).toHaveCount(0);
+    await expect(page.getByText("15.000")).toHaveCount(0);
+    await expect(page.getByText("R$ 15.000,00")).toHaveCount(0);
   });
 
   // Cenario 3: fechar o navegador no meio do onboarding e voltar -> retoma

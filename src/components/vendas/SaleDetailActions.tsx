@@ -7,7 +7,7 @@ import type { Currency, SaleStatus } from "@prisma/client";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { MoneyInput } from "@/components/MoneyInput";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
-import { isIntegerCurrency } from "@/lib/money";
+import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 function round(value: number, decimals: number): number {
@@ -92,7 +92,9 @@ export function SaleDetailActions({
       return;
     }
     if (installmentsSum !== totalNumber) {
-      setConfirmError(`A soma das parcelas (${installmentsSum}) não bate com o total da venda (${totalNumber}).`);
+      setConfirmError(
+        `A soma das parcelas (${formatMoney(installmentsSum, currency)}) não bate com o total da venda (${formatMoney(totalNumber, currency)}).`
+      );
       return;
     }
 
@@ -321,7 +323,7 @@ export function SaleDetailActions({
                 installmentsSum === totalNumber ? "text-gray-500 dark:text-neutral-400" : "font-semibold text-rose-600 dark:text-rose-400"
               }`}
             >
-              Soma das parcelas: {installmentsSum} / {totalNumber}
+              Soma das parcelas: {formatMoney(installmentsSum, currency)} / {formatMoney(totalNumber, currency)}
             </p>
 
             {confirmError && (

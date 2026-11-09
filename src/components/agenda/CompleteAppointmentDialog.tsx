@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
-import { isIntegerCurrency } from "@/lib/money";
+import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
@@ -109,7 +109,7 @@ export function CompleteAppointmentDialog({
     }
     const installmentsSum = round(finalInstallments.reduce((t, i) => t + (Number(i.amount) || 0), 0), decimals);
     if (installmentsSum !== total) {
-      return setError(`A soma das parcelas (${installmentsSum}) não bate com o total (${total}).`);
+      return setError(`A soma das parcelas (${formatMoney(installmentsSum, currency)}) não bate com o total (${formatMoney(total, currency)}).`);
     }
 
     setPending(true);
@@ -300,7 +300,7 @@ export function CompleteAppointmentDialog({
           </>
         )}
 
-        <p className="mt-3 text-xs text-gray-500 dark:text-neutral-400">Total: {total}</p>
+        <p className="mt-3 text-xs text-gray-500 dark:text-neutral-400">Total: {formatMoney(total, currency)}</p>
 
         {error && (
           <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">

@@ -102,7 +102,7 @@ test.describe("Agenda - fluxo por dia", () => {
     await expect(page.getByLabel("Data do atendimento")).toHaveValue(today);
     await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
     await expect(page.getByRole("button", { name: "À vista" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("day-appointment-total")).toHaveText("110");
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 110,00");
     await page.getByLabel("Meio de pagamento (opcional)").selectOption({ label: "Dinheiro" });
     await page.getByRole("button", { name: "Agendar" }).click();
 
@@ -113,24 +113,24 @@ test.describe("Agenda - fluxo por dia", () => {
     await expect(appointment.getByText("Agendado", { exact: true })).toBeVisible();
     await expect(appointment.getByText("Corte Dia E2E, Barba Dia E2E")).toBeVisible();
     await expect(appointment.getByText("· À vista · Dinheiro")).toBeVisible();
-    await expect(page.getByText("Total do dia: 1 atendimento · R$110.00")).toBeVisible();
+    await expect(page.getByText("Total do dia: 1 atendimento · R$ 110,00")).toBeVisible();
     await expect(appointment.getByRole("button", { name: "Confirmar" })).toHaveCount(0); // sem CONFIRMADO no fluxo por dia
 
     // Editar: 2 cortes -> total 190.
     await appointment.getByRole("link", { name: "Editar" }).click();
     await expect(page.getByRole("heading", { name: "Editar agendamento" })).toBeVisible();
     await page.getByLabel("Quantidade").first().fill("2");
-    await expect(page.getByTestId("day-appointment-total")).toHaveText("190");
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 190,00");
     await page.getByRole("button", { name: "Salvar alterações" }).click();
     await expect(page).toHaveURL(new RegExp(`view=day&day=${today}`));
     await expect(row(page, "Cliente Dia E2E").getByText("Corte Dia E2E × 2, Barba Dia E2E")).toBeVisible();
-    await expect(page.getByText("Total do dia: 1 atendimento · R$190.00")).toBeVisible();
+    await expect(page.getByText("Total do dia: 1 atendimento · R$ 190,00")).toBeVisible();
 
     // Aba Mes: total do mes e do dia.
     await page.getByRole("link", { name: "Mês" }).click();
     await expect(page).toHaveURL(/view=month/);
-    await expect(page.getByText("Total do mês: 1 atendimento · R$190.00")).toBeVisible();
-    await expect(page.getByTestId(`agenda-day-${today}`).getByText("Total do dia: 1 atendimento · R$190.00")).toBeVisible();
+    await expect(page.getByText("Total do mês: 1 atendimento · R$ 190,00")).toBeVisible();
+    await expect(page.getByTestId(`agenda-day-${today}`).getByText("Total do dia: 1 atendimento · R$ 190,00")).toBeVisible();
 
     // Concluir agora (aba Mes - mesmo componente de linha das outras abas).
     await row(page, "Cliente Dia E2E").getByRole("button", { name: "Concluir agora" }).click();
@@ -151,7 +151,7 @@ test.describe("Agenda - fluxo por dia", () => {
     await gotoHydrated(page, "/financeiro/receitas");
     const revenueRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) });
     await expect(revenueRow.getByText(formatDateKey(today))).toBeVisible();
-    await expect(revenueRow.getByText("R$190.00")).toBeVisible();
+    await expect(revenueRow.getByText("R$ 190,00")).toBeVisible();
 
     expect(consoleErrors, `Erros de console encontrados: ${consoleErrors.join("; ")}`).toEqual([]);
   });
@@ -169,11 +169,11 @@ test.describe("Agenda - fluxo por dia", () => {
     await page.getByRole("button", { name: "A prazo" }).click();
     await page.getByLabel("Nº de parcelas").fill("3");
     await page.getByRole("button", { name: "Dividir igualmente" }).click();
-    await expect(page.getByText("Soma das parcelas: 300 / 300")).toBeVisible();
+    await expect(page.getByText("Soma das parcelas: R$ 300,00 / R$ 300,00")).toBeVisible();
     // Soma diferente do total: o formulario recusa antes de enviar.
     await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "50");
     await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (250) não bate com o total do atendimento (300).");
+    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (R$ 250,00) não bate com o total do atendimento (R$ 300,00).");
     await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "100");
     await page.getByRole("button", { name: "Agendar" }).click();
 
@@ -191,7 +191,7 @@ test.describe("Agenda - fluxo por dia", () => {
     await appointment.getByRole("button", { name: "Cancelar" }).click();
     await confirmDialog(page).getByRole("button", { name: "Cancelar agendamento" }).click();
     await expect(appointment.getByText("Cancelado", { exact: true })).toBeVisible();
-    await expect(page.getByText("Total do dia: 0 atendimentos · R$0.00")).toBeVisible();
+    await expect(page.getByText("Total do dia: 0 atendimentos · R$ 0,00")).toBeVisible();
 
     await appointment.getByRole("button", { name: "Reabrir" }).click();
     await expect(confirmDialog(page)).toContainText("NÃO será concluído automaticamente");
@@ -338,7 +338,7 @@ test.describe("Agenda - legado com horário (TIMED, gravado no banco)", () => {
     await expect(first.getByText("Concluído", { exact: true })).toBeVisible();
     await first.getByRole("button", { name: "Desfazer" }).click();
     const dialog = confirmDialog(page);
-    await expect(dialog.getByTestId("undo-received-amount")).toContainText("R$80.00");
+    await expect(dialog.getByTestId("undo-received-amount")).toContainText("R$ 80,00");
     await dialog.getByLabel("Concluí por engano").check();
     await dialog.getByRole("button", { name: "Desfazer conclusão" }).click();
     await expect(dialog).toHaveCount(0, { timeout: 30_000 }); // 1a chamada da rota /undo compila no `next dev`
@@ -405,24 +405,24 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
     await register(page, "Dono Desfazer E2E", email);
     await completeOnboarding(page, "Empresa Desfazer E2E");
     const businessId = await configureOpeningBalance(email);
-    await expectCash(page, "R$500.00");
+    await expectCash(page, "R$ 500,00");
 
     const saleNumber = await createAndCompleteToday(page, "Cliente Desfazer E2E");
-    await expectCash(page, "R$600.00");
+    await expectCash(page, "R$ 600,00");
     await gotoHydrated(page, "/financeiro/receitas");
     await expect(page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) })).toBeVisible();
 
     await gotoHydrated(page, `/agenda?view=day&day=${businessToday()}`);
     const dialog = await undo(page, "Cliente Desfazer E2E", "O cliente não veio");
     await expect(dialog.getByTestId("undo-received-amount")).toHaveText(
-      "O recebimento de R$100.00 será estornado: o valor sai do Caixa e do Dashboard."
+      "O recebimento de R$ 100,00 será estornado: o valor sai do Caixa e do Dashboard."
     );
     await expect(dialog).toContainText(`A venda #${saleNumber} será cancelada.`);
     await confirmUndo(page);
     await expect(row(page, "Cliente Desfazer E2E").getByText("Faltou", { exact: true })).toBeVisible();
     await expect(row(page, "Cliente Desfazer E2E").getByRole("button", { name: "Reabrir" })).toBeVisible();
 
-    await expectCash(page, "R$500.00");
+    await expectCash(page, "R$ 500,00");
     await gotoHydrated(page, "/financeiro/receitas");
     await expect(page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) })).toHaveCount(0);
 
@@ -462,14 +462,14 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
     await gotoHydrated(page, "/financeiro/receitas?period=LAST_90_DAYS");
     const revenueRow = page.getByRole("row", { name: new RegExp(`Venda #${saleNumber}\\b`) });
     await expect(revenueRow.getByText(formatDateKey(yesterday))).toBeVisible();
-    await expect(revenueRow.getByText("R$70.00")).toBeVisible();
-    await expectCash(page, "R$570.00");
+    await expect(revenueRow.getByText("R$ 70,00")).toBeVisible();
+    await expectCash(page, "R$ 570,00");
 
     await gotoHydrated(page, `/agenda?view=day&day=${yesterday}`);
     await undo(page, "Cliente Auto E2E", "O cliente não veio");
     await confirmUndo(page);
     await expect(appointment.getByText("Faltou", { exact: true })).toBeVisible();
-    await expectCash(page, "R$500.00");
+    await expectCash(page, "R$ 500,00");
 
     // Recarregar (Dashboard e Agenda) nao reconclui: fica Faltou, so a venda cancelada.
     await gotoHydrated(page, "/dashboard");
@@ -503,7 +503,7 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
     expect([appointment.status, appointment.saleId, appointment.completionSeq, appointment.autoCompleteEligible]).toEqual([
       "CONCLUIDO", sales[1].id, 1, false,
     ]);
-    await expectCash(page, "R$600.00");
+    await expectCash(page, "R$ 600,00");
   });
 });
 

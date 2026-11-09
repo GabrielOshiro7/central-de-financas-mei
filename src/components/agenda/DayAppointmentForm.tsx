@@ -8,7 +8,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ClientPicker, type ClientOption } from "@/components/agenda/ClientPicker";
 import { InstallmentsEditor, roundMoney, sumInstallmentRows, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
-import { isIntegerCurrency } from "@/lib/money";
+import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
@@ -170,7 +170,9 @@ export function DayAppointmentForm({
     if (paymentTiming === "APRAZO") {
       if (installments.some((i) => !i.dueDateInput || !i.amount)) return setError("Preencha vencimento e valor de todas as parcelas.");
       const sum = sumInstallmentRows(installments, decimals);
-      if (sum !== total) return setError(`A soma das parcelas (${sum}) não bate com o total do atendimento (${total}).`);
+      if (sum !== total) {
+        return setError(`A soma das parcelas (${formatMoney(sum, currency)}) não bate com o total do atendimento (${formatMoney(total, currency)}).`);
+      }
     }
 
     setPending(true);
@@ -303,7 +305,7 @@ export function DayAppointmentForm({
 
         <div className="mt-4 flex justify-between bg-gray-50 p-4 text-base font-semibold text-gray-900 dark:bg-neutral-800 dark:text-neutral-100">
           <span>Total</span>
-          <span data-testid="day-appointment-total">{total}</span>
+          <span data-testid="day-appointment-total">{formatMoney(total, currency)}</span>
         </div>
       </section>
 
