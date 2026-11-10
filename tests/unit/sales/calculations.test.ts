@@ -71,7 +71,7 @@ describe("deriveSalePaymentStatus", () => {
     ).toBe("PAGA");
   });
 
-  it("uma paga e outra pendente => PARCIAL (Cenário 2: 1 de 3 parcelas recebida)", () => {
+  it("uma paga e outras pendentes A VENCER => PARCIAL (Cenário 2: 1 de 3 parcelas recebida)", () => {
     expect(
       deriveSalePaymentStatus(
         [
@@ -96,7 +96,11 @@ describe("deriveSalePaymentStatus", () => {
     ).toBe("NAO_PAGA");
   });
 
-  it("parcela PARCIAL tem prioridade sobre ATRASADA quando já recebeu algo, mesmo com outra vencida", () => {
+  // DECISAO DO DONO: o atraso tem prioridade. Dinheiro pendente e vencido precisa
+  // de cobranca e nao pode ficar escondido atras de "parcialmente paga" - mesmo
+  // que outras parcelas ja tenham sido pagas. (Antes, PARCIAL vencia ATRASADA;
+  // PARCIAL agora e: algo pago, algo pendente e NADA vencido.)
+  it("1 parcela paga + 1 vencida => ATRASADA (o atraso tem prioridade sobre PARCIAL)", () => {
     expect(
       deriveSalePaymentStatus(
         [
@@ -105,7 +109,44 @@ describe("deriveSalePaymentStatus", () => {
         ],
         processClock(today)
       )
+    ).toBe("ATRASADA");
+  });
+
+  it("1 paga + 1 vencida + 1 a vencer => ATRASADA", () => {
+    expect(
+      deriveSalePaymentStatus(
+        [
+          { status: "PAID", dueOn: past },
+          { status: "PENDING", dueOn: past },
+          { status: "PENDING", dueOn: future },
+        ],
+        processClock(today)
+      )
+    ).toBe("ATRASADA");
+  });
+
+  it("paga + pendente que vence HOJE (ainda nao venceu) => PARCIAL", () => {
+    expect(
+      deriveSalePaymentStatus(
+        [
+          { status: "PAID", dueOn: past },
+          { status: "PENDING", dueOn: dateKeyToDbDate("2026-06-15") },
+        ],
+        processClock(today)
+      )
     ).toBe("PARCIAL");
+  });
+
+  it("parcela vencida CANCELADA nao causa atraso (paga + cancelada vencida => PAGA)", () => {
+    expect(
+      deriveSalePaymentStatus(
+        [
+          { status: "PAID", dueOn: past },
+          { status: "CANCELLED", dueOn: past },
+        ],
+        processClock(today)
+      )
+    ).toBe("PAGA");
   });
 
   it("parcelas canceladas são ignoradas na derivação", () => {

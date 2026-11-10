@@ -21,12 +21,16 @@ export function MetricCard({
   icon,
   tooltip,
   variation,
+  note,
 }: {
   label: string;
   value: string | null;
   icon?: ReactNode;
   tooltip?: string;
   variation?: MetricVariation | null;
+  // Linha secundaria sob o valor (ex.: "¥ 8.000 atrasado"). `attention` usa o
+  // Terracota da paleta de status - KPI e um dos 4 usos permitidos dela.
+  note?: { text: string; attention?: boolean } | null;
 }) {
   const arrow = variation ? (variation.direction === "up" ? "↑" : variation.direction === "down" ? "↓" : "→") : null;
   const favorableDirection = variation?.favorableDirection ?? "up";
@@ -71,6 +75,15 @@ export function MetricCard({
       >
         {value ?? "Sem dados"}
       </div>
+      {note && (
+        <div
+          className={`mt-1 text-xs font-medium [overflow-wrap:anywhere] ${
+            note.attention ? "text-[#a8402a] dark:text-[#F0917C]" : "text-gray-500 dark:text-neutral-400"
+          }`}
+        >
+          {note.text}
+        </div>
+      )}
       {variation && (
         <div className={`mt-1 flex flex-wrap items-center gap-1 text-xs font-medium ${variationColor}`}>
           {arrow && <span aria-hidden="true">{arrow}</span>}

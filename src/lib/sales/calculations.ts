@@ -66,9 +66,15 @@ export type SalePaymentStatus = "NAO_PAGA" | "PARCIAL" | "PAGA" | "ATRASADA";
 // Nunca armazenado em Sale - sempre derivado dos Bills relacionados em tempo
 // de leitura (mesmo principio de deriveBillStatus para "atrasado"). Bills
 // CANCELLED sao ignorados na derivacao (uma parcela cancelada nao conta nem
-// como paga nem como pendente). PARCIAL tem prioridade sobre ATRASADA:
-// se ja entrou algum dinheiro, "parcial" e mais informativo pro usuario do
-// que "atrasada", mesmo que uma das parcelas restantes esteja vencida.
+// como paga nem como pendente).
+//
+// O ATRASO TEM PRIORIDADE (decisao do dono): se QUALQUER parcela pendente ja
+// venceu, a venda e ATRASADA - mesmo que outras parcelas estejam pagas. Uma
+// venda com dinheiro pendente vencido precisa de acao (cobrar), e isso nao
+// pode ficar escondido atras de "parcialmente paga". PARCIAL passa a significar:
+// algo pago, algo pendente e NADA vencido. (Antes da decisao, PARCIAL tinha
+// prioridade sobre ATRASADA.)
+//
 // "Vencida" = dia de vencimento gravado (Bill.dueOn, Etapa F6b-2) antes de
 // "hoje" no fuso da empresa (Etapa F3b), mesma regra de deriveBillStatus.
 export function deriveSalePaymentStatus(
@@ -78,15 +84,16 @@ export function deriveSalePaymentStatus(
   const active = bills.filter((b) => b.status !== "CANCELLED");
   if (active.length === 0) return "NAO_PAGA";
 
-  const paidCount = active.filter((b) => b.status === "PAID").length;
-  if (paidCount === active.length) return "PAGA";
-  if (paidCount > 0) return "PARCIAL";
-
   const today = todayKey(clock);
   const hasOverdue = active.some(
     (b) => b.status === "PENDING" && compareKeys(dbDateToKey(b.dueOn), today) < 0
   );
-  return hasOverdue ? "ATRASADA" : "NAO_PAGA";
+  if (hasOverdue) return "ATRASADA";
+
+  const paidCount = active.filter((b) => b.status === "PAID").length;
+  if (paidCount === active.length) return "PAGA";
+  if (paidCount > 0) return "PARCIAL";
+  return "NAO_PAGA";
 }
 
 export const SALE_PAYMENT_STATUS_LABELS: Record<SalePaymentStatus, string> = {

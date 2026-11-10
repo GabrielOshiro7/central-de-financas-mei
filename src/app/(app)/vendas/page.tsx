@@ -1,15 +1,18 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { SaleStatus } from "@prisma/client";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { resolvePeriodRange, PERIOD_OPTIONS, DEFAULT_PERIOD, type PeriodKey } from "@/lib/finance/period";
-import { listSales, getSalesSummary, hasAnySalesEver } from "@/lib/sales/queries";
+import { listSales, getSalesSummary, hasAnySalesEver, countSalesByPaymentGroup, type SaleFilters as SaleQueryFilters } from "@/lib/sales/queries";
+import { LEGACY_PAYMENT_GROUP_PARAM, SALE_PAYMENT_GROUP_EMPTY, parseSalePaymentGroup } from "@/lib/sales/paymentGroups";
 import { deriveSalePaymentStatus } from "@/lib/sales/calculations";
 import { formatMoney } from "@/lib/money";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { SaleFilters } from "@/components/vendas/SaleFilters";
+import { SalePaymentFilter } from "@/components/vendas/SalePaymentFilter";
 import { SaleTable, type SaleRow } from "@/components/vendas/SaleTable";
 import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
-import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
+import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
 type SearchParams = { [key: string]: string | string[] | undefined };
@@ -29,6 +32,19 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
   const searchParams = await props.searchParams;
   const { business } = await requireOnboardedUser();
 
+  // ?pagamento=em-aberto (nome antigo do grupo, hoje "A vencer"): redireciona
+  // para o novo valor, mantendo os demais filtros.
+  const legacyPayment = paramString(searchParams, "pagamento");
+  if (legacyPayment && legacyPayment in LEGACY_PAYMENT_GROUP_PARAM) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (typeof value === "string") params.set(key, value);
+      else value?.forEach((item) => params.append(key, item));
+    }
+    params.set("pagamento", LEGACY_PAYMENT_GROUP_PARAM[legacyPayment as keyof typeof LEGACY_PAYMENT_GROUP_PARAM]);
+    redirect(`/vendas?${params.toString()}`);
+  }
+
   const now = new Date();
   const periodParam = paramString(searchParams, "period");
   const period = (periodParam && VALID_PERIODS.has(periodParam as PeriodKey) ? periodParam : DEFAULT_PERIOD) as PeriodKey;
@@ -41,11 +57,24 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
   const statusParam = paramString(searchParams, "status");
   const status = statusParam && VALID_STATUS.has(statusParam) ? (statusParam as SaleStatus) : undefined;
 
-  const [{ items }, summary, hasAnyEver] = await Promise.all([
-    listSales(business.id, { period: { start: range.start, end: range.end }, search, status, pageSize: 100 }, clock.timeZone),
+  // Situacao de pagamento (?pagamento=atrasadas): filtrada no servidor sobre as
+  // parcelas, com o "hoje" da empresa. As contagens dos grupos respeitam os
+  // demais filtros (Pesquisar, Periodo, Status da venda).
+  const paymentGroup = parseSalePaymentGroup(paramString(searchParams, "pagamento"));
+  const today = todayKey(clock);
+  const listFilters: SaleQueryFilters = { period: { start: range.start, end: range.end }, search, status };
+
+  const [{ items }, summary, hasAnyEver, paymentCounts] = await Promise.all([
+    listSales(business.id, { ...listFilters, paymentGroup: paymentGroup ? { group: paymentGroup, today } : undefined, pageSize: 100 }, clock.timeZone),
     getSalesSummary(business.id, range, clock),
     hasAnySalesEver(business.id),
+    countSalesByPaymentGroup(business.id, listFilters, clock.timeZone, today),
   ]);
+
+  // Card "A receber": o que ainda nao foi recebido das vendas do periodo (a
+  // vencer + vencido) e, a parte, quanto ja venceu.
+  const openAmount = summary.totalPending.plus(summary.totalOverdue);
+  const overdueAmount = summary.totalOverdue;
 
   const rows: SaleRow[] = items.map((sale) => ({
     id: sale.id,
@@ -78,7 +107,7 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
             <MetricCard label="Vendas no período" value={String(summary.salesCount)} />
             <MetricCard label="Faturamento" value={formatMoney(summary.totalRevenue, business.currency)} />
             <MetricCard
@@ -86,9 +115,19 @@ export default async function VendasPage(props: PageProps<"/vendas">) {
               value={summary.averageTicket ? formatMoney(summary.averageTicket, business.currency) : null}
             />
             <MetricCard label="Recebido no período" value={formatMoney(summary.totalReceived, business.currency)} />
+            <MetricCard
+              label="A receber"
+              value={formatMoney(openAmount, business.currency)}
+              note={{ text: `${formatMoney(overdueAmount, business.currency)} atrasado`, attention: overdueAmount.greaterThan(0) }}
+            />
           </div>
           <SaleFilters />
-          <SaleTable rows={rows} currency={business.currency} />
+          <SalePaymentFilter counts={paymentCounts} />
+          <SaleTable
+            rows={rows}
+            currency={business.currency}
+            emptyMessage={paymentGroup ? SALE_PAYMENT_GROUP_EMPTY[paymentGroup] : undefined}
+          />
         </>
       )}
     </div>

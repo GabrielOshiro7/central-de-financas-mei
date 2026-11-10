@@ -1,7 +1,8 @@
 import { Prisma, type SaleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { dayRangeFilter } from "@/lib/finance/entryDay";
-import { compareKeys, dbDateToKey, todayKey, type BusinessClock, type TimeZone } from "@/lib/time/zoned";
+import { compareKeys, dbDateToKey, todayKey, type BusinessClock, type DateKey, type TimeZone } from "@/lib/time/zoned";
+import { SALE_PAYMENT_GROUPS, salePaymentGroupWhere, type SalePaymentGroup } from "@/lib/sales/paymentGroups";
 
 // Leituras de vendas (Etapa F6c): o dia da venda e Sale.saleOn, filtrado por
 // dias (dayRangeFilter, periodos alinhados a 00:00 no fuso da empresa).
@@ -26,11 +27,13 @@ export type SaleFilters = {
 // exatamente, que distingue tambem PARCIAL/ATRASADA) - "PENDING" = tem ao
 // menos uma parcela ainda pendente, "RECEIVED" = todas as parcelas existentes
 // estao pagas; suficiente para o filtro da lista sem duplicar a logica de
-// derivacao aqui.
-export async function listSales(businessId: string, filters: SaleFilters, timeZone: TimeZone) {
-  const page = Math.max(1, filters.page ?? 1);
-  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
-
+// derivacao aqui. O filtro EXATO por situacao de pagamento (os 4 status de
+// deriveSalePaymentStatus) e `paymentGroup`, abaixo.
+//
+// `where` base da lista de vendas (todos os filtros MENOS o grupo de pagamento):
+// e o que as contagens por grupo (countSalesByPaymentGroup) tambem usam, para
+// respeitarem Pesquisar, Periodo e Status da venda.
+export function buildSaleWhere(businessId: string, filters: SaleFilters, timeZone: TimeZone): Prisma.SaleWhereInput {
   const amountFilter =
     filters.amountMin !== undefined || filters.amountMax !== undefined
       ? {
@@ -43,7 +46,7 @@ export async function listSales(businessId: string, filters: SaleFilters, timeZo
 
   const searchNumber = filters.search ? Number(filters.search.replace(/\D/g, "")) : NaN;
 
-  const where: Prisma.SaleWhereInput = {
+  return {
     businessId,
     ...(filters.clientId ? { clientId: filters.clientId } : {}),
     ...(filters.status ? { status: filters.status } : {}),
@@ -62,6 +65,22 @@ export async function listSales(businessId: string, filters: SaleFilters, timeZo
         }
       : {}),
   };
+}
+
+export type SalePaymentGroupFilter = { group: SalePaymentGroup; today: DateKey };
+
+export async function listSales(
+  businessId: string,
+  filters: SaleFilters & { paymentGroup?: SalePaymentGroupFilter },
+  timeZone: TimeZone
+) {
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
+
+  const base = buildSaleWhere(businessId, filters, timeZone);
+  const where: Prisma.SaleWhereInput = filters.paymentGroup
+    ? { AND: [base, salePaymentGroupWhere(filters.paymentGroup.group, filters.paymentGroup.today)] }
+    : base;
 
   const [items, total] = await Promise.all([
     prisma.sale.findMany({
@@ -80,6 +99,26 @@ export async function listSales(businessId: string, filters: SaleFilters, timeZo
   ]);
 
   return { items, total, page, pageSize };
+}
+
+export type SalePaymentGroupCounts = Record<SalePaymentGroup | "todas", number>;
+
+// Contagem de vendas por situacao de pagamento ("Todas" + os 4 grupos), com os
+// MESMOS filtros da lista (Pesquisar, Periodo, Status da venda). Uma contagem por
+// grupo, sobre as parcelas (status/dueOn) - nada e carregado para somar em memoria.
+// `today` = "hoje" no fuso da empresa (todayKey do relogio dela).
+export async function countSalesByPaymentGroup(
+  businessId: string,
+  filters: SaleFilters,
+  timeZone: TimeZone,
+  today: DateKey
+): Promise<SalePaymentGroupCounts> {
+  const base = buildSaleWhere(businessId, filters, timeZone);
+  const [todas, ...groups] = await Promise.all([
+    prisma.sale.count({ where: base }),
+    ...SALE_PAYMENT_GROUPS.map((group) => prisma.sale.count({ where: { AND: [base, salePaymentGroupWhere(group, today)] } })),
+  ]);
+  return { todas, ...(Object.fromEntries(SALE_PAYMENT_GROUPS.map((group, index) => [group, groups[index]])) as Record<SalePaymentGroup, number>) };
 }
 
 export async function getSaleById(businessId: string, id: string) {

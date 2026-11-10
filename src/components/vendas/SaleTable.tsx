@@ -30,11 +30,20 @@ export const PAYMENT_STATUS_BADGE_STYLE: Record<SalePaymentStatus, string> = {
 // renderiza linhas/links, sem interatividade propria. Acoes (editar,
 // cancelar, confirmar, registrar recebimento) vivem na pagina de detalhe da
 // venda (/vendas/[id]), nunca duplicadas aqui.
-export function SaleTable({ rows, currency }: { rows: SaleRow[]; currency: Currency }) {
+export function SaleTable({
+  rows,
+  currency,
+  emptyMessage = "Nenhuma venda encontrada para os filtros selecionados.",
+}: {
+  rows: SaleRow[];
+  currency: Currency;
+  // Estado vazio (ex.: "Nenhuma venda atrasada no período." no filtro de pagamento).
+  emptyMessage?: string;
+}) {
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-        <p>Nenhuma venda encontrada para os filtros selecionados.</p>
+        <p>{emptyMessage}</p>
       </div>
     );
   }

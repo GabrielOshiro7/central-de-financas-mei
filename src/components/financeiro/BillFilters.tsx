@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { BillDisplayStatus, BillDirection } from "@/lib/finance/bills/status";
 import { billStatusLabel } from "@/lib/finance/bills/status";
 import { DUE_SOON_OPTIONS } from "@/lib/finance/bills/options";
+import { FilterPills } from "@/components/FilterPills";
 
 export type BillFilterCategoryOption = { id: string; name: string };
 
@@ -96,33 +97,12 @@ export function BillFilters({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => updateParam({ due: null })}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-            due === ""
-              ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
-          }`}
-        >
-          Todos os vencimentos
-        </button>
-        {DUE_SOON_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => updateParam({ due: opt.value })}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              due === opt.value
-                ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <FilterPills
+        label="Vencimento"
+        options={[{ value: "", label: "Todos os vencimentos" }, ...DUE_SOON_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))]}
+        value={due}
+        onChange={(value) => updateParam({ due: value || null })}
+      />
     </div>
   );
 }
