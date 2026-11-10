@@ -9,6 +9,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS, NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { RECURRING_CREATED_EVENT } from "@/components/financeiro/RecurringCreatedNotice";
+import { isDateKey, parseDateKey, weekdayOf } from "@/lib/time/zoned";
 
 export type CategoryOption = { id: string; name: string; type: FinancialEntryType };
 
@@ -81,9 +83,20 @@ export function TransactionFormModal({
   // "MUDANCA DE VALOR" do prompt da Etapa 4.1).
   const [isRecurring, setIsRecurring] = useState(recurringLocked);
   const [frequency, setFrequency] = useState<RecurrenceFrequency>("MONTHLY");
-  const [dayOfWeek, setDayOfWeek] = useState(1);
-  const [dayOfMonth, setDayOfMonth] = useState(1);
-  const [yearMonth, setYearMonth] = useState(0);
+  // Criando a partir de uma aba de tipo (Receitas/Custos/Despesas), o dia da
+  // recorrencia (dia da semana / do mes / mes) SEGUE a data de inicio ate o
+  // usuario mexer nele - senao o padrao "dia 1" faz um inicio "hoje" (dia 10)
+  // so gerar a primeira ocorrencia no mes seguinte, sem nada na lista. Na aba
+  // Recorrentes (recurringLocked) o padrao continua o de antes (dia 1).
+  const followStart = !recurringLocked && !isEditing;
+  const startDefaults = (date: string) =>
+    followStart && isDateKey(date)
+      ? { dayOfWeek: weekdayOf(date), dayOfMonth: parseDateKey(date).day, yearMonth: parseDateKey(date).month - 1 }
+      : { dayOfWeek: 1, dayOfMonth: 1, yearMonth: 0 };
+  const [recurrenceDayTouched, setRecurrenceDayTouched] = useState(false);
+  const [dayOfWeek, setDayOfWeek] = useState(() => startDefaults(initial?.occurredAt ?? todayKey).dayOfWeek);
+  const [dayOfMonth, setDayOfMonth] = useState(() => startDefaults(initial?.occurredAt ?? todayKey).dayOfMonth);
+  const [yearMonth, setYearMonth] = useState(() => startDefaults(initial?.occurredAt ?? todayKey).yearMonth);
   const [endDate, setEndDate] = useState("");
 
   const categoriesForType = useMemo(
@@ -114,10 +127,22 @@ export function TransactionFormModal({
     setError(null);
     setIsRecurring(recurringLocked);
     setFrequency("MONTHLY");
-    setDayOfWeek(1);
-    setDayOfMonth(1);
-    setYearMonth(0);
+    const defaults = startDefaults(todayKey);
+    setDayOfWeek(defaults.dayOfWeek);
+    setDayOfMonth(defaults.dayOfMonth);
+    setYearMonth(defaults.yearMonth);
+    setRecurrenceDayTouched(false);
     setEndDate("");
+  }
+
+  function handleStartDateChange(value: string) {
+    setOccurredAt(value);
+    if (followStart && !recurrenceDayTouched && isDateKey(value)) {
+      const defaults = startDefaults(value);
+      setDayOfWeek(defaults.dayOfWeek);
+      setDayOfMonth(defaults.dayOfMonth);
+      setYearMonth(defaults.yearMonth);
+    }
   }
 
   function handleClose() {
@@ -196,8 +221,26 @@ export function TransactionFormModal({
         setError(result.error ?? "Não foi possível salvar o lançamento.");
         return;
       }
+      // Recorrente criado a partir de uma aba (Receitas/Custos/Despesas): o usuario
+      // FICA na aba e o periodo do filtro NAO muda. Ocorrencias ja devidas foram
+      // materializadas no POST. Avisos na propria aba (RecurringCreatedNotice):
+      // primeira ocorrencia futura => "a primeira entra em ..."; primeira
+      // anterior ao mes corrente (fora do periodo padrao) => "N lancamentos
+      // criados, de ... a ...", com o link "Ver todos" que so ai aplica o periodo.
+      const createdRecurringFromTab = isRecurring && !isEditing && !recurringLocked;
+      const firstOn: string | null = createdRecurringFromTab ? (result.firstOn ?? null) : null;
+      const createdType = type;
       if (!isEditing) reset();
       onSaved?.();
+      if (createdRecurringFromTab && firstOn && firstOn > todayKey) {
+        window.dispatchEvent(new CustomEvent(RECURRING_CREATED_EVENT, { detail: { kind: "future", type: createdType, firstOn } }));
+      } else if (createdRecurringFromTab && firstOn && firstOn < `${todayKey.slice(0, 7)}-01` && result.created > 0) {
+        window.dispatchEvent(
+          new CustomEvent(RECURRING_CREATED_EVENT, {
+            detail: { kind: "past", type: createdType, count: result.created, from: result.createdFirstOn, to: result.createdLastOn, today: todayKey },
+          })
+        );
+      }
       router.refresh();
       onClose();
     } catch {
@@ -251,7 +294,7 @@ export function TransactionFormModal({
             label={isRecurring ? "Data de início" : "Data"}
             type="date"
             value={occurredAt}
-            onChange={(e) => setOccurredAt(e.target.value)}
+            onChange={(e) => handleStartDateChange(e.target.value)}
           />
 
           <FormField
@@ -347,7 +390,10 @@ export function TransactionFormModal({
                       <select
                         id="dayOfWeek"
                         value={dayOfWeek}
-                        onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                        onChange={(e) => {
+                          setRecurrenceDayTouched(true);
+                          setDayOfWeek(Number(e.target.value));
+                        }}
                         className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                       >
                         {WEEKDAY_OPTIONS.map((opt) => (
@@ -369,7 +415,10 @@ export function TransactionFormModal({
                           <select
                             id="yearMonth"
                             value={yearMonth}
-                            onChange={(e) => setYearMonth(Number(e.target.value))}
+                            onChange={(e) => {
+                              setRecurrenceDayTouched(true);
+                              setYearMonth(Number(e.target.value));
+                            }}
                             className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
                           >
                             {MONTH_OPTIONS.map((opt) => (
@@ -388,7 +437,10 @@ export function TransactionFormModal({
                           min={1}
                           max={31}
                           value={String(dayOfMonth)}
-                          onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                          onChange={(e) => {
+                            setRecurrenceDayTouched(true);
+                            setDayOfMonth(Number(e.target.value));
+                          }}
                         />
                         <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
                           Em meses/anos sem esse dia, usa o último dia disponível.

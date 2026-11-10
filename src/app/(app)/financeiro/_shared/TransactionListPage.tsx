@@ -15,6 +15,7 @@ import {
 import { TransactionFilters } from "@/components/financeiro/TransactionFilters";
 import { TransactionTable, type TransactionRow } from "@/components/financeiro/TransactionTable";
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
+import { RecurringCreatedNotice } from "@/components/financeiro/RecurringCreatedNotice";
 import { NEW_ENTRY_LABELS } from "@/lib/finance/options";
 import { InfoTooltip } from "@/components/InfoTooltip";
 import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
@@ -117,6 +118,7 @@ export async function TransactionListPage({
           />
         }
       />
+      <RecurringCreatedNotice type={type} />
       <TransactionTable rows={rows} categories={modalCategories} currency={business.currency} todayKey={today} />
     </div>
   );
