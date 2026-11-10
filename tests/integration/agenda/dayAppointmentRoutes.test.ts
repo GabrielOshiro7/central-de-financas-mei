@@ -133,7 +133,12 @@ describe.each(["Asia/Tokyo", "America/Sao_Paulo"] as const)("agendamento por dia
     [{ installments: [{ dueOn: "2026-10-20", amount: 110 }] }, /à vista não tem parcelas/],
     [{ categoryId: "" }, /categoria de receita/],
     [{ scheduledOn: "" }, /data do atendimento/],
-    [{ services: [] }, /ao menos um serviço/],
+    // Agendamento sem valor: serviços são opcionais, mas todo DAY precisa de ao
+    // menos um entre título, cliente e serviço (noValueAppointments.test.ts).
+    [{ clientId: "", services: [] }, /título, cliente ou serviço/],
+    // Com valor, o cliente continua obrigatório.
+    [{ clientId: "" }, /Selecione um cliente/],
+    [{ title: "x".repeat(121) }, /120 caracteres/],
     [{ startAt: "2026-10-20T09:00" }, /./], // horario nao existe no fluxo por dia (strict)
   ])("recusa %j com 400 e nada é criado", async (overrides, message) => {
     const ctx = await login(tz);

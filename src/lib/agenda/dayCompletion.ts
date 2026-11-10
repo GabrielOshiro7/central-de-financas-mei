@@ -44,7 +44,9 @@ export function dayCompletionRequestId(appointmentId: string, completionSeq: num
 // da conclusao; categoria e forma de pagamento gravadas; itens = os servicos
 // com o preco snapshot; reaproveita createSale (mesmas regras da F6: a
 // parcela a vista e paga no dia da venda, paidAt = instante real do
-// registro). Valor total zero (decisao 6): conclui sem venda.
+// registro). Valor total zero (decisao 6; inclui o agendamento SEM VALOR, ex.:
+// reuniao, que nem tem categoria/pagamento/cliente obrigatorios): conclui sem
+// venda.
 export async function completeDayAppointment(
   businessId: string,
   appointmentId: string,
@@ -91,9 +93,10 @@ export async function completeDayAppointment(
           },
         });
 
-        // Garantidos no banco para DAY (CHECK appointments_day_fields_check).
+        // O dia e garantido no banco para DAY (CHECK appointments_day_fields_check).
+        // Categoria, pagamento e cliente so existem em agendamento COM valor: o
+        // total e verificado ANTES de exigi-los (sem valor conclui sem venda).
         const saleOn = dbDateToKey(appointment.scheduledOn!);
-        const categoryId = appointment.categoryId!;
 
         const items = appointment.services.map((service) => {
           if (service.unitPrice === null) throw new Error(`O serviço "${service.nameSnapshot}" está sem valor.`);
@@ -110,8 +113,12 @@ export async function completeDayAppointment(
           return { id: appointmentId, saleId: null, saleNumber: null, alreadyCompleted: false };
         }
 
+        const { categoryId, clientId, paymentTiming } = appointment;
+        if (!categoryId || !paymentTiming) throw new Error("Agendamento com valor sem categoria de receita ou pagamento.");
+        if (!clientId) throw new Error("Agendamento com valor sem cliente.");
+
         let installments: SaleInstallmentInput[];
-        if (appointment.paymentTiming === "AVISTA") {
+        if (paymentTiming === "AVISTA") {
           installments = [{ dueOn: saleOn, amount: total.toString(), paidNow: true }];
         } else {
           if (appointment.installments.length === 0) throw new Error("Agendamento a prazo sem parcelas.");
@@ -121,7 +128,7 @@ export async function completeDayAppointment(
         const saleInput: CreateSaleInput = {
           clientRequestId: dayCompletionRequestId(appointmentId, appointment.completionSeq),
           status: "CONFIRMED",
-          clientId: appointment.clientId,
+          clientId,
           categoryId,
           saleOn,
           items,

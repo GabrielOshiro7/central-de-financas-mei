@@ -1,6 +1,9 @@
 import type { AppointmentStatus } from "@prisma/client";
 import { CalendarClock, CalendarCheck, CircleCheck, CircleX, CalendarX, type LucideIcon } from "lucide-react";
 
+// Tamanho maximo do titulo de um agendamento (usado pelo Zod e pelo formulario).
+export const APPOINTMENT_TITLE_MAX_LENGTH = 120;
+
 export const AGENDA_STATUS_LABELS: Record<AppointmentStatus, string> = {
   AGENDADO: "Agendado",
   CONFIRMADO: "Confirmado",

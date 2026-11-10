@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Currency } from "@prisma/client";
 import { isIntegerCurrency } from "@/lib/money";
+import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
 
 // Validação dos parâmetros de URL do redesign do calendário (?month=,
 // ?day=) - ano aceito 2000-2100 (requisito explícito), formato estrito
@@ -88,17 +89,42 @@ function moneyAmount(currency: Currency | null) {
 // a soma das parcelas com o total. O backend grava com Decimal.
 const toCents = (n: number) => Math.round(n * 100);
 
+// Total do agendamento DAY em centavos inteiros (soma exata).
+export function dayInputTotalCents(input: { services: { quantity: number; unitPrice: number }[] }): number {
+  return input.services.reduce((sum, s) => sum + toCents(s.unitPrice) * s.quantity, 0);
+}
+
+// "Sem valor" (ex.: reuniao): total zero - sem servicos, ou so servicos de valor 0.
+export function isNoValueDayInput(input: { services: { quantity: number; unitPrice: number }[] }): boolean {
+  return dayInputTotalCents(input) === 0;
+}
+
 // Criar/editar um agendamento DAY. Espelha as CHECKs do banco
-// (appointments_day_fields_check: dia, categoria e condicao de pagamento
-// obrigatorios; appointment_installments_amount_check: parcela > 0) e as
-// regras das parcelas de venda: a vista = nenhuma parcela planejada (a unica
-// parcela e o proprio dia, paga na conclusao); a prazo = 1+ parcelas, soma =
-// total, vencimento >= dia do atendimento. `position` dos servicos e das
-// parcelas nunca vem do cliente (indice do array, atribuido no backend).
+// (appointments_day_fields_check: dia obrigatorio; appointments_payment_coherence_check:
+// categoria e pagamento ambos nulos ou ambos preenchidos;
+// appointment_installments_amount_check: parcela > 0) e as regras das parcelas
+// de venda: a vista = nenhuma parcela planejada (a unica parcela e o proprio
+// dia, paga na conclusao); a prazo = 1+ parcelas, soma = total, vencimento >=
+// dia do atendimento. `position` dos servicos e das parcelas nunca vem do
+// cliente (indice do array, atribuido no backend).
+//
+// Regras que dependem do TOTAL (e por isso vivem aqui, nao no banco):
+// - COM valor (total > 0): cliente, categoria de receita e condicao de
+//   pagamento obrigatorios.
+// - SEM valor (total = 0): categoria, pagamento e parcelas NAO sao exigidos
+//   e, se vierem, sao IGNORADOS (nao sao gravados - ver dayAppointmentFields
+//   em mutations.ts); cliente e servicos sao opcionais.
+// - Sempre: ao menos um entre cliente, servico e titulo.
 export function dayAppointmentInputSchema(currency: Currency | null) {
   return z
     .object({
-      clientId: z.string().trim().min(1, "Selecione um cliente."),
+      clientId: z.string().trim().optional().or(z.literal("")),
+      title: z
+        .string()
+        .trim()
+        .max(APPOINTMENT_TITLE_MAX_LENGTH, `O título pode ter no máximo ${APPOINTMENT_TITLE_MAX_LENGTH} caracteres.`)
+        .optional()
+        .or(z.literal("")),
       scheduledOn: z.string().regex(DATE_KEY_REGEX, "Informe a data do atendimento."),
       services: z
         .array(
@@ -108,9 +134,10 @@ export function dayAppointmentInputSchema(currency: Currency | null) {
             unitPrice: moneyAmount(currency).pipe(z.number().nonnegative("O valor do serviço não pode ser negativo.")),
           })
         )
-        .min(1, "Adicione ao menos um serviço."),
-      categoryId: z.string().trim().min(1, "Selecione uma categoria de receita."),
-      paymentTiming: z.enum(["AVISTA", "APRAZO"], { message: "Escolha a condição de pagamento." }),
+        .optional()
+        .default([]),
+      categoryId: z.string().trim().optional().or(z.literal("")),
+      paymentTiming: z.enum(["AVISTA", "APRAZO"], { message: "Escolha a condição de pagamento." }).optional(),
       paymentMethod: z.string().trim().max(50).optional().or(z.literal("")),
       installments: z
         .array(
@@ -130,6 +157,25 @@ export function dayAppointmentInputSchema(currency: Currency | null) {
         ctx.addIssue({ code: "custom", message: "O mesmo serviço foi adicionado duas vezes - use a quantidade.", path: ["services"] });
       }
 
+      if (!data.clientId && data.services.length === 0 && !data.title) {
+        ctx.addIssue({ code: "custom", message: "Informe ao menos um título, cliente ou serviço.", path: ["title"] });
+        return;
+      }
+
+      const total = dayInputTotalCents(data);
+      if (total === 0) return; // sem valor: nada de cliente/categoria/pagamento/parcelas a exigir
+
+      if (!data.clientId) {
+        ctx.addIssue({ code: "custom", message: "Selecione um cliente.", path: ["clientId"] });
+      }
+      if (!data.categoryId) {
+        ctx.addIssue({ code: "custom", message: "Selecione uma categoria de receita.", path: ["categoryId"] });
+      }
+      if (!data.paymentTiming) {
+        ctx.addIssue({ code: "custom", message: "Escolha a condição de pagamento.", path: ["paymentTiming"] });
+        return;
+      }
+
       if (data.paymentTiming === "AVISTA") {
         if (data.installments.length > 0) {
           ctx.addIssue({ code: "custom", message: "Pagamento à vista não tem parcelas.", path: ["installments"] });
@@ -144,7 +190,6 @@ export function dayAppointmentInputSchema(currency: Currency | null) {
       if (data.installments.some((i) => i.dueOn < data.scheduledOn)) {
         ctx.addIssue({ code: "custom", message: "O vencimento de uma parcela não pode ser antes do dia do atendimento.", path: ["installments"] });
       }
-      const total = data.services.reduce((sum, s) => sum + toCents(s.unitPrice) * s.quantity, 0);
       const installmentsSum = data.installments.reduce((sum, i) => sum + toCents(i.amount), 0);
       if (installmentsSum !== total) {
         ctx.addIssue({ code: "custom", message: "A soma das parcelas não bate com o total do atendimento.", path: ["installments"] });

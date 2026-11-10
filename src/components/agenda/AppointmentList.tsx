@@ -4,6 +4,7 @@ import type { AppointmentKind, AppointmentStatus, Currency, SaleStatus } from "@
 import { formatAgendaTime } from "@/lib/agenda/time";
 import { formatDateKey } from "@/lib/time/zoned";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
+import { NoValueBadge } from "@/components/agenda/NoValueBadge";
 import { AppointmentActions } from "@/components/agenda/AppointmentActions";
 import { DayAppointmentActions } from "@/components/agenda/DayAppointmentActions";
 import type { CompleteDialogItem } from "@/components/agenda/CompleteAppointmentDialog";
@@ -19,8 +20,13 @@ export type AppointmentListItem = {
   startAt: Date | null;
   endAt: Date | null;
   status: AppointmentStatus;
-  clientId: string;
-  clientName: string;
+  // Nulos so no DAY sem valor (ex.: reuniao), que nao exige cliente.
+  clientId: string | null;
+  clientName: string | null;
+  // So DAY: titulo do agendamento (identificacao principal quando existe).
+  title: string | null;
+  // So DAY: total zero ("Sem valor") - sem informacao de pagamento.
+  noValue: boolean;
   serviceNames: string[];
   serviceIds: string[];
   // Valor do atendimento formatado (DAY: soma dos servicos; TIMED: venda ou
@@ -50,7 +56,7 @@ export function totalsText(totals: AgendaTotalsLabel): string {
 
 function nextAppointmentHref(item: AppointmentListItem): string {
   const params = new URLSearchParams();
-  params.set("clientId", item.clientId);
+  if (item.clientId) params.set("clientId", item.clientId);
   for (const serviceId of item.serviceIds) params.append("serviceId", serviceId);
   return `/agenda/novo?${params.toString()}`;
 }
@@ -65,10 +71,21 @@ type RowContext = {
   todayKey: string;
 };
 
+// Identificacao de um DAY na lista: o titulo, se houver; senao o cliente;
+// senao os servicos. A linha de baixo traz o que sobrou (cliente quando o
+// titulo e o principal, e os servicos).
+function dayIdentity(item: AppointmentListItem): { primary: string; secondary: string } {
+  const services = item.serviceNames.join(", ");
+  const primary = item.title ?? item.clientName ?? (services || "Agendamento");
+  const parts = [item.title ? item.clientName : null, item.title || item.clientName ? services : null];
+  return { primary, secondary: parts.filter(Boolean).join(" · ") };
+}
+
 // Mesma linha nas tres abas (Calendario, Dia, Mes) - as acoes dependem so do
 // fluxo e do status, nunca da aba.
 export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } & RowContext) {
   if (item.kind === "DAY") {
+    const identity = dayIdentity(item);
     return (
       <li
         data-testid="appointment-row"
@@ -76,14 +93,18 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
       >
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{item.clientName}</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{identity.primary}</span>
             <AppointmentStatusBadge status={item.status} />
+            {item.noValue && <NoValueBadge />}
           </div>
-          <p className="text-sm text-gray-500 dark:text-neutral-400">{item.serviceNames.join(", ")}</p>
-          <p className="text-sm text-gray-700 dark:text-neutral-300">
-            <span className="font-medium">{item.amountLabel}</span>
-            {item.paymentLabel ? ` · ${item.paymentLabel}` : ""}
-          </p>
+          {identity.secondary && <p className="text-sm text-gray-500 dark:text-neutral-400">{identity.secondary}</p>}
+          {/* Sem valor: nenhuma informacao de dinheiro/pagamento (o selo ja diz). */}
+          {!item.noValue && (
+            <p className="text-sm text-gray-700 dark:text-neutral-300">
+              <span className="font-medium">{item.amountLabel}</span>
+              {item.paymentLabel ? ` · ${item.paymentLabel}` : ""}
+            </p>
+          )}
           {item.autoCompleteFailed && (
             <p data-testid="auto-complete-failed" className="flex items-center gap-1 text-sm text-gray-700 dark:text-neutral-300">
               <AlertTriangle size={14} aria-hidden="true" />
@@ -100,6 +121,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
           saleNumber={item.saleNumber}
           saleStatus={item.saleStatus}
           receivedLabel={item.receivedLabel}
+          noValue={item.noValue}
         />
       </li>
     );
@@ -118,7 +140,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
           </span>
           <AppointmentStatusBadge status={item.status} />
         </div>
-        <p className="text-sm text-gray-700 dark:text-neutral-300">{item.clientName}</p>
+        <p className="text-sm text-gray-700 dark:text-neutral-300">{item.clientName ?? ""}</p>
         <p className="text-sm text-gray-500 dark:text-neutral-400">{item.serviceNames.join(", ")}</p>
         {(item.status === "AGENDADO" || item.status === "CONFIRMADO") && (
           <Link href={`/agenda/${item.id}/editar`} className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">

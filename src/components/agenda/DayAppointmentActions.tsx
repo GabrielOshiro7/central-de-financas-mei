@@ -32,7 +32,10 @@ export function DayAppointmentActions({
   saleNumber,
   saleStatus,
   receivedLabel,
+  noValue = false,
 }: {
+  // Agendamento sem valor: o dialogo de conclusao nao fala de venda/dinheiro.
+  noValue?: boolean;
   appointmentId: string;
   status: AppointmentStatus;
   dayKey: string;
@@ -140,7 +143,11 @@ export function DayAppointmentActions({
       <ConfirmDialog
         open={confirming === "complete"}
         title="Concluir atendimento"
-        message="O atendimento será concluído agora e a venda será registrada no dia do atendimento, com os serviços, valores e pagamento deste agendamento."
+        message={
+          noValue
+            ? "O agendamento será concluído agora."
+            : "O atendimento será concluído agora e a venda será registrada no dia do atendimento, com os serviços, valores e pagamento deste agendamento."
+        }
         confirmLabel="Concluir agora"
         pendingLabel="Concluindo..."
         pending={pending === "complete"}

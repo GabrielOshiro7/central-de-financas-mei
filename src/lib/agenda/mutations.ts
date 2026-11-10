@@ -5,7 +5,7 @@ import { assertClientBelongsToBusiness } from "@/lib/clients/mutations";
 // DAY a categoria e escolhida na criacao, entao e validada ja ali.
 import { assertCategoryMatches } from "@/lib/finance/mutations";
 import { createSale, type CreateSaleInput } from "@/lib/sales/mutations";
-import type { DayAppointmentInput } from "@/lib/agenda/schema";
+import { isNoValueDayInput, type DayAppointmentInput } from "@/lib/agenda/schema";
 import { dateKeyToDbDate, dbDateToKey, todayKey, type TimeZone } from "@/lib/time/zoned";
 import { getBusinessTimeZone } from "@/lib/time/businessClock";
 import { dayFromInput } from "@/lib/finance/entryDay";
@@ -167,10 +167,16 @@ async function loadDayServiceProducts(
 }
 
 async function validateDayInput(businessId: string, input: DayAppointmentInput) {
-  const clientError = await assertClientBelongsToBusiness(businessId, input.clientId);
-  if (clientError) return { ok: false as const, error: clientError };
-  const categoryError = await assertCategoryMatches(businessId, input.categoryId, "REVENUE");
-  if (categoryError) return { ok: false as const, error: categoryError };
+  // Cliente opcional (sem valor); categoria so quando ha valor (sem valor ela
+  // nao e exigida nem gravada).
+  if (input.clientId) {
+    const clientError = await assertClientBelongsToBusiness(businessId, input.clientId);
+    if (clientError) return { ok: false as const, error: clientError };
+  }
+  if (!isNoValueDayInput(input)) {
+    const categoryError = await assertCategoryMatches(businessId, input.categoryId!, "REVENUE");
+    if (categoryError) return { ok: false as const, error: categoryError };
+  }
   return loadDayServiceProducts(prisma, businessId, input.services.map((s) => s.productId));
 }
 
@@ -188,17 +194,23 @@ function dayServiceRows(input: DayAppointmentInput, names: Map<string, string>) 
 // Parcelas planejadas so a prazo (a vista: a unica parcela e o proprio dia,
 // gerada na conclusao).
 function dayInstallmentRows(input: DayAppointmentInput) {
-  if (input.paymentTiming !== "APRAZO") return [];
+  if (isNoValueDayInput(input) || input.paymentTiming !== "APRAZO") return [];
   return input.installments.map((i, position) => ({ position, dueOn: dateKeyToDbDate(i.dueOn), amount: new Decimal(i.amount) }));
 }
 
+// Sem valor (total zero): categoria, pagamento e parcelas NAO sao gravados
+// (nulos), mesmo que o cliente da API os envie - a CHECK
+// appointments_payment_coherence_check exige os dois nulos ou os dois
+// preenchidos, e o Zod ja garantiu os dois preenchidos quando ha valor.
 function dayAppointmentFields(input: DayAppointmentInput) {
+  const hasValue = !isNoValueDayInput(input);
   return {
-    clientId: input.clientId,
+    clientId: input.clientId || null,
+    title: input.title || null,
     scheduledOn: dateKeyToDbDate(input.scheduledOn),
-    categoryId: input.categoryId,
-    paymentTiming: input.paymentTiming,
-    paymentMethod: input.paymentMethod || null,
+    categoryId: hasValue ? input.categoryId! : null,
+    paymentTiming: hasValue ? input.paymentTiming! : null,
+    paymentMethod: hasValue ? input.paymentMethod || null : null,
     notes: input.notes || null,
   };
 }
@@ -418,6 +430,9 @@ export async function completeAppointment(
         // empresa, nunca `now`/completedAt - cobre corretamente o registro
         // retroativo (dono conclui dias depois de o servico ter sido prestado).
         const saleOn = resolveSaleDayFromAppointment(appointment.startAt, timeZone);
+
+        // TIMED sempre tem cliente (CHECK appointments_timed_client_check).
+        if (!appointment.clientId) throw new Error("Agendamento sem cliente.");
 
         const saleInput: CreateSaleInput = {
           clientRequestId: timedCompletionRequestId(appointmentId, appointment.completionSeq),

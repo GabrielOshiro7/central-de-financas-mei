@@ -70,6 +70,12 @@ type AgendaRow = Prisma.AppointmentGetPayload<{ include: typeof AGENDA_ENTRY_INC
 //   valor antes de concluir).
 export type AgendaEntry = AgendaRow & { dayKey: DateKey; amount: Prisma.Decimal };
 
+// DAY "sem valor" (ex.: reuniao): total zero. So o DAY define valor antes de
+// concluir (o TIMED nunca e "sem valor").
+export function isNoValueAppointment(a: { kind: "TIMED" | "DAY"; services: { unitPrice: Prisma.Decimal | null; quantity: number }[] }): boolean {
+  return a.kind === "DAY" && a.services.every((s) => (s.unitPrice ?? new Decimal(0)).times(s.quantity).isZero());
+}
+
 function toAgendaEntry(row: AgendaRow, timeZone: TimeZone): AgendaEntry {
   if (row.kind === "DAY") {
     const amount = row.services.reduce((sum, s) => sum.plus((s.unitPrice ?? new Decimal(0)).times(s.quantity)), new Decimal(0));
@@ -162,8 +168,8 @@ export async function getClientAppointmentHistory(businessId: string, clientId: 
     }),
   ]);
   const items = [
-    ...timed.map((a) => ({ ...a, dayKey: toDateKey(requireTimed(a).startAt, timeZone), sortAt: a.startAt!.getTime() })),
-    ...day.map((a) => ({ ...a, dayKey: dbDateToKey(a.scheduledOn!), sortAt: a.createdAt.getTime() })),
+    ...timed.map((a) => ({ ...a, dayKey: toDateKey(requireTimed(a).startAt, timeZone), sortAt: a.startAt!.getTime(), noValue: false })),
+    ...day.map((a) => ({ ...a, dayKey: dbDateToKey(a.scheduledOn!), sortAt: a.createdAt.getTime(), noValue: isNoValueAppointment(a) })),
   ];
   items.sort((a, b) => (a.dayKey !== b.dayKey ? (a.dayKey < b.dayKey ? 1 : -1) : b.sortAt - a.sortAt));
   return items.slice(0, 20);

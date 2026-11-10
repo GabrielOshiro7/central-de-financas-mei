@@ -10,6 +10,7 @@ import { BILL_DISPLAY_STATUS_LABELS, deriveBillStatus } from "@/lib/finance/bill
 import { getClientAppointmentHistory } from "@/lib/agenda/queries";
 import { formatAgendaDate, formatAgendaTime } from "@/lib/agenda/time";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
+import { NoValueBadge } from "@/components/agenda/NoValueBadge";
 import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
@@ -198,9 +199,11 @@ export default async function ClientProfilePage(props: PageProps<"/clientes/[id]
                         : `${formatAgendaDate(appointment.startAt, business.timezone)} às ${formatAgendaTime(appointment.startAt, business.timezone)}`}
                     </span>
                     <AppointmentStatusBadge status={appointment.status} />
+                    {appointment.noValue && <NoValueBadge />}
                   </div>
+                  {/* Agendamento sem valor: titulo (quando houver) e os servicos, sem nada de pagamento. */}
                   <span className="text-gray-500 dark:text-neutral-400">
-                    {appointment.services.map((s) => s.nameSnapshot).join(", ")}
+                    {[appointment.title, appointment.services.map((s) => s.nameSnapshot).join(", ")].filter(Boolean).join(" · ")}
                   </span>
                 </div>
                 {appointment.sale && (

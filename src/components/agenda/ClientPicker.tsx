@@ -40,10 +40,13 @@ export function ClientPicker({
   initialClient,
   onChange,
   onError,
+  optional = false,
 }: {
   clientId: string;
   // Cliente ja escolhido ao abrir a tela (edicao, "agendar o proximo").
   initialClient?: ClientOption | null;
+  // Agendamento sem valor: a escolha de cliente e opcional (so um aviso).
+  optional?: boolean;
   onChange: (id: string) => void;
   onError: (message: string | null) => void;
 }) {
@@ -223,7 +226,8 @@ export function ClientPicker({
 
   return (
     <section ref={sectionRef} className="border border-gray-200 p-6 dark:border-neutral-800">
-      <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Cliente</h2>
+      <h2 className={`${optional ? "mb-1" : "mb-4"} text-sm font-semibold text-gray-900 dark:text-neutral-100`}>Cliente</h2>
+      {optional && <p className="mb-4 text-xs text-gray-500 dark:text-neutral-400">Opcional enquanto o agendamento não tem valor.</p>}
 
       {!clientId ? (
         <div className="flex flex-col gap-2">

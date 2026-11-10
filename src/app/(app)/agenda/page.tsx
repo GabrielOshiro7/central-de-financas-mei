@@ -8,6 +8,7 @@ import {
   getLastUsedCompletionCategoryId,
   listAgendaForDay,
   listAgendaForMonth,
+  isNoValueAppointment,
   summarizeAgenda,
   type AgendaEntry,
 } from "@/lib/agenda/queries";
@@ -62,7 +63,7 @@ const PAYMENT_METHOD_LABELS = new Map(PAYMENT_METHOD_OPTIONS.map((o) => [o.value
 // Condicao/meio de pagamento de um agendamento DAY ("À vista · Pix",
 // "A prazo · 2 parcelas · Boleto").
 function paymentLabel(entry: AgendaEntry): string | null {
-  if (entry.kind !== "DAY") return null;
+  if (entry.kind !== "DAY" || !entry.paymentTiming) return null; // sem valor: sem pagamento
   const method = entry.paymentMethod ? (PAYMENT_METHOD_LABELS.get(entry.paymentMethod) ?? entry.paymentMethod) : null;
   const timing =
     entry.paymentTiming === "APRAZO"
@@ -93,8 +94,11 @@ function toListItems(entries: AgendaEntry[], currency: Currency, todayKey: strin
     startAt: entry.startAt,
     endAt: entry.endAt,
     status: entry.status,
+    // DAY sem valor (ex.: reuniao) pode nao ter cliente.
     clientId: entry.clientId,
-    clientName: entry.client.name,
+    clientName: entry.client?.name ?? null,
+    title: entry.title,
+    noValue: isNoValueAppointment(entry),
     serviceNames: entry.services.map((s) => (entry.kind === "DAY" && s.quantity > 1 ? `${s.nameSnapshot} × ${s.quantity}` : s.nameSnapshot)),
     serviceIds: entry.services.map((s) => s.productId).filter((id): id is string => Boolean(id)),
     amountLabel: formatMoney(entry.amount, currency),

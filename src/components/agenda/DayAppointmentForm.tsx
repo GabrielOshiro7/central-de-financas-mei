@@ -11,12 +11,19 @@ import { InstallmentsEditor, roundMoney, sumInstallmentRows, type InstallmentRow
 import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
 
 // Formulario do fluxo POR DIA (DAY, Agenda A3) - criar e editar. Sem horario,
 // sem duracao, sem conflito de horario: o dia, os servicos com valor, a
 // categoria de receita e o pagamento ficam definidos aqui, que e o que
 // permite concluir o atendimento sem perguntar nada depois. Previa em ponto
 // flutuante so para UX; o backend revalida tudo (dayAppointmentInputSchema).
+//
+// SEM VALOR (total zero, ex.: reuniao): as secoes Categoria de receita e
+// Pagamento ficam ocultas e nao sao enviadas, o cliente e opcional e aparece o
+// aviso "Sem valor: nao gera receita". Ao haver valor > 0 as secoes voltam,
+// pre-preenchidas como sempre. Todo agendamento precisa de ao menos um entre
+// titulo, cliente e servico.
 
 export type DayServiceOption = { id: string; name: string; defaultPrice: string };
 export type DayCategoryOption = { id: string; name: string };
@@ -24,7 +31,9 @@ export type DayServiceRow = { productId: string; quantity: string; unitPrice: st
 
 export type DayAppointmentInitial = {
   id: string;
+  // "" quando o agendamento (sem valor) nao tem cliente.
   clientId: string;
+  title: string;
   scheduledOn: string;
   services: DayServiceRow[];
   categoryId: string;
@@ -85,6 +94,7 @@ export function DayAppointmentForm({
 
   const [localServices, setLocalServices] = useState(services);
   const [clientId, setClientId] = useState(initial?.clientId ?? initialClient?.id ?? "");
+  const [title, setTitle] = useState(initial?.title ?? "");
   const [rows, setRows] = useState<DayServiceRow[]>(
     () =>
       initial?.services ??
@@ -94,7 +104,7 @@ export function DayAppointmentForm({
         .map((s) => ({ productId: s.id, quantity: "1", unitPrice: s.defaultPrice }))
   );
   const [scheduledOn, setScheduledOn] = useState(initial?.scheduledOn ?? initialDate ?? todayKey);
-  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? defaultCategoryId ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.categoryId || defaultCategoryId || "");
   const [paymentTiming, setPaymentTiming] = useState<"AVISTA" | "APRAZO">(initial?.paymentTiming ?? "AVISTA");
   const [paymentMethod, setPaymentMethod] = useState(initial?.paymentMethod ?? "");
   const [installments, setInstallments] = useState<InstallmentRow[]>(
@@ -114,7 +124,9 @@ export function DayAppointmentForm({
     () => roundMoney(rows.reduce((t, r) => t + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0), decimals),
     [rows, decimals]
   );
-  const availableServices = localServices.filter((s) => !rows.some((r) => r.productId === s.id));
+  // Sem valor: total zero (sem servicos ou so servicos de valor 0).
+  const noValue = total <= 0;
+  const availableServices =localServices.filter((s) => !rows.some((r) => r.productId === s.id));
   const serviceName = (id: string) => localServices.find((s) => s.id === id)?.name ?? "";
 
   function addService(id: string) {
@@ -160,14 +172,17 @@ export function DayAppointmentForm({
     event.preventDefault();
     setError(null);
 
-    if (!clientId) return setError("Selecione um cliente.");
-    if (rows.length === 0) return setError("Adicione ao menos um serviço.");
     if (rows.some((r) => !r.quantity || Number(r.quantity) < 1 || r.unitPrice === "")) {
       return setError("Preencha quantidade e valor de todos os serviços.");
     }
+    if (!clientId && rows.length === 0 && !title.trim()) return setError("Informe ao menos um título, cliente ou serviço.");
     if (!scheduledOn) return setError("Informe a data do atendimento.");
-    if (!categoryId) return setError("Selecione uma categoria de receita.");
-    if (paymentTiming === "APRAZO") {
+    // Com valor: cliente, categoria e pagamento obrigatorios. Sem valor: nada disso.
+    if (!noValue) {
+      if (!clientId) return setError("Selecione um cliente.");
+      if (!categoryId) return setError("Selecione uma categoria de receita.");
+    }
+    if (!noValue && paymentTiming === "APRAZO") {
       if (installments.some((i) => !i.dueDateInput || !i.amount)) return setError("Preencha vencimento e valor de todas as parcelas.");
       const sum = sumInstallmentRows(installments, decimals);
       if (sum !== total) {
@@ -177,14 +192,21 @@ export function DayAppointmentForm({
 
     setPending(true);
     try {
+      // Sem valor, categoria/pagamento/parcelas nao vao no payload (mesmo que o
+      // usuario os tenha preenchido antes de zerar o valor).
       const payload = {
-        clientId,
+        clientId: clientId || undefined,
+        title: title.trim() || undefined,
         scheduledOn,
         services: rows.map((r) => ({ productId: r.productId, quantity: r.quantity, unitPrice: r.unitPrice })),
-        categoryId,
-        paymentTiming,
-        paymentMethod: paymentMethod || undefined,
-        installments: paymentTiming === "APRAZO" ? installments.map((i) => ({ dueOn: i.dueDateInput, amount: i.amount })) : [],
+        ...(noValue
+          ? {}
+          : {
+              categoryId,
+              paymentTiming,
+              paymentMethod: paymentMethod || undefined,
+              installments: paymentTiming === "APRAZO" ? installments.map((i) => ({ dueOn: i.dueDateInput, amount: i.amount })) : [],
+            }),
         notes: notes || undefined,
       };
       const res = await fetch(mode === "create" ? "/api/agenda" : `/api/agenda/${initial!.id}`, {
@@ -208,7 +230,22 @@ export function DayAppointmentForm({
 
   return (
     <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
-      <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} />
+      <section className={sectionClass}>
+        <label htmlFor="appointmentTitle" className="mb-2 block text-sm font-semibold text-gray-900 dark:text-neutral-100">
+          Título (opcional)
+        </label>
+        <input
+          id="appointmentTitle"
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={APPOINTMENT_TITLE_MAX_LENGTH}
+          placeholder="Ex.: Reunião com contador"
+          className={inputClass}
+        />
+      </section>
+
+      <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} optional={noValue} />
 
       <section className={sectionClass}>
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Serviços</h2>
@@ -307,6 +344,11 @@ export function DayAppointmentForm({
           <span>Total</span>
           <span data-testid="day-appointment-total">{formatMoney(total, currency)}</span>
         </div>
+        {noValue && (
+          <p data-testid="no-value-notice" className="mt-2 text-xs text-gray-500 dark:text-neutral-400">
+            Sem valor: não gera receita.
+          </p>
+        )}
       </section>
 
       <section className={sectionClass}>
@@ -317,22 +359,25 @@ export function DayAppointmentForm({
             </label>
             <input id="scheduledOn" type="date" value={scheduledOn} onChange={(e) => setScheduledOn(e.target.value)} className={inputClass} />
           </div>
-          <div>
-            <label htmlFor="categoryId" className={labelClass}>
-              Categoria de receita
-            </label>
-            <select id="categoryId" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
-              <option value="">Selecione...</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!noValue && (
+            <div>
+              <label htmlFor="categoryId" className={labelClass}>
+                Categoria de receita
+              </label>
+              <select id="categoryId" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
+                <option value="">Selecione...</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </section>
 
+      {!noValue && (
       <section className={sectionClass}>
         <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Pagamento</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -376,6 +421,7 @@ export function DayAppointmentForm({
           />
         )}
       </section>
+      )}
 
       <section className={sectionClass}>
         <label htmlFor="notes" className="mb-2 block text-sm font-semibold text-gray-900 dark:text-neutral-100">

@@ -52,7 +52,7 @@ export async function listRecentClients(businessId: string): Promise<ClientPicke
     WITH used AS (
       SELECT client_id, MAX(created_at) AS last_used
       FROM (
-        SELECT client_id, created_at FROM appointments WHERE business_id = ${businessId}
+        SELECT client_id, created_at FROM appointments WHERE business_id = ${businessId} AND client_id IS NOT NULL
         UNION ALL
         SELECT client_id, created_at FROM sales WHERE business_id = ${businessId}
       ) registros

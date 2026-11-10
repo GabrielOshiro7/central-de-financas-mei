@@ -5,7 +5,7 @@ import { getAppointmentById } from "@/lib/agenda/queries";
 import { listVisibleProducts } from "@/lib/products/queries";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import { agendaDateKey, formatAgendaTime } from "@/lib/agenda/time";
-import { requireTimed } from "@/lib/agenda/calculations";
+import { defaultServiceRevenueCategoryId, requireTimed } from "@/lib/agenda/calculations";
 import { AppointmentForm } from "@/components/agenda/AppointmentForm";
 import { DayAppointmentForm } from "@/components/agenda/DayAppointmentForm";
 import { clockFor, dbDateToKey, todayKey } from "@/lib/time/zoned";
@@ -30,7 +30,10 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
   const services = await listVisibleProducts(business.id, undefined, "SERVICO");
   // So o cliente do agendamento (ativo ou nao): a busca de clientes e feita no
   // servidor pelo ClientPicker.
-  const clientOption = { id: appointment.client.id, name: appointment.client.name, tradeName: appointment.client.tradeName ?? "" };
+  // (DAY sem valor pode nao ter cliente.)
+  const clientOption = appointment.client
+    ? { id: appointment.client.id, name: appointment.client.name, tradeName: appointment.client.tradeName ?? "" }
+    : null;
 
   let content;
   if (appointment.kind === "DAY") {
@@ -51,7 +54,8 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
           mode="edit"
           initial={{
             id: appointment.id,
-            clientId: appointment.clientId,
+            clientId: appointment.clientId ?? "",
+            title: appointment.title ?? "",
             scheduledOn: dbDateToKey(appointment.scheduledOn!),
             services: appointment.services
               .filter((s): s is typeof s & { productId: string } => Boolean(s.productId))
@@ -65,13 +69,16 @@ export default async function EditarAgendamentoPage(props: PageProps<"/agenda/[i
           initialClient={clientOption}
           services={serviceOptions}
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-          defaultCategoryId={appointment.categoryId}
+          // Sem valor nao tem categoria gravada: ao adicionar valor, pre-seleciona a
+          // padrao como na criacao.
+          defaultCategoryId={appointment.categoryId ?? defaultServiceRevenueCategoryId(categories)}
           currency={business.currency}
           todayKey={todayKey(clockFor(business))}
         />
       );
   } else {
     const timed = requireTimed(appointment);
+    if (!clientOption) notFound(); // TIMED sempre tem cliente (CHECK appointments_timed_client_check)
     const editable = timed.status === "AGENDADO" || timed.status === "CONFIRMADO";
     const initialStartAt = `${agendaDateKey(timed.startAt, business.timezone)}T${formatAgendaTime(timed.startAt, business.timezone)}`;
     content = !editable ? (

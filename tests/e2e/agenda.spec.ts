@@ -201,6 +201,68 @@ test.describe("Agenda - fluxo por dia", () => {
     expect([reopened.status, reopened.autoCompleteEligible]).toEqual(["AGENDADO", false]);
   });
 
+  test("sem valor: reunião só com título (seções de pagamento ocultas, aviso, selo na lista, conclui sem venda); com valor as seções voltam", async ({ page }) => {
+    test.setTimeout(90_000);
+    const email = uniqueEmail("agenda-semvalor");
+    await register(page, "Dono Sem Valor E2E", email);
+    await completeOnboarding(page, "Empresa Sem Valor E2E");
+    const today = businessToday();
+
+    await gotoHydrated(page, "/agenda/novo");
+    // Total zero: sem Categoria de receita nem Pagamento; aviso discreto; cliente opcional.
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 0,00");
+    await expect(page.getByTestId("no-value-notice")).toHaveText("Sem valor: não gera receita.");
+    await expect(page.getByLabel("Categoria de receita")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toHaveCount(0);
+    await expect(page.getByText("Opcional enquanto o agendamento não tem valor.")).toBeVisible();
+
+    // Sem título, cliente nem serviço: recusa antes de enviar.
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page.locator('p[role="alert"]')).toHaveText("Informe ao menos um título, cliente ou serviço.");
+
+    // Adicionar valor (serviço de R$ 80): as seções aparecem, pré-preenchidas; o aviso some.
+    await page.getByRole("button", { name: "Criar novo serviço" }).click();
+    await page.getByLabel("Nome do serviço").fill("Consulta Sem Valor E2E");
+    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
+    await page.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 80,00");
+    await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
+    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toBeVisible();
+    await expect(page.getByTestId("no-value-notice")).toHaveCount(0);
+    await expect(page.getByText("Opcional enquanto o agendamento não tem valor.")).toHaveCount(0);
+
+    // Zerar de novo (remover o serviço): seções ocultas de novo.
+    await page.getByRole("button", { name: "Remover" }).click();
+    await expect(page.getByTestId("no-value-notice")).toBeVisible();
+    await expect(page.getByLabel("Categoria de receita")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toHaveCount(0);
+
+    // Só com título, sem cliente: salva.
+    await page.getByLabel("Título (opcional)").fill("Reunião com contador");
+    await page.getByRole("button", { name: "Agendar" }).click();
+    await expect(page).toHaveURL(new RegExp(`/agenda\\?view=day&day=${today}`));
+
+    const meeting = row(page, "Reunião com contador");
+    await expect(meeting).toBeVisible();
+    await expect(meeting.getByText("Agendado", { exact: true })).toBeVisible();
+    await expect(meeting.getByTestId("no-value-badge")).toHaveText("Sem valor");
+    await expect(meeting.getByText("À vista")).toHaveCount(0); // nenhuma informação de pagamento
+    await expect(page.getByText("Total do dia: 1 atendimento · R$ 0,00")).toBeVisible();
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
+    const stored = await prisma.appointment.findFirstOrThrow({ where: { businessId: user.business!.id }, include: { installments: true } });
+    expect([stored.title, stored.clientId, stored.categoryId, stored.paymentTiming, stored.installments.length]).toEqual(["Reunião com contador", null, null, null, 0]);
+
+    // Concluir agora: o diálogo não fala de venda/dinheiro e conclui sem venda.
+    await meeting.getByRole("button", { name: "Concluir agora" }).click();
+    await expect(confirmDialog(page)).toHaveText(/O agendamento será concluído agora\./);
+    await expect(confirmDialog(page)).not.toContainText("venda");
+    await confirmDialog(page).getByRole("button", { name: "Concluir agora" }).click();
+    await expect(meeting.getByText("Concluído", { exact: true })).toBeVisible();
+    await expect(meeting.getByText("Concluído sem venda (valor zero).")).toBeVisible();
+    expect(await prisma.sale.count({ where: { businessId: user.business!.id } })).toBe(0);
+  });
+
   // Mesmo calculo de formatAgendaMonthYear (src/lib/agenda/time.ts) no fuso
   // da empresa de teste - so para um seletor estavel do titulo do mes.
   function currentMonthLabel(): string {

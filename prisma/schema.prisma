@@ -865,8 +865,15 @@ model Appointment {
   id         String   @id @default(uuid())
   businessId String   @map("business_id")
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  clientId   String   @map("client_id")
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  // Anulavel desde o agendamento DAY SEM VALOR (ex.: reuniao), que nao exige
+  // cliente. TIMED continua sempre com cliente - CHECK
+  // appointments_timed_client_check.
+  clientId   String?  @map("client_id")
+  client     Client?  @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  // Titulo curto opcional (ate 120 caracteres, validado no Zod), identificacao
+  // principal na lista quando existe. Todo DAY precisa de ao menos um entre
+  // cliente, servico e titulo (regra do servidor: depende das linhas de servico).
+  title      String?
 
   // Agenda A1: anulaveis desde o fluxo DAY (que nao tem horario). TIMED
   // continua sempre preenchendo os dois - garantido no banco pela CHECK
@@ -876,11 +883,14 @@ model Appointment {
   status  AppointmentStatus @default(AGENDADO)
   notes   String?
 
-  // Fluxo (Agenda A1). Campos abaixo so tem sentido em DAY e sao
-  // obrigatorios nele (CHECK appointments_day_fields_check): o dia do
-  // atendimento (sem horario, no fuso da empresa - convencao _on da F6), a
-  // categoria de receita da venda e a condicao de pagamento. TIMED deixa
-  // todos nulos (a conclusao TIMED pergunta categoria/pagamento no modal).
+  // Fluxo (Agenda A1). Campos abaixo so tem sentido em DAY: o dia do
+  // atendimento (sem horario, no fuso da empresa - convencao _on da F6),
+  // obrigatorio (CHECK appointments_day_fields_check), e a categoria de receita
+  // da venda e a condicao de pagamento, que ou vem os dois ou nenhum (CHECK
+  // appointments_payment_coherence_check). Um DAY COM valor (> 0) exige os dois
+  // (regra do servidor, pois o total depende das linhas de servico); um DAY
+  // SEM valor (total zero) os deixa nulos. TIMED deixa todos nulos (a conclusao
+  // TIMED pergunta categoria/pagamento no modal).
   kind          AppointmentKind @default(TIMED)
   scheduledOn   DateTime?       @db.Date @map("scheduled_on")
   categoryId    String?         @map("category_id")
