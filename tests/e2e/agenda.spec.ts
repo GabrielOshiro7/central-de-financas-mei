@@ -1,11 +1,11 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { E2E_BUSINESS_TZ, businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
-import { dateKeyToDbDate, formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
+import { addMonthsClamped, dateKeyToDbDate, dbDateToKey, formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
 
 // Agenda. Desde a Agenda A3 toda criacao pela tela e do fluxo POR DIA (DAY):
 // cliente, servicos com valor, dia, categoria e pagamento - sem horario. Os
@@ -167,26 +167,72 @@ test.describe("Agenda - fluxo por dia", () => {
     await fillNewDayAppointment(page, "Cliente Prazo E2E", [{ name: "Pacote Prazo E2E", price: "300" }]);
     await expect(page.getByLabel("Data do atendimento")).toHaveValue(tomorrow);
     await page.getByRole("button", { name: "A prazo" }).click();
-    await page.getByLabel("Nº de parcelas").fill("3");
-    await page.getByRole("button", { name: "Dividir igualmente" }).click();
+
+    // Parcelas mensais com divisão automática: sem "Intervalo (dias)" nem "Dividir igualmente".
+    await expect(page.getByLabel("Intervalo (dias)")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Dividir igualmente" })).toHaveCount(0);
+    const dues = page.locator('input[id^="due-"]');
+    const amounts = page.locator('input[id^="amount-"]');
+    const digits = async (locator: Locator) => (await locator.inputValue()).replace(/\D/g, "");
+    await expect(dues).toHaveCount(1);
     await expect(page.getByText("Soma das parcelas: R$ 300,00 / R$ 300,00")).toBeVisible();
-    // Soma diferente do total: o formulario recusa antes de enviar.
-    await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "50");
+
+    // Nº de parcelas + Enter: gera 3 parcelas mensais (mesmo dia do mês), foco no vencimento da 1ª, sem enviar.
+    await page.getByLabel("Nº de parcelas").fill("3");
+    await page.getByLabel("Nº de parcelas").press("Enter");
+    await expect(dues).toHaveCount(3);
+    await expect(page.locator("#due-0")).toBeFocused();
+    await expect(page).toHaveURL(/\/agenda\/novo/);
+    expect(await Promise.all([0, 1, 2].map((i) => dues.nth(i).inputValue()))).toEqual([tomorrow, addMonthsClamped(tomorrow, 1), addMonthsClamped(tomorrow, 2)]);
+    expect(await Promise.all([0, 1, 2].map((i) => digits(amounts.nth(i))))).toEqual(["10000", "10000", "10000"]);
+
+    // 4 + sair do campo: recalcula (4 x 75,00).
+    await page.getByLabel("Nº de parcelas").fill("4");
+    await page.getByRole("heading", { name: "Pagamento", exact: true }).click();
+    await expect(dues).toHaveCount(4);
+    expect(await Promise.all([0, 1, 2, 3].map((i) => digits(amounts.nth(i))))).toEqual(["7500", "7500", "7500", "7500"]);
+
+    // Adicionar um serviço (total 380): recalcula (4 x 95,00).
+    await page.getByRole("button", { name: "Criar novo serviço" }).click();
+    await page.getByLabel("Nome do serviço").fill("Extra Prazo E2E");
+    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
+    await page.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 380,00");
+    await expect(page.getByText("Soma das parcelas: R$ 380,00 / R$ 380,00")).toBeVisible();
+    expect(await Promise.all([0, 1, 2, 3].map((i) => digits(amounts.nth(i))))).toEqual(["9500", "9500", "9500", "9500"]);
+
+    // Mudar a data da 1ª refaz as demais (dia 31: 28/02 e 30/04 sem encadear), mantendo os valores.
+    await dues.first().fill("2027-01-31");
+    expect(await Promise.all([0, 1, 2, 3].map((i) => dues.nth(i).inputValue()))).toEqual(["2027-01-31", "2027-02-28", "2027-03-31", "2027-04-30"]);
+    expect(await Promise.all([0, 1, 2, 3].map((i) => digits(amounts.nth(i))))).toEqual(["9500", "9500", "9500", "9500"]);
+
+    // Edição manual de valores (soma errada: o formulário recusa antes de enviar; depois acerta).
+    await fillMoney(amounts.nth(1), "50");
     await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (R$ 250,00) não bate com o total do atendimento (R$ 300,00).");
-    await fillMoney(page.getByLabel("Valor", { exact: true }).first(), "100");
+    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (R$ 335,00) não bate com o total do atendimento (R$ 380,00).");
+    await fillMoney(amounts.nth(1), "100");
+    await fillMoney(amounts.nth(2), "90");
     await page.getByRole("button", { name: "Agendar" }).click();
 
     await expect(page).toHaveURL(new RegExp(`view=day&day=${tomorrow}`));
     const appointment = row(page, "Cliente Prazo E2E");
-    await expect(appointment.getByText("· A prazo · 3 parcelas")).toBeVisible();
+    await expect(appointment.getByText("· A prazo · 4 parcelas")).toBeVisible();
     // Antes do dia do atendimento: sem "Concluir agora" nem "Faltou".
     await expect(appointment.getByRole("button", { name: "Concluir agora" })).toHaveCount(0);
     await expect(appointment.getByRole("button", { name: "Faltou" })).toHaveCount(0);
 
     const user = await prisma.user.findUniqueOrThrow({ where: { email }, include: { business: true } });
-    const stored = await prisma.appointment.findFirstOrThrow({ where: { businessId: user.business!.id }, include: { installments: true } });
-    expect([stored.kind, stored.autoCompleteEligible, stored.installments.length]).toEqual(["DAY", true, 3]);
+    const stored = await prisma.appointment.findFirstOrThrow({
+      where: { businessId: user.business!.id },
+      include: { installments: { orderBy: { position: "asc" } } },
+    });
+    expect([stored.kind, stored.autoCompleteEligible]).toEqual(["DAY", true]);
+    expect(stored.installments.map((i) => [dbDateToKey(i.dueOn), i.amount.toString()])).toEqual([
+      ["2027-01-31", "95"],
+      ["2027-02-28", "100"],
+      ["2027-03-31", "90"],
+      ["2027-04-30", "95"],
+    ]);
 
     await appointment.getByRole("button", { name: "Cancelar" }).click();
     await confirmDialog(page).getByRole("button", { name: "Cancelar agendamento" }).click();

@@ -9,6 +9,8 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { ClientPicker, type ClientOption } from "@/components/agenda/ClientPicker";
 import { InstallmentsEditor, roundMoney, sumInstallmentRows, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
 import { formatMoney, isIntegerCurrency } from "@/lib/money";
+import { isDateKey } from "@/lib/time/zoned";
+import { rebaseMonthlyDates } from "@/lib/installments/monthly";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
@@ -133,6 +135,16 @@ export function DayAppointmentForm({
     const service = localServices.find((s) => s.id === id);
     if (!service || rows.some((r) => r.productId === id)) return;
     setRows((prev) => [...prev, { productId: id, quantity: "1", unitPrice: service.defaultPrice }]);
+  }
+
+  // A 1a parcela vence, por padrao, no dia do atendimento: enquanto ela ainda esta
+  // nesse dia (o usuario nao a personalizou), acompanha a mudanca do dia e as
+  // demais (mensais) vao junto.
+  function changeScheduledOn(value: string) {
+    if (isDateKey(value) && installments[0]?.dueDateInput === scheduledOn) {
+      setInstallments((prev) => rebaseMonthlyDates(prev, value));
+    }
+    setScheduledOn(value);
   }
 
   function updateRow(index: number, patch: Partial<DayServiceRow>) {
@@ -357,7 +369,7 @@ export function DayAppointmentForm({
             <label htmlFor="scheduledOn" className={labelClass}>
               Data do atendimento
             </label>
-            <input id="scheduledOn" type="date" value={scheduledOn} onChange={(e) => setScheduledOn(e.target.value)} className={inputClass} />
+            <input id="scheduledOn" type="date" value={scheduledOn} onChange={(e) => changeScheduledOn(e.target.value)} className={inputClass} />
           </div>
           {!noValue && (
             <div>
@@ -417,6 +429,7 @@ export function DayAppointmentForm({
             baseDate={scheduledOn}
             todayKey={scheduledOn || todayKey}
             showSplit
+            mode="monthly"
             mismatchClassName="font-semibold text-gray-900 dark:text-neutral-100"
           />
         )}
