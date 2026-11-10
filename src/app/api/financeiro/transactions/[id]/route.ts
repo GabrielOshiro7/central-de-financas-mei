@@ -39,7 +39,9 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.error.includes("não encontrado") ? 404 : 400 });
+    // 409: lancamento gerado pelo pagamento de uma conta (somente leitura).
+    const status = result.code === "BILL_ENTRY_LOCKED" ? 409 : result.error.includes("não encontrado") ? 404 : 400;
+    return NextResponse.json({ error: result.error }, { status });
   }
 
   return NextResponse.json({ id: result.value.id });
@@ -69,7 +71,7 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/fina
   const result = await deleteTransaction(business.id, id);
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: 404 });
+    return NextResponse.json({ error: result.error }, { status: result.code === "BILL_ENTRY_LOCKED" ? 409 : 404 });
   }
 
   return NextResponse.json({ id: result.value.id });

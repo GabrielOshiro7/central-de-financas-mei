@@ -3,6 +3,7 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { listTransactions } from "@/lib/finance/queries";
+import { isBillLinkedEntry } from "@/lib/finance/mutations";
 import { listVisibleCategories } from "@/lib/finance/categories";
 import {
   resolvePeriodRange,
@@ -86,6 +87,14 @@ export async function TransactionListPage({
     amount: item.amount.toString(),
     notes: item.notes ?? "",
     source: item.source,
+    billLink: !isBillLinkedEntry(item)
+      ? null
+      : item.bill?.saleId
+        ? { href: `/vendas/${item.bill.saleId}`, label: "Ver venda" }
+        : {
+            href: `/financeiro/${item.type === "REVENUE" ? "receber" : "pagar"}?${new URLSearchParams({ status: "PAID", q: item.description })}`,
+            label: "Ver conta",
+          },
   }));
 
   return (

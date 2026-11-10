@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { Repeat } from "lucide-react";
 import type { Currency, EntrySource, FinancialEntryType } from "@prisma/client";
@@ -21,6 +23,10 @@ export type TransactionRow = {
   amount: string;
   notes: string;
   source: EntrySource;
+  // Lancamento gerado pelo pagamento de uma conta: somente leitura - no lugar de
+  // Editar/Excluir, um link para onde o "Reverter pagamento" existe (a venda,
+  // quando a conta e parcela de venda; senao Contas a pagar/receber).
+  billLink: { href: string; label: "Ver conta" | "Ver venda" } | null;
 };
 
 export function TransactionTable({
@@ -141,25 +147,35 @@ export function TransactionTable({
                 )}
               </td>
               <td role="cell" className="px-4 py-3 rt-actions">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(row)}
+                {row.billLink ? (
+                  <Link
+                    href={row.billLink.href as Route}
+                    title="Gerado pelo pagamento de uma conta. Para alterar, reverta o pagamento na conta."
                     className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                   >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDeleting(row);
-                      setDeleteError(null);
-                    }}
-                    className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
-                  >
-                    Excluir
-                  </button>
-                </div>
+                    {row.billLink.label}
+                  </Link>
+                ) : (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(row)}
+                      className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeleting(row);
+                        setDeleteError(null);
+                      }}
+                      className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

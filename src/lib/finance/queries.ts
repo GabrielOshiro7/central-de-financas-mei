@@ -211,7 +211,7 @@ export type TransactionFilters = {
 };
 
 export type TransactionListItem = Prisma.FinancialEntryGetPayload<{
-  include: { category: { select: { id: true; name: true } } };
+  include: { category: { select: { id: true; name: true } }; bill: { select: { id: true; saleId: true } } };
 }>;
 
 // Periodo pelo DIA (occurredOn); ordem: dia desc e, dentro do dia, createdAt
@@ -236,7 +236,9 @@ export async function listTransactions(
   const [items, total] = await Promise.all([
     prisma.financialEntry.findMany({
       where,
-      include: { category: { select: { id: true, name: true } } },
+      // bill: so para o link "Ver conta"/"Ver venda" dos lancamentos gerados
+      // por pagamento de conta (somente leitura nesta tela).
+      include: { category: { select: { id: true, name: true } }, bill: { select: { id: true, saleId: true } } },
       orderBy: [{ occurredOn: "desc" }, { createdAt: "desc" }, { id: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
