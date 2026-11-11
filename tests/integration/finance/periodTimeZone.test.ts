@@ -87,12 +87,16 @@ describe("dashboard/séries/insights no fuso da empresa (Etapa F3a)", () => {
     expect((await getFinancialSummary(businessId, "THIS_MONTH", tokyoClock)).revenue.toNumber()).toBe(100);
     expect((await getFinancialSummary(businessByTz.UTC, "THIS_MONTH", utcClock)).revenue.toNumber()).toBe(107);
 
-    const filters = { period: "THIS_MONTH" as const, comparison: "PREVIOUS_PERIOD" as const };
+    const filters = { period: "THIS_MONTH" as const };
     const tokyo = await getDashboardData(businessId, "BRL", "Este mês", filters, tokyoClock);
     expect(tokyo.range.start.toISOString()).toBe("2026-10-31T15:00:00.000Z");
     expect(tokyo.summary.revenue.toNumber()).toBe(100);
-    expect(tokyo.previousSummary?.revenue.toNumber()).toBe(7); // outubro em Tóquio
-    expect(tokyo.comparisonRange?.start.toISOString()).toBe("2026-09-30T15:00:00.000Z");
+    // Comparação = "mesmos dias do mês anterior": hoje é 01/11 em Tóquio, então só 01/10
+    // (Tóquio) - antes comparava com outubro inteiro (previousSummary = 7, o lançamento de
+    // 23/10). O lançamento de 23/10 já não entra: sem dados em 01/10, previousSummary = null.
+    expect(tokyo.comparisonRange.start.toISOString()).toBe("2026-09-30T15:00:00.000Z");
+    expect(tokyo.comparisonRange.end.toISOString()).toBe("2026-10-01T15:00:00.000Z");
+    expect(tokyo.previousSummary).toBeNull();
 
     const utc = await getDashboardData(businessByTz.UTC, "BRL", "Este mês", filters, utcClock);
     expect(utc.range.start.toISOString()).toBe("2026-10-01T00:00:00.000Z");

@@ -10,9 +10,8 @@ import {
 } from "@/lib/finance/queries";
 import {
   resolvePeriodRange,
-  resolveComparisonRange,
+  resolveDashboardComparisonRange,
   type PeriodKey,
-  type ComparisonMode,
   type CustomRange,
 } from "@/lib/finance/period";
 import {
@@ -67,12 +66,12 @@ export type CommercialDashboardIndicators = SalesSummary & { topClients: TopClie
 export type DashboardFilters = {
   period: PeriodKey;
   customRange?: CustomRange;
-  comparison: ComparisonMode;
 };
 
 export type DashboardData = {
   range: { start: Date; end: Date };
-  comparisonRange: { start: Date; end: Date } | null;
+  // Sempre o periodo anterior equivalente (resolveDashboardComparisonRange).
+  comparisonRange: { start: Date; end: Date };
   summary: FinancialSummary;
   previousSummary: FinancialSummary | null;
   // receita/custos/despesas sao sempre >= 0 (soma de lancamentos), entao
@@ -123,18 +122,20 @@ export async function getDashboardData(
   clock: BusinessClock
 ): Promise<DashboardData> {
   const { timeZone } = clock;
-  const range = resolvePeriodRange(filters.period, clock, filters.customRange);
-  const comparisonRange = resolveComparisonRange(filters.comparison, range);
+  // Visao Geral: Este mes / Este ano vao do 1o dia ate HOJE (throughToday) - o mesmo
+  // recorte da comparacao (resolveDashboardComparisonRange, "ate o mesmo dia").
+  const range = resolvePeriodRange(filters.period, clock, filters.customRange, { throughToday: true });
+  const comparisonRange = resolveDashboardComparisonRange(filters.period, range, clock);
 
   // A granularidade da serie temporal segue o alignment do periodo ATUAL,
   // tanto pra ele quanto pro periodo de comparacao (que nao tem alignment
-  // proprio - resolveComparisonRange so retorna {start, end}) - um periodo
+  // proprio - resolveDashboardComparisonRange so retorna {start, end}) - um periodo
   // por dia nunca deve ser resumido em barras mensais (ver EvolutionPoint em
   // FinancialChart.tsx e o comentario de getDailySeriesForRange).
   const fetchSeries = (r: { start: Date; end: Date }) =>
     range.alignment === "day"
       ? getDailySeriesForRange(businessId, r, timeZone)
-      : getMonthlySeriesForRange(businessId, r, timeZone);
+      : getMonthlySeriesForRange(businessId, r, timeZone, { clipToRange: true });
 
   const [
     summary,
@@ -156,8 +157,8 @@ export async function getDashboardData(
     getCategoryBreakdown(businessId, range, "COST", timeZone),
     getCategoryBreakdown(businessId, range, "EXPENSE", timeZone),
     hasAnyFinancialEntriesEver(businessId),
-    comparisonRange ? getFinancialSummaryForRange(businessId, comparisonRange, timeZone) : Promise.resolve(null),
-    comparisonRange ? fetchSeries(comparisonRange) : Promise.resolve(null),
+    getFinancialSummaryForRange(businessId, comparisonRange, timeZone),
+    fetchSeries(comparisonRange),
     // Indicadores de Contas a Pagar/Receber (Etapa 5) integrados ao
     // dashboard existente - reaproveita getBillSummary/getForecastBalance
     // (bills/queries.ts), nenhum calculo novo aqui. `range` so importa pro
@@ -173,7 +174,7 @@ export async function getDashboardData(
     // Insights (Etapa 7) - le o MESMO getInsightsForBusiness usado pela
     // pagina /insights, nunca chama IA (withAI so acontece atras do botao
     // manual de regenerar) - o dashboard nunca bloqueia por causa disso.
-    // Independente de `range`/`comparison` (sempre reflete o mes corrente,
+    // Independente de `range`/`comparisonRange` (sempre reflete o mes corrente,
     // como o resto do modulo de insights). O .catch aqui e o que de fato
     // cumpre essa promessa: sem ele, qualquer falha ao gerar/ler insights
     // (ex.: um calculo inesperado) derrubava o Promise.all inteiro e levava

@@ -9,10 +9,13 @@ import { useTransition } from "react";
 export function DashboardHeader({
   businessName,
   periodLabel,
+  comparisonLabel,
   lastUpdatedLabel,
 }: {
   businessName: string;
   periodLabel: string;
+  // "Comparado com DD/MM/AAAA — DD/MM/AAAA": o intervalo do periodo anterior equivalente.
+  comparisonLabel: string;
   lastUpdatedLabel: string;
 }) {
   const router = useRouter();
@@ -25,6 +28,9 @@ export function DashboardHeader({
         <p className="text-sm text-gray-500 dark:text-neutral-400">{businessName}</p>
         <p className="mt-1 text-xs text-gray-400 dark:text-neutral-500">
           {periodLabel} · Última atualização: {lastUpdatedLabel}
+        </p>
+        <p data-testid="dashboard-comparison-range" className="text-xs text-gray-400 dark:text-neutral-500">
+          {comparisonLabel}
         </p>
       </div>
       <button

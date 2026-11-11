@@ -2,26 +2,18 @@
 
 import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import {
-  PERIOD_OPTIONS,
-  DEFAULT_PERIOD,
-  COMPARISON_OPTIONS,
-  DEFAULT_COMPARISON,
-  type PeriodKey,
-  type ComparisonMode,
-} from "@/lib/finance/period";
+import { DASHBOARD_PERIOD_OPTIONS, DEFAULT_PERIOD, type PeriodKey } from "@/lib/finance/period";
 
-// Filtros globais do dashboard (secao 6 da Etapa 4): periodo + comparacao,
-// afetando TODOS os componentes da pagina via searchParams (nao ha filtro
-// independente por grafico/card). Substitui o antigo PeriodSelector - unico
-// importador confirmado antes da remocao era dashboard/page.tsx.
+// Filtro global do dashboard (secao 6 da Etapa 4): so o PERIODO (lista propria
+// da Visao Geral), afetando TODOS os componentes da pagina via searchParams (nao
+// ha filtro independente por grafico/card). A comparacao nao e mais escolhida: e
+// sempre com o periodo anterior equivalente (o cabecalho mostra o intervalo).
 export function DashboardFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const period = (searchParams.get("period") as PeriodKey | null) ?? DEFAULT_PERIOD;
-  const comparison = (searchParams.get("comparison") as ComparisonMode | null) ?? DEFAULT_COMPARISON;
 
   // Estado local para o par De/Ate: evita perder o primeiro valor numa
   // digitacao rapida dos dois campos (mesmo padrao de TransactionFilters
@@ -58,7 +50,7 @@ export function DashboardFilters() {
           }}
           className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
         >
-          {PERIOD_OPTIONS.map((opt) => (
+          {DASHBOARD_PERIOD_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
             </option>
@@ -102,27 +94,6 @@ export function DashboardFilters() {
           </div>
         </>
       )}
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="dashboard-comparison" className="text-xs text-gray-500 dark:text-neutral-400">
-          Comparar com
-        </label>
-        <select
-          id="dashboard-comparison"
-          value={comparison}
-          onChange={(e) => {
-            const value = e.target.value as ComparisonMode;
-            updateParam({ comparison: value === DEFAULT_COMPARISON ? null : value });
-          }}
-          className="border border-gray-300 px-3 py-2 text-sm text-gray-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-        >
-          {COMPARISON_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
     </div>
   );
 }

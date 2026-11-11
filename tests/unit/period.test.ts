@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   resolvePeriodRange,
   getPreviousPeriodRange,
-  resolveComparisonRange,
   parseCustomRangeParams,
 } from "@/lib/finance/period";
 import { PROCESS_TZ, processClock } from "../helpers/processClock";
@@ -65,7 +64,7 @@ describe("resolvePeriodRange", () => {
 
 // Novos PeriodKey da Etapa 4 (por dia e ano anterior) + o campo `alignment`
 // que substitui a heuristica antiga (start.getDate() === 1) para decidir se
-// getPreviousPeriodRange/resolveComparisonRange tratam o range como "um
+// getPreviousPeriodRange (e resolveDashboardComparisonRange, ver tests/unit/finance/dashboardComparison.test.ts) tratam o range como "um
 // numero de meses civis" ou "uma duracao em dias".
 describe("resolvePeriodRange - novos períodos por dia/ano (Etapa 4)", () => {
   const now = new Date(2026, 8, 15); // 15 de setembro de 2026
@@ -188,42 +187,6 @@ describe("limites de meia-noite", () => {
     const startOfNextDay = new Date(2026, 8, 2, 0, 0, 0, 0);
     expect(almostMidnight.getTime() >= start.getTime() && almostMidnight.getTime() < end.getTime()).toBe(true);
     expect(startOfNextDay.getTime() < end.getTime()).toBe(false); // já é o dia seguinte, fora do range
-  });
-});
-
-describe("resolveComparisonRange", () => {
-  it("PREVIOUS_PERIOD delega para getPreviousPeriodRange", () => {
-    const now = new Date(2026, 2, 15);
-    const current = resolvePeriodRange("THIS_MONTH", processClock(now));
-    const comparison = resolveComparisonRange("PREVIOUS_PERIOD", current);
-    expect(comparison).toEqual(getPreviousPeriodRange(current));
-    expect(comparison).toEqual({ start: new Date(2026, 1, 1), end: new Date(2026, 2, 1) });
-  });
-
-  it("NONE não gera range de comparação", () => {
-    const current = resolvePeriodRange("THIS_MONTH", processClock(new Date(2026, 2, 15)));
-    expect(resolveComparisonRange("NONE", current)).toBeNull();
-  });
-
-  it("SAME_PERIOD_LAST_YEAR (mês alinhado) compara com o mesmo mês civil do ano anterior", () => {
-    const current = resolvePeriodRange("THIS_MONTH", processClock(new Date(2026, 2, 15))); // março/2026
-    const comparison = resolveComparisonRange("SAME_PERIOD_LAST_YEAR", current);
-    expect(comparison).toEqual({ start: new Date(2025, 2, 1), end: new Date(2025, 3, 1) }); // março/2025
-  });
-
-  it("SAME_PERIOD_LAST_YEAR com período por dia contendo 29/fev normaliza para 1/mar no ano anterior (comportamento documentado, não bug)", () => {
-    // 2028 é bissexto (29/fev existe); 2027 não é (fev tem só 28 dias). A
-    // normalizacao nativa de Date faz `new Date(2027, 1, 29)` rolar para
-    // 1/mar/2027 - decisao registrada no comentario de getSameRangeLastYear
-    // em period.ts: nao ha uma data "correta" alternativa para esse caso, e
-    // periodos ALINHADOS A MES (o outro ramo) nunca passam por essa
-    // normalizacao, ja que comparam meses civis inteiros, nao dias soltos.
-    const now = new Date(2028, 1, 29); // 29/fev/2028
-    const current = resolvePeriodRange("TODAY", processClock(now));
-    expect(current.alignment).toBe("day");
-
-    const comparison = resolveComparisonRange("SAME_PERIOD_LAST_YEAR", current);
-    expect(comparison).toEqual({ start: new Date(2027, 2, 1), end: new Date(2027, 2, 1) }); // range de duração zero
   });
 });
 

@@ -1,18 +1,11 @@
+import { redirect } from "next/navigation";
 import { Calculator, DollarSign, FileMinus, PiggyBank } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { getDashboardData } from "@/lib/finance/dashboardService";
-import {
-  PERIOD_OPTIONS,
-  DEFAULT_PERIOD,
-  COMPARISON_OPTIONS,
-  DEFAULT_COMPARISON,
-  parseCustomRangeParams,
-  type PeriodKey,
-  type ComparisonMode,
-} from "@/lib/finance/period";
+import { DASHBOARD_PERIOD_OPTIONS, DEFAULT_PERIOD, parseCustomRangeParams, type PeriodKey } from "@/lib/finance/period";
 import { marginPointsDelta } from "@/lib/finance/calculations";
 import { formatMoney } from "@/lib/money";
 import { formatPercent, formatVariation, formatPercentagePoints, formatDateRange } from "@/lib/finance/format";
@@ -35,19 +28,17 @@ import { CommercialPanel } from "@/components/dashboard/CommercialPanel";
 import { InsightsSummaryPanel } from "@/components/dashboard/InsightsSummaryPanel";
 import { clockFor, formatInstant } from "@/lib/time/zoned";
 
-const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
-const VALID_COMPARISONS = new Set<string>(COMPARISON_OPTIONS.map((o) => o.value));
+// A Visao Geral tem lista propria de periodos (DASHBOARD_PERIOD_OPTIONS).
+const VALID_PERIODS = new Set<string>(DASHBOARD_PERIOD_OPTIONS.map((o) => o.value));
 
 function directionFor(value: { isZero: () => boolean; isPositive: () => boolean } | null): "up" | "down" | "flat" {
   if (value === null || value.isZero()) return "flat";
   return value.isPositive() ? "up" : "down";
 }
 
-const COMPARISON_DESCRIPTIONS: Record<ComparisonMode, string> = {
-  PREVIOUS_PERIOD: "vs período anterior",
-  SAME_PERIOD_LAST_YEAR: "vs mesmo período do ano anterior",
-  NONE: "",
-};
+// A comparacao e sempre com o periodo anterior equivalente (ver
+// resolveDashboardComparisonRange); o intervalo exato aparece no cabecalho.
+const COMPARISON_DESCRIPTION = "vs período anterior";
 
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const { user, business } = await requireOnboardedUser();
@@ -61,19 +52,30 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   await autoCompleteDueAppointments(business.id, clock);
   const searchParams = await props.searchParams;
 
-  const periodParam = typeof searchParams.period === "string" ? searchParams.period : undefined;
-  const period: PeriodKey =
-    periodParam && VALID_PERIODS.has(periodParam) ? (periodParam as PeriodKey) : DEFAULT_PERIOD;
+  // Normaliza a URL: ?comparison= nao existe mais (a comparacao e sempre com o
+  // periodo anterior equivalente) e um ?period= que a Visao Geral nao oferece mais
+  // (ex.: TODAY, LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, LAST_6_MONTHS) abre em
+  // "Este mes" - sem erro, ja com a URL limpa.
+  const rawPeriod = typeof searchParams.period === "string" ? searchParams.period : undefined;
+  const hasUnknownPeriod = rawPeriod !== undefined && !VALID_PERIODS.has(rawPeriod);
+  if (hasUnknownPeriod || searchParams.comparison !== undefined) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (key === "comparison" || value === undefined) continue;
+      if (hasUnknownPeriod && (key === "period" || key === "start" || key === "end")) continue;
+      for (const item of Array.isArray(value) ? value : [value]) params.append(key, item);
+    }
+    const query = params.toString();
+    redirect(query ? `/dashboard?${query}` : "/dashboard");
+  }
 
-  const comparisonParam = typeof searchParams.comparison === "string" ? searchParams.comparison : undefined;
-  const comparison: ComparisonMode =
-    comparisonParam && VALID_COMPARISONS.has(comparisonParam) ? (comparisonParam as ComparisonMode) : DEFAULT_COMPARISON;
+  const period: PeriodKey = rawPeriod ? (rawPeriod as PeriodKey) : DEFAULT_PERIOD;
 
   const startParam = typeof searchParams.start === "string" ? searchParams.start : null;
   const endParam = typeof searchParams.end === "string" ? searchParams.end : null;
   const customRange = period === "CUSTOM" ? parseCustomRangeParams(startParam, endParam) : undefined;
   const effectivePeriod: PeriodKey = period === "CUSTOM" && !customRange ? DEFAULT_PERIOD : period;
-  const periodLabel = PERIOD_OPTIONS.find((o) => o.value === effectivePeriod)?.label ?? "Este mês";
+  const periodLabel = DASHBOARD_PERIOD_OPTIONS.find((o) => o.value === effectivePeriod)?.label ?? "Este mês";
 
   const currency = business.currency ?? "BRL";
   const businessName = business.name ?? "Minha empresa";
@@ -83,11 +85,13 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     business.id,
     currency,
     periodLabel,
-    { period: effectivePeriod, customRange, comparison },
+    { period: effectivePeriod, customRange },
     clock
   );
 
   const headerPeriodLabel = `${periodLabel} (${formatDateRange(data.range.start, data.range.end, clock.timeZone)})`;
+  // Intervalo com que o periodo esta sendo comparado (sempre o anterior equivalente).
+  const comparisonLabel = `Comparado com ${formatDateRange(data.comparisonRange.start, data.comparisonRange.end, clock.timeZone)}`;
 
   // Estado vazio REAL (secao 27): a empresa nunca lancou nada em nenhum
   // periodo - diferente de "este periodo especifico esta vazio", que os
@@ -95,7 +99,12 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   if (!data.hasAnyEntriesEver) {
     return (
       <div className="flex flex-col gap-8">
-        <DashboardHeader businessName={businessName} periodLabel={headerPeriodLabel} lastUpdatedLabel={lastUpdatedLabel} />
+        <DashboardHeader
+          businessName={businessName}
+          periodLabel={headerPeriodLabel}
+          comparisonLabel={comparisonLabel}
+          lastUpdatedLabel={lastUpdatedLabel}
+        />
         <DashboardFilters />
         <DashboardEmptyState />
         <AssistantPanel />
@@ -104,8 +113,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   }
 
   const { summary, previousSummary } = data;
-  const comparisonActive = comparison !== "NONE" && previousSummary !== null;
-  const comparisonDescription = comparisonActive ? COMPARISON_DESCRIPTIONS[comparison] : undefined;
+  const comparisonActive = previousSummary !== null;
+  const comparisonDescription = comparisonActive ? COMPARISON_DESCRIPTION : undefined;
 
   const revenueVariation: MetricVariation | null = comparisonActive
     ? { text: formatVariation(data.revenueGrowth), direction: directionFor(data.revenueGrowth), description: comparisonDescription }
@@ -167,7 +176,12 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
   return (
     <div className="flex flex-col gap-8">
-      <DashboardHeader businessName={businessName} periodLabel={headerPeriodLabel} lastUpdatedLabel={lastUpdatedLabel} />
+      <DashboardHeader
+        businessName={businessName}
+        periodLabel={headerPeriodLabel}
+        comparisonLabel={comparisonLabel}
+        lastUpdatedLabel={lastUpdatedLabel}
+      />
       <DashboardFilters />
 
       <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">

@@ -2,11 +2,9 @@ import { Prisma, type Currency } from "@prisma/client";
 import { getFinancialSummaryForRange, hasFinancialEntriesBefore } from "@/lib/finance/queries";
 import { getOverdueAmountForDueRange } from "@/lib/finance/bills/queries";
 import { getSalesSummary, getTopClients } from "@/lib/sales/queries";
-import { resolvePeriodRange, getPreviousPeriodRange, type PeriodRange } from "@/lib/finance/period";
+import { clipToSameDayOfMonth, resolvePeriodRange, getPreviousPeriodRange, type PeriodRange } from "@/lib/finance/period";
 import {
   formatInstant,
-  lastDayOfMonth,
-  zonedInstant,
   zonedParts,
   type BusinessClock,
   type TimeZone,
@@ -15,27 +13,9 @@ import {
 const { Decimal } = Prisma;
 type Decimal = Prisma.Decimal;
 
-// Recorta o range do mes anterior ate o MESMO dia-do-mes do periodo atual em
-// andamento, para nunca comparar N dias do mes atual contra o mes anterior
-// inteiro (o que inflaria uma queda/alta artificial so por o mes atual ainda
-// nao ter terminado).
-//
-// Tratamento explicito do dia inexistente: montar uma data com um dia que
-// nao existe naquele mes ROLA SILENCIOSAMENTE para o mes seguinte (ex.:
-// 31/02 vira 2 ou 3 de marco, nao um erro) - por isso o dia de referencia e
-// sempre clampado ao ultimo dia real do mes anterior antes de montar a data.
-// "Dia 31" comparado a um fevereiro de 28 dias vira "fevereiro inteiro" (o
-// melhor recorte possivel), nunca um vazamento para marco. Mes e dias
-// resolvidos no fuso da empresa (Etapa F3a).
-export function clipToSameDayOfMonth(
-  range: { start: Date; end: Date },
-  referenceDay: number,
-  timeZone: TimeZone
-): { start: Date; end: Date } {
-  const { year, month } = zonedParts(range.start, timeZone);
-  const clampedDay = Math.min(referenceDay, lastDayOfMonth(year, month));
-  return { start: range.start, end: zonedInstant(timeZone, year, month, clampedDay + 1) };
-}
+// clipToSameDayOfMonth vive em finance/period.ts (usada tambem pela Visao Geral);
+// reexportada aqui para os importadores existentes.
+export { clipToSameDayOfMonth };
 
 export function resolveInsightPeriods(clock: BusinessClock): {
   current: PeriodRange;

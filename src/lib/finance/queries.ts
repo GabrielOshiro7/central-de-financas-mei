@@ -66,7 +66,7 @@ export type MonthlyPoint = FinancialSummary & {
 // Variante por range (em vez de PeriodKey) - o servico do dashboard (Etapa
 // 4) precisa da serie mensal tanto do periodo atual quanto do periodo de
 // comparacao "mesmo periodo do ano anterior" (que nao tem um PeriodKey
-// correspondente - vem de resolveComparisonRange como {start, end} puro).
+// correspondente - vem de resolveDashboardComparisonRange como {start, end} puro).
 // getMonthlySeries (abaixo) delega pra cá, entao nao ha logica duplicada.
 // So deve ser usada para ranges com alignment "month" (THIS_MONTH,
 // LAST_3/6_MONTHS, THIS_YEAR, LAST_YEAR) - para alignment "day" use
@@ -76,20 +76,29 @@ export type MonthlyPoint = FinancialSummary & {
 export async function getMonthlySeriesForRange(
   businessId: string,
   range: { start: Date; end: Date },
-  timeZone: TimeZone
+  timeZone: TimeZone,
+  // clipToRange: o ultimo mes soma so ate o fim do range (e nao ate o fim do mes) -
+  // para ranges que terminam no meio de um mes (comparacao da Visao Geral:
+  // "mesmos dias do mes / ano anterior"). Exige range alinhado a dias do fuso.
+  // Desligado (padrao): meses inteiros, como sempre.
+  options: { clipToRange?: boolean } = {}
 ): Promise<MonthlyPoint[]> {
   const months = monthsBetween(range.start, range.end, timeZone);
   if (months.length === 0) return [];
   const first = months[0];
   const last = months[months.length - 1];
 
+  const monthsStart = monthRange(first.year, first.month + 1, timeZone).start;
+  const monthsEnd = monthRange(last.year, last.month + 1, timeZone).end;
+  // Com clipToRange a janela de leitura e o proprio range (limitado aos meses
+  // listados); para ranges de meses inteiros e identica a de sempre.
+  const windowStart = options.clipToRange ? new Date(Math.max(range.start.getTime(), monthsStart.getTime())) : monthsStart;
+  const windowEnd = options.clipToRange ? new Date(Math.min(range.end.getTime(), monthsEnd.getTime())) : monthsEnd;
+
   const entries = await prisma.financialEntry.findMany({
     where: {
       businessId,
-      occurredOn: dayRangeFilter(
-        { start: monthRange(first.year, first.month + 1, timeZone).start, end: monthRange(last.year, last.month + 1, timeZone).end },
-        timeZone
-      ),
+      occurredOn: dayRangeFilter({ start: windowStart, end: windowEnd }, timeZone),
     },
     select: { type: true, amount: true, occurredOn: true },
   });

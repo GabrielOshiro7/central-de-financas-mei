@@ -11,8 +11,10 @@
 // nesse fuso (seguro para horario de verao), sem o chamador repassar nada.
 import {
   addDays,
+  addMonthsClamped,
   dateKeyToDbDate,
   isDateKey,
+  lastDayOfMonth,
   compareKeys,
   parseDateKey,
   startOfDayInstant,
@@ -133,7 +135,18 @@ function lastNDaysRange(today: DateKey, days: number, timeZone: TimeZone): Perio
 // do range custom e tratado como inclusivo (o usuario escolhe "ate" um dia),
 // entao internamente somamos 1 dia para virar o limite exclusivo usado nas
 // queries.
-export function resolvePeriodRange(period: PeriodKey, clock: BusinessClock, customRange?: CustomRange): PeriodRange {
+//
+// `options.throughToday` (so a Visao Geral usa): THIS_MONTH e THIS_YEAR vao do
+// 1o dia ATE HOJE (inclusive; fim exclusivo = inicio de amanha, no fuso da
+// empresa) em vez do mes/ano inteiro - lancamentos com data futura nao entram
+// nos numeros ate chegar o dia. Os demais periodos nao mudam, e sem a opcao
+// (todas as outras paginas) THIS_MONTH/THIS_YEAR continuam sendo o mes/ano inteiro.
+export function resolvePeriodRange(
+  period: PeriodKey,
+  clock: BusinessClock,
+  customRange?: CustomRange,
+  options: { throughToday?: boolean } = {}
+): PeriodRange {
   const { timeZone } = clock;
   const today = todayKey(clock);
   const { year, month: month1 } = zonedParts(clock.now, timeZone);
@@ -145,7 +158,7 @@ export function resolvePeriodRange(period: PeriodKey, clock: BusinessClock, cust
     case "THIS_MONTH":
       return {
         start: startOfMonth(year, month, timeZone),
-        end: startOfMonth(year, month + 1, timeZone),
+        end: options.throughToday ? startOfDayInstant(addDays(today, 1), timeZone) : startOfMonth(year, month + 1, timeZone),
         months: [{ year, month }],
         alignment: "month",
         timeZone,
@@ -170,7 +183,13 @@ export function resolvePeriodRange(period: PeriodKey, clock: BusinessClock, cust
       return monthsBack(year, month, 6, timeZone);
     case "THIS_YEAR": {
       const months: MonthRef[] = Array.from({ length: month + 1 }, (_, i) => ({ year, month: i }));
-      return { start: startOfMonth(year, 0, timeZone), end: startOfMonth(year + 1, 0, timeZone), months, alignment: "month", timeZone };
+      return {
+        start: startOfMonth(year, 0, timeZone),
+        end: options.throughToday ? startOfDayInstant(addDays(today, 1), timeZone) : startOfMonth(year + 1, 0, timeZone),
+        months,
+        alignment: "month",
+        timeZone,
+      };
     }
     case "LAST_YEAR": {
       const months: MonthRef[] = Array.from({ length: 12 }, (_, i) => ({ year: year - 1, month: i }));
@@ -235,55 +254,69 @@ export function getPreviousPeriodRange(range: PeriodRange): { start: Date; end: 
   return { start: startOfDayInstant(addDays(startKey, -dayCount), timeZone), end: range.start };
 }
 
-export type ComparisonMode = "PREVIOUS_PERIOD" | "SAME_PERIOD_LAST_YEAR" | "NONE";
-
-export const COMPARISON_OPTIONS: { value: ComparisonMode; label: string }[] = [
-  { value: "PREVIOUS_PERIOD", label: "Período anterior" },
-  { value: "SAME_PERIOD_LAST_YEAR", label: "Mesmo período do ano anterior" },
-  { value: "NONE", label: "Sem comparação" },
+// Opcoes de periodo da VISAO GERAL (Dashboard) - lista propria, mais curta que
+// PERIOD_OPTIONS (que as demais paginas continuam usando). Rotulos proprios
+// ("Mes passado"/"Ano passado"). Periodos antigos do Dashboard (TODAY,
+// LAST_7/30/90_DAYS, LAST_6_MONTHS) nao sao mais oferecidos: a pagina os trata
+// como o padrao (THIS_MONTH).
+export const DASHBOARD_PERIOD_OPTIONS: { value: PeriodKey; label: string }[] = [
+  { value: "THIS_MONTH", label: "Este mês" },
+  { value: "LAST_MONTH", label: "Mês passado" },
+  { value: "LAST_3_MONTHS", label: "Últimos 3 meses" },
+  { value: "THIS_YEAR", label: "Este ano" },
+  { value: "LAST_YEAR", label: "Ano passado" },
+  { value: "CUSTOM", label: "Personalizado" },
 ];
 
-export const DEFAULT_COMPARISON: ComparisonMode = "PREVIOUS_PERIOD";
-
-// "Mesmo periodo do ano anterior" (secao 23 da Etapa 4). Para alignment
-// "month", subtrai 1 do ANO CIVIL de cada mes da lista `months` - nunca
-// subtrai por dias, entao 29/fev NUNCA entra em jogo nesse caminho
-// (comparamos meses inteiros, nao dias). Para alignment "day" (TODAY,
-// LAST_7/30/90_DAYS, CUSTOM), desloca o dia de calendario de start/end um ano
-// para tras com normalizacao de overflow (29/fev de ano bissexto vira 1/mar
-// no ano anterior nao-bissexto, que nao tem 29/fev) - comportamento aceito e
-// coberto por teste, nao existe uma data "correta" alternativa para esse caso.
-function getSameRangeLastYear(range: PeriodRange): { start: Date; end: Date } {
-  const { timeZone } = range;
-  if (range.alignment === "month" && range.months.length > 0) {
-    const firstMonth = range.months[0];
-    const lastMonth = range.months[range.months.length - 1];
-    const start = startOfMonth(firstMonth.year - 1, firstMonth.month, timeZone);
-    const end = startOfMonth(lastMonth.year - 1, lastMonth.month + 1, timeZone);
-    return { start, end };
-  }
-
-  const shiftYear = (instant: Date) => {
-    const { year, month, day } = parseDateKey(toDateKey(instant, timeZone));
-    return zonedInstant(timeZone, year - 1, month, day);
-  };
-  return { start: shiftYear(range.start), end: shiftYear(range.end) };
+// Recorta o range do mes anterior ate o MESMO dia-do-mes do periodo atual em
+// andamento, para nunca comparar N dias do mes atual contra o mes anterior
+// inteiro (o que inflaria uma queda/alta artificial so por o mes atual ainda
+// nao ter terminado).
+//
+// Tratamento explicito do dia inexistente: montar uma data com um dia que
+// nao existe naquele mes ROLA SILENCIOSAMENTE para o mes seguinte (ex.:
+// 31/02 vira 2 ou 3 de marco, nao um erro) - por isso o dia de referencia e
+// sempre clampado ao ultimo dia real do mes anterior antes de montar a data.
+// "Dia 31" comparado a um fevereiro de 28 dias vira "fevereiro inteiro" (o
+// melhor recorte possivel), nunca um vazamento para marco. Mes e dias
+// resolvidos no fuso da empresa (Etapa F3a). (Movida de insights/snapshot.ts,
+// que a reexporta - uma unica implementacao, usada tambem pela Visao Geral.)
+export function clipToSameDayOfMonth(
+  range: { start: Date; end: Date },
+  referenceDay: number,
+  timeZone: TimeZone
+): { start: Date; end: Date } {
+  const { year, month } = zonedParts(range.start, timeZone);
+  const clampedDay = Math.min(referenceDay, lastDayOfMonth(year, month));
+  return { start: range.start, end: zonedInstant(timeZone, year, month, clampedDay + 1) };
 }
 
-export function resolveComparisonRange(
-  mode: ComparisonMode,
-  range: PeriodRange
-): { start: Date; end: Date } | null {
-  switch (mode) {
-    case "NONE":
-      return null;
-    case "PREVIOUS_PERIOD":
-      return getPreviousPeriodRange(range);
-    case "SAME_PERIOD_LAST_YEAR":
-      return getSameRangeLastYear(range);
-    default: {
-      const exhaustiveCheck: never = mode;
-      throw new Error(`Modo de comparação não tratado: ${exhaustiveCheck}`);
-    }
+// Intervalo de COMPARACAO da Visao Geral: sempre o "periodo anterior
+// equivalente", no fuso da empresa (DateKey, sem fuso do navegador):
+// - Este mes: o mes anterior do dia 1 ate o MESMO dia de hoje (clampado ao ultimo
+//   dia dele - 31/03 -> 28/02 ou 29/02);
+// - Este ano: 1/jan do ano anterior ate o mesmo dia do ano (29/02 -> 28/02);
+// - Mes passado / Ultimos 3 meses / Ano passado: os meses (ou o ano) civis
+//   imediatamente anteriores, completos (getPreviousPeriodRange, alignment month);
+// - Personalizado: o intervalo de mesma quantidade de dias imediatamente anterior.
+// Quem pede so precisa do range e do relogio; o numero do periodo ATUAL nao
+// depende disto.
+export function resolveDashboardComparisonRange(
+  period: PeriodKey,
+  range: PeriodRange,
+  clock: BusinessClock
+): { start: Date; end: Date } {
+  const { timeZone } = clock;
+  const today = todayKey(clock);
+  if (period === "THIS_MONTH") {
+    return clipToSameDayOfMonth(getPreviousPeriodRange(range), parseDateKey(today).day, timeZone);
   }
+  if (period === "THIS_YEAR") {
+    const sameDayLastYear = addMonthsClamped(today, -12);
+    return {
+      start: startOfMonth(parseDateKey(today).year - 1, 0, timeZone),
+      end: startOfDayInstant(addDays(sameDayLastYear, 1), timeZone),
+    };
+  }
+  return getPreviousPeriodRange(range);
 }

@@ -111,7 +111,6 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
   it("os totais do dashboard batem exatamente com a soma de listTransactions (Receitas/Custos/Despesas) no mesmo período - ADENDO da Etapa 4", async () => {
     const data = await getDashboardData(businessAId, "BRL", "Este mês", {
       period: "THIS_MONTH",
-      comparison: "NONE",
     }, processClock());
 
     const [revenueTx, costTx, expenseTx] = await Promise.all([
@@ -133,7 +132,6 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
   it("dashboard da empresa A nunca inclui lançamentos da empresa B (isolamento)", async () => {
     const data = await getDashboardData(businessAId, "BRL", "Este mês", {
       period: "THIS_MONTH",
-      comparison: "NONE",
     }, processClock());
     expect(data.summary.revenue.toNumber()).toBe(1500); // não 1500 + 99999 da empresa B
     expect(data.topCategories.grandTotal.toNumber()).toBe(600); // 400 (custo) + 200 (despesa) de A

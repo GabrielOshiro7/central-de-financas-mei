@@ -3,7 +3,6 @@ import {
   getPreviousPeriodRange,
   monthsBetween,
   parseCustomRangeParams,
-  resolveComparisonRange,
   resolvePeriodRange,
 } from "@/lib/finance/period";
 import { clipToSameDayOfMonth, getPeriodKey, resolveInsightPeriods } from "@/lib/insights/snapshot";
@@ -67,19 +66,6 @@ describe("empresa Asia/Tokyo (qualquer fuso de processo)", () => {
       { year: 2026, month: 1 },
       { year: 2026, month: 2 },
     ]);
-  });
-
-  it("SAME_PERIOD_LAST_YEAR: mês e dia (29/02 normaliza para 01/03)", () => {
-    const month = resolvePeriodRange("THIS_MONTH", clock("2026-03-15T03:00:00Z", TZ));
-    expect(resolveComparisonRange("SAME_PERIOD_LAST_YEAR", month)).toEqual({
-      start: new Date("2025-02-28T15:00:00.000Z"),
-      end: new Date("2025-03-31T15:00:00.000Z"),
-    });
-    const leapDay = resolvePeriodRange("TODAY", clock("2028-02-29T03:00:00Z", TZ));
-    expect(resolveComparisonRange("SAME_PERIOD_LAST_YEAR", leapDay)).toEqual({
-      start: new Date("2027-02-28T15:00:00.000Z"), // 01/03/2027 00:00 JST
-      end: new Date("2027-02-28T15:00:00.000Z"),
-    });
   });
 
   it("monthsBetween usa os meses de Tóquio", () => {
