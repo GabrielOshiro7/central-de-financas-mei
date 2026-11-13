@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { ThemePreference } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   ABSOLUTE_SESSION_DAYS_DEFAULT,
@@ -44,7 +45,7 @@ export type SessionExpiryReason = "inactivity" | "absolute";
 export type SessionValidationResult =
   | {
       session: { id: string; expiresAt: Date; elevatedUntil: Date | null };
-      user: { id: string; name: string; email: string };
+      user: { id: string; name: string; email: string; themePreference: ThemePreference | null };
       reason?: undefined;
     }
   | { session: null; user: null; reason?: SessionExpiryReason };
@@ -54,7 +55,7 @@ export async function validateSessionToken(token: string): Promise<SessionValida
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { user: { select: { id: true, name: true, email: true } } },
+    include: { user: { select: { id: true, name: true, email: true, themePreference: true } } },
   });
 
   if (!session) {

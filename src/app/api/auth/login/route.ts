@@ -6,6 +6,7 @@ import { createUserSession } from "@/lib/auth/cookies";
 import { rateLimit } from "@/lib/auth/rateLimit";
 import { getClientIp } from "@/lib/http";
 import { loginSchema, normalizeEmail } from "@/lib/validation/auth";
+import { THEME_COOKIE, themeCookieOptions, themeFromPreference } from "@/lib/theme";
 
 const RATE_LIMIT = { max: 5, windowMs: 15 * 60 * 1000 }; // 5 tentativas / 15 min por IP+e-mail
 
@@ -58,7 +59,13 @@ export async function POST(request: Request) {
 
   await createUserSession(user.id, rememberMe);
 
-  return NextResponse.json({
+  // O tema salvo no banco passa a valer neste navegador: atualiza o cookie "theme" e
+  // devolve o tema para o cliente aplicar na hora (sem escolha salva: nada muda).
+  const theme = themeFromPreference(user.themePreference);
+  const response = NextResponse.json({
     user: { id: user.id, name: user.name, email: user.email },
+    theme,
   });
+  if (theme) response.cookies.set(THEME_COOKIE, theme, themeCookieOptions);
+  return response;
 }

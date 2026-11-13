@@ -1,18 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { useTheme } from "next-themes";
-
-// Evita mismatch de hidratação (o tema resolvido só existe no cliente) sem
-// setState dentro de useEffect - useSyncExternalStore já resolve isso de
-// forma nativa: SSR sempre lê `false`, cliente lê `true` após montar.
-function useHasMounted() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-}
+import { useTheme } from "@/components/ThemeProvider";
 
 function SunIcon() {
   return (
@@ -42,26 +30,19 @@ function MoonIcon() {
 }
 
 /**
- * Alterna explicitamente entre light/dark (não faz ciclo por "system") -
- * a preferência do SO só decide o estado inicial, via defaultTheme="system"
- * no ThemeProvider; a partir do primeiro clique aqui é sempre manual.
- * `mounted` evita mismatch de hidratação: no primeiro render do server o
- * tema resolvido ainda não existe no cliente.
+ * Alterna entre claro e escuro. O tema inicial vem do servidor (cookie "theme" ->
+ * <html data-theme>), entao o icone ja sai certo no HTML do servidor, sem placeholder
+ * nem mismatch de hidratacao. A escolha vai para o cookie na hora e, com `persist`
+ * (usuario logado), tambem para o banco.
  */
-export function ThemeToggle({ className = "" }: { className?: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const mounted = useHasMounted();
-
-  if (!mounted) {
-    return <span className={`inline-flex h-9 w-9 ${className}`} aria-hidden="true" />;
-  }
-
-  const isDark = resolvedTheme === "dark";
+export function ThemeToggle({ className = "", persist = false }: { className?: string; persist?: boolean }) {
+  const { theme, setTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => void setTheme(isDark ? "light" : "dark", { persist })}
       aria-label={isDark ? "Ativar tema claro" : "Ativar tema escuro"}
       title={isDark ? "Tema claro" : "Tema escuro"}
       className={`inline-flex h-9 w-9 items-center justify-center text-current transition-colors hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current dark:hover:bg-white/10 ${className}`}

@@ -153,7 +153,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
       </nav>
 
       <div className="sidebar-footer relative shrink-0 border-t border-sidebar-line p-2">
-        <ThemeToggle className="text-sidebar-fg! hover:bg-sidebar-hover! hover:text-sidebar-fg-active!" />
+        <ThemeToggle persist className="text-sidebar-fg! hover:bg-sidebar-hover! hover:text-sidebar-fg-active!" />
         <LogoutButton
           icon={<LogOut size={20} strokeWidth={1.75} aria-hidden="true" />}
           labelClassName="sidebar-label"

@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 /*
- * Tema manual (light/dark) via next-themes, atributo `data-theme` na
- * <html>. Isso substitui a resolução padrão do Tailwind (que usaria
- * prefers-color-scheme) por uma baseada em atributo - assim toda classe
- * `dark:` já existente no app (e as novas abaixo) passam a responder ao
- * toggle manual em vez de só à preferência do SO.
+ * Tema (claro/escuro): um único mecanismo, o atributo `data-theme` na <html>,
+ * renderizado pelo servidor a partir do cookie "theme" (src/lib/theme.ts). Isso
+ * substitui a resolução padrão do Tailwind (que usaria prefers-color-scheme) por
+ * uma baseada em atributo - o padrão é CLARO e o app NÃO segue a preferência do SO:
+ * toda classe `dark:` só vale quando o usuário escolheu o escuro.
  */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 

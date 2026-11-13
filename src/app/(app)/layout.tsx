@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { Sidebar } from "@/components/nav/Sidebar";
+import { ThemeSync } from "@/components/ThemeSync";
+import { themeFromPreference } from "@/lib/theme";
 
 // Tipografia do app autenticado (Inter) - escopada só a esta subárvore via
 // `inter.className`, não ao body inteiro, para não mudar a landing pública
@@ -15,11 +17,12 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] }
 // `beforeInteractive` do next/script, que só é permitida no root layout.
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const { business } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
 
   return (
     <div className={`${inter.className} min-h-screen bg-page`}>
       <Sidebar businessName={business.name ?? "Minha empresa"} />
+      <ThemeSync savedTheme={themeFromPreference(user.themePreference)} />
       {/* overflow-x-clip: recorta nas bordas do main o fundo full-bleed da
           barra do Financeiro (.subnav-backdrop). "clip" (e não "hidden") não
           cria container de rolagem, então o sticky da barra continua preso à

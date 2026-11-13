@@ -7,10 +7,12 @@ import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { loginSchema } from "@/lib/validation/auth";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useTheme } from "@/components/ThemeProvider";
 
 export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
   const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
+  const { setTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -40,6 +42,9 @@ export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
         setError(data.error ?? "Não foi possível entrar.");
         return;
       }
+
+      // Tema salvo no banco: vale ja neste navegador (cookie + atributo no <html>).
+      if (data.theme === "light" || data.theme === "dark") void setTheme(data.theme);
 
       router.push("/dashboard");
       router.refresh();

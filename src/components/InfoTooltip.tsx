@@ -12,8 +12,7 @@ const VIEWPORT_MARGIN_PX = 8;
 // próprio jsdom, que sempre define a propriedade) - maxTouchPoints é o sinal
 // confiável de capacidade de toque real do dispositivo. Não muda depois do
 // mount, então não há evento pra assinar - só precisamos ler o valor no
-// cliente sem causar mismatch de hidratação (mesmo padrão de
-// ThemeToggle.tsx/useHasMounted, via useSyncExternalStore em vez de
+// cliente sem causar mismatch de hidratação (useSyncExternalStore em vez de
 // setState dentro de um efeito).
 function useIsTouchDevice(): boolean {
   return useSyncExternalStore(

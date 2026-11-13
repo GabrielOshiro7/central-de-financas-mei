@@ -6,6 +6,13 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ThemePreference {
+  LIGHT
+  DARK
+
+  @@map("theme_preference")
+}
+
 model User {
   id           String   @id @default(uuid())
   name         String
@@ -13,6 +20,11 @@ model User {
   passwordHash String   @map("password_hash")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Tema escolhido pelo usuario (claro/escuro). NULL = sem escolha salva => claro
+  // (o padrao do app). O servidor renderiza o tema pelo cookie "theme"; esta coluna
+  // so leva a escolha para outro navegador/dispositivo (aplicada no login).
+  themePreference ThemePreference? @map("theme_preference")
 
   sessions         Session[]
   resetTokens      PasswordResetToken[]

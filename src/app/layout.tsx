@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { cookies } from "next/headers";
+import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { HydrationMarker } from "@/components/HydrationMarker";
 import "./globals.css";
@@ -34,10 +36,16 @@ export const metadata: Metadata = {
   description: "Seu sistema de gestão empresarial",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Tema: o SERVIDOR le o cookie "theme" e ja renderiza a <html> com o tema certo
+  // (sem script que troque depois - nada de "piscar"). Padrao CLARO; o app nao segue
+  // prefers-color-scheme. Ver src/lib/theme.ts.
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+
   return (
     <html
       lang="en"
+      data-theme={theme}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
@@ -69,7 +77,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }}
         />
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider initialTheme={theme}>{children}</ThemeProvider>
         <HydrationMarker />
       </body>
     </html>

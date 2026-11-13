@@ -8,7 +8,7 @@ import type { Business, User } from "@prisma/client";
 // concluido. E a validacao "de verdade" - o proxy.ts so faz a checagem
 // otimista de cookie antes disso.
 export async function requireOnboardedUser(): Promise<{
-  user: Pick<User, "id" | "name" | "email">;
+  user: Pick<User, "id" | "name" | "email" | "themePreference">;
   business: Business;
 }> {
   const { user, reason } = await getCurrentUserWithReason();
