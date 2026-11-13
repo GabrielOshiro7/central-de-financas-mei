@@ -109,7 +109,7 @@ export function FinanceiroTabBar({ action }: { action?: ReactNode }) {
           exatamente em cima dessa linha, na mesma cor - sem linha dupla. */}
       <div
         aria-hidden="true"
-        className="subnav-backdrop pointer-events-none absolute -inset-x-[100vw] top-0 -bottom-px -z-10 border-b border-gray-300 bg-[#FAF9F6]/85 shadow-xs backdrop-blur dark:border-neutral-700 dark:bg-neutral-950/85 dark:shadow-none"
+        className="subnav-backdrop pointer-events-none absolute -inset-x-[100vw] top-0 -bottom-px -z-10 border-b border-gray-300 bg-page/85 shadow-xs backdrop-blur dark:border-neutral-700 dark:shadow-none"
       />
       <nav aria-label="Seções do Financeiro" className="min-w-0 flex-1">
         {/* justify-between espalha as abas na largura toda quando cabem;

@@ -271,7 +271,7 @@ function hasNonZeroFraction(value: string): boolean {
 }
 
 const wrapperBaseClass =
-  "flex items-center border border-gray-300 text-sm text-gray-900 focus-within:border-gray-500 focus-within:ring-1 focus-within:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
+  "flex items-center border border-gray-300 text-sm text-gray-900 focus-within:border-gray-500 focus-within:ring-1 focus-within:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
 
 export type MoneyInputProps = {
   id?: string;

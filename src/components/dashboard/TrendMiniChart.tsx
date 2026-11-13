@@ -136,7 +136,8 @@ export function TrendMiniChart({
           <path
             d={toPath(comparePoints!)}
             fill="none"
-            stroke="#9ca3af"
+            stroke="currentColor"
+            className="text-gray-400 dark:text-neutral-500"
             strokeWidth="1"
             strokeDasharray="2,2"
             vectorEffect="non-scaling-stroke"

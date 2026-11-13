@@ -95,12 +95,12 @@ export function Sidebar({ businessName }: { businessName: string }) {
   }, []);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-(--sidebar-w) flex-col border-r border-gray-200 bg-white transition-[width,background-color,border-color,color] duration-250 ease-in-out dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="sidebar-header flex h-16 shrink-0 items-center gap-2.5 border-b border-gray-200 px-4 dark:border-neutral-800">
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-(--sidebar-w) flex-col border-r border-sidebar-line bg-sidebar text-sidebar-fg transition-[width,background-color,border-color,color] duration-250 ease-in-out">
+      <div className="sidebar-header flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-line px-4">
         <Link
           href="/dashboard"
           title="OrganizAI"
-          className="flex items-center gap-2.5 text-gray-900 dark:text-neutral-100"
+          className="flex items-center gap-2.5 text-sidebar-fg-active"
         >
           <LogoMark className="h-8 w-8" />
           <span className="sidebar-label truncate text-lg font-bold tracking-tight whitespace-nowrap">
@@ -109,7 +109,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
         </Link>
       </div>
 
-      <div className="sidebar-label truncate border-b border-gray-200 px-4 py-3 text-sm font-medium text-gray-600 dark:border-neutral-800 dark:text-neutral-400">
+      <div className="sidebar-label truncate border-b border-sidebar-line px-4 py-3 text-sm font-medium text-sidebar-fg">
         {businessName}
       </div>
 
@@ -133,8 +133,8 @@ export function Sidebar({ businessName }: { businessName: string }) {
                   title={label}
                   className={`sidebar-nav-link flex items-center gap-3 border-l-2 px-2.5 py-2.5 text-sm font-medium transition-colors ${
                     active
-                      ? "border-gray-900 bg-gray-100 text-gray-900 dark:border-neutral-100 dark:bg-neutral-800 dark:text-neutral-100"
-                      : "border-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900 dark:text-neutral-400 dark:hover:bg-neutral-800/60 dark:hover:text-neutral-100"
+                      ? "border-ember bg-sidebar-hover text-sidebar-fg-active"
+                      : "border-transparent text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-active"
                   }`}
                 >
                   <Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
@@ -152,12 +152,12 @@ export function Sidebar({ businessName }: { businessName: string }) {
         </ul>
       </nav>
 
-      <div className="sidebar-footer relative shrink-0 border-t border-gray-200 p-2 dark:border-neutral-800">
-        <ThemeToggle />
+      <div className="sidebar-footer relative shrink-0 border-t border-sidebar-line p-2">
+        <ThemeToggle className="text-sidebar-fg! hover:bg-sidebar-hover! hover:text-sidebar-fg-active!" />
         <LogoutButton
           icon={<LogOut size={20} strokeWidth={1.75} aria-hidden="true" />}
           labelClassName="sidebar-label"
-          className="px-2 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-60 dark:text-neutral-400 dark:hover:bg-neutral-800"
+          className="px-2 py-1.5 text-sm font-medium text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-active disabled:opacity-60"
         />
         <button
           type="button"
@@ -165,7 +165,7 @@ export function Sidebar({ businessName }: { businessName: string }) {
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
           aria-expanded={!collapsed}
           title={collapsed ? "Expandir menu" : "Recolher menu"}
-          className="hidden shrink-0 items-center justify-center border border-gray-300 p-1.5 text-gray-600 transition-colors hover:bg-gray-100 md:inline-flex dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          className="hidden shrink-0 items-center justify-center border border-sidebar-fg/40 p-1.5 text-sidebar-fg transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-active md:inline-flex"
         >
           {collapsed ? (
             <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" />

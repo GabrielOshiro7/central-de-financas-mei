@@ -9,9 +9,28 @@
  */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/*
+ * PALETA DO APP (claro e escuro). Todos os valores de cor de superficie, texto e
+ * borda ficam aqui, em variaveis de tema - os componentes continuam usando as
+ * classes utilitarias de sempre (bg-white, border-gray-200, dark:bg-neutral-900...)
+ * e as escalas do Tailwind sao REMAPEADAS abaixo para os papeis da paleta:
+ *
+ *   CLARO                          ESCURO
+ *   bg-white ........ painel       dark:bg-neutral-900 ... painel     #FAF7F1 / #313338
+ *   border-gray-200 . borda painel dark:border-neutral-800 borda      #E0D8C8 / #3A3C42
+ *   border-gray-100 . divisoria    dark:border-neutral-800 divisoria  #EBE4D6 / #3A3C42
+ *   border-gray-300 . campo/outline dark:border-neutral-700 campo     #C9BFAB / #4E5058
+ *   text-gray-900/700 principal    dark:text-neutral-300 principal    #111111 / #D9DADC
+ *   text-gray-500/600 secundario   dark:text-neutral-400 secundario   #5B554B / #A3A6AA
+ *                                  dark:text-neutral-100 titulos      -       / #F2F3F5
+ *   bg-gray-900 + text-white botao dark:bg-neutral-100 botao          #111111/#F3EEE3 / #D9DADC/#2B2D31
+ *
+ * Fundo da pagina: --color-page (bg-page). Detalhe: --color-ember (#D9541E).
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3eee3;
+  --foreground: #111111;
+  --field-bg: #faf7f1;
 }
 
 @theme inline {
@@ -22,8 +41,9 @@
 }
 
 [data-theme="dark"] {
-  --background: #0b1120;
-  --foreground: #f1f5f9;
+  --background: #2b2d31;
+  --foreground: #d9dadc;
+  --field-bg: #2b2d31;
 }
 
 body {
@@ -54,72 +74,191 @@ body {
  * fora da landing nem tentar unificar os dois.
  */
 @theme {
-  --color-landing-primary: #f97316;
-  --color-landing-background: #f8fafc;
-  --color-landing-foreground: #111827;
-  --color-landing-secondary: #1f2937;
-  --color-landing-muted: #64748b;
-  --color-landing-card: #ffffff;
+  --color-landing-primary: #d9541e;
+  --color-landing-on-primary: #111111;
+  --color-landing-background: #f3eee3;
+  --color-landing-foreground: #111111;
+  --color-landing-secondary: #5b554b;
+  --color-landing-muted: #5b554b;
+  --color-landing-card: #faf7f1;
   --color-landing-success: #22c55e;
-  --color-landing-error: #ef4444;
-  --color-landing-border: #e2e8f0;
+  --color-landing-error: #dc2626;
+  --color-landing-border: #e0d8c8;
 }
 
 /*
- * Variantes dark dos tokens "landing-*" acima. O laranja de marca
- * (--color-landing-primary) e o verde de sucesso NÃO mudam - já passam em
- * contraste AA (>=4.5:1) contra o novo fundo escuro, testado antes de
- * decidir manter. O vermelho de erro precisou clarear (base #ef4444 fica
- * em ~3.9:1, abaixo do mínimo); os demais são a mesma lógica "chumbo
- * escuro, não preto puro" usada no fundo/cards do app autenticado
- * (ver overrides de --color-neutral-* mais abaixo), pra manter as duas
- * partes do produto visualmente consistentes no dark mode.
+ * Variantes dark dos tokens "landing-*" acima: seguem a paleta escura do app
+ * (fundo #2B2D31, cards #313338, bordas #3A3C42, texto #F2F3F5 / #A3A6AA). A cor de
+ * marca (#D9541E) e a mesma nos dois modos - so para elementos graficos (nunca
+ * texto pequeno nem fundo de botao com texto branco: o botao usa texto #111111,
+ * --color-landing-on-primary). O vermelho de erro precisou clarear (base #ef4444
+ * fica abaixo de 4.5:1 sobre o fundo escuro).
  */
 [data-theme="dark"] {
-  --color-landing-background: #0b1120;
-  --color-landing-foreground: #f1f5f9;
-  --color-landing-secondary: #64748b;
-  --color-landing-muted: #94a3b8;
-  --color-landing-card: #1f2937;
+  --color-landing-background: #2b2d31;
+  --color-landing-foreground: #f2f3f5;
+  --color-landing-secondary: #a3a6aa;
+  --color-landing-muted: #a3a6aa;
+  --color-landing-card: #313338;
   --color-landing-error: #f87171;
-  --color-landing-border: #2a3441;
+  --color-landing-border: #3a3c42;
 }
 
 /*
- * "Ember": laranja de destaque do app autenticado (indicador de item ativo
- * em navegação). Separado de --color-landing-primary de propósito (aqueles
- * tokens são só da landing) e nunca usado pra status financeiro - isso é
- * papel de Musgo/Âmbar/Terracota. Contraste do indicador (não-texto, mínimo
- * 3:1): 3.38:1 sobre o fundo claro #FAF9F6 e 8.32:1 sobre o escuro #0b1120.
+ * "Ember" (cor de detalhe do app): #D9541E nos dois modos. Substitui o antigo
+ * laranja (#ea580c / #fb923c) em todos os usos - sublinhado da aba ativa, "+" dos
+ * botoes de criacao, marcador do item ativo da sidebar (borda esquerda de 2px),
+ * sublinhado dos links (ver "a" abaixo). Separado de --color-landing-primary e
+ * nunca usado pra status financeiro (isso e papel de Musgo/Ambar/Terracota).
+ * PROIBIDO como cor de texto pequeno, de link escrito em laranja ou como fundo
+ * de botao com texto branco (contraste): so detalhes graficos (>= 3:1).
+ * Contraste (nao-texto): 3.74:1 sobre o painel claro #FAF7F1, 3.47:1 sobre o fundo
+ * claro #F3EEE3, 3.12:1 sobre o painel escuro #313338, 3.44:1 sobre o fundo escuro
+ * #2B2D31.
  */
 @theme {
-  --color-ember: #ea580c;
+  --color-ember: #d9541e;
+  --color-page: #f3eee3;
+  --color-sidebar: #111111;
+  --color-sidebar-hover: #2a2a2a;
+  --color-sidebar-line: #2a2a2a;
+  --color-sidebar-fg: #a8a29a;
+  --color-sidebar-fg-active: #f3eee3;
+  --color-ink-secondary: #5b554b;
 }
 
 [data-theme="dark"] {
-  --color-ember: #fb923c;
+  --color-ember: #d9541e;
+  --color-page: #2b2d31;
+  --color-sidebar: #1e1f22;
+  --color-sidebar-hover: #35373c;
+  --color-sidebar-line: #35373c;
+  --color-sidebar-fg: #a3a6aa;
+  --color-sidebar-fg-active: #f2f3f5;
+  --color-ink-secondary: #a3a6aa;
 }
 
 /*
- * Reaproveita a escala neutral do Tailwind (já usada em ~90 arquivos via
- * dark:bg-neutral-900 etc, só nunca antes ativada por um toggle manual)
- * redirecionando cada tom pra a paleta "chumbo escuro" da marca, em vez
- * de trocar cada classe individualmente. --color-neutral-* é registrado
- * pelo próprio Tailwind em :root; redefinir aqui, dentro do seletor mais
- * específico, é o suficiente pra sobrescrever via cascata normal de CSS -
- * nenhum componente do app precisou ser tocado por causa disso.
+ * CLARO: remapeia as escalas white/gray do Tailwind para os papeis da paleta
+ * (ver tabela no topo). `white` e o painel (#FAF7F1); o texto de botao
+ * "text-white" sobre bg-gray-900 vira #F3EEE3 na regra de botao mais abaixo.
+ */
+@theme {
+  --color-white: #faf7f1;
+  --color-gray-50: #f3eee3;
+  --color-gray-100: #ebe4d6;
+  --color-gray-200: #e0d8c8;
+  --color-gray-300: #c9bfab;
+  --color-gray-400: #6f695e;
+  --color-gray-500: #5b554b;
+  --color-gray-600: #5b554b;
+  --color-gray-700: #111111;
+  --color-gray-800: #2a2a2a;
+  --color-gray-900: #111111;
+  --color-gray-950: #111111;
+}
+
+/*
+ * Status: so as variantes que NAO passavam em 4.5:1 (texto sobre o painel #FAF7F1,
+ * ou texto branco sobre o fundo) foram escurecidas no minimo necessario - o resto
+ * da paleta de status (Musgo/Ambar/Terracota e os tons tailwind) fica como estava.
+ *   emerald-600  #059669 (3.52:1) -> #04815a (4.57:1)   [texto e botao "confirmar"]
+ *   rose-600     #e11d48 (4.39:1) -> #db1c46 (4.60:1)   [texto de erro/negativo]
+ */
+@theme {
+  --color-emerald-600: #04815a;
+  --color-rose-600: #db1c46;
+}
+
+/*
+ * ESCURO: as classes de cinza SEM par `dark:` (poucas: ex. foco dos campos)
+ * seguem a paleta escura. `white` nao muda no escuro (texto de botoes de
+ * status, ex.: "text-white" em verde/vermelho).
  */
 [data-theme="dark"] {
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-300: #cbd5e1;
-  --color-neutral-400: #94a3b8;
-  --color-neutral-500: #7c8ba1;
-  --color-neutral-600: #64748b;
-  --color-neutral-700: #475569;
-  --color-neutral-800: #2a3441;
-  --color-neutral-900: #1f2937;
-  --color-neutral-950: #0b1120;
+  --color-gray-50: #2b2d31;
+  --color-gray-100: #35373c;
+  --color-gray-200: #3a3c42;
+  --color-gray-300: #4e5058;
+  --color-gray-400: #8a8d93;
+  --color-gray-500: #a3a6aa;
+  --color-gray-600: #a3a6aa;
+  --color-gray-700: #d9dadc;
+  --color-gray-800: #e3e4e6;
+  --color-gray-900: #f2f3f5;
+  --color-gray-950: #f2f3f5;
+}
+
+/*
+ * Reaproveita a escala neutral do Tailwind (ja usada em ~90 arquivos via
+ * dark:bg-neutral-900 etc) redirecionando cada tom para a paleta escura:
+ * 900 = painel (#313338), 800 = borda de painel/divisoria/hover (#3A3C42),
+ * 700 = borda de campo e de botao de contorno (#4E5058), 400 = texto secundario
+ * (#A3A6AA), 300 = texto principal (#D9DADC), 100 = titulos e valores em
+ * destaque (#F2F3F5), 950 = fundo da pagina (#2B2D31).
+ */
+[data-theme="dark"] {
+  --color-neutral-100: #f2f3f5;
+  --color-neutral-200: #c4c5c8;
+  --color-neutral-300: #d9dadc;
+  --color-neutral-400: #a3a6aa;
+  --color-neutral-500: #999ca1;
+  --color-neutral-600: #6b6e75;
+  --color-neutral-700: #4e5058;
+  --color-neutral-800: #3a3c42;
+  --color-neutral-900: #313338;
+  --color-neutral-950: #2b2d31;
+}
+
+/*
+ * Excecoes de PAPEL (a mesma classe serve a dois papeis; regras sem camada
+ * vencem as utilidades do Tailwind):
+ * - ESCURO: `dark:bg-neutral-100`/`dark:border-neutral-100` sao o botao principal
+ *   (#D9DADC), nao o tom de titulo (#F2F3F5); `dark:text-neutral-900` e o texto
+ *   desse botao (#2B2D31), nao o painel; o hover do botao e #C4C5C8.
+ * - CLARO: o texto `text-white` de um botao bg-gray-900 e #F3EEE3.
+ * - Campos (input/select/textarea): fundo #FAF7F1 / #2B2D31.
+ * - Rotulos de campo (label com a classe de rotulo): texto secundario.
+ */
+[data-theme="dark"] .dark\:bg-neutral-100,
+[data-theme="dark"] .dark\:border-neutral-100 {
+  background-color: #d9dadc;
+}
+
+[data-theme="dark"] .dark\:border-neutral-100 {
+  border-color: #d9dadc;
+}
+
+[data-theme="dark"] .dark\:text-neutral-900 {
+  color: #2b2d31;
+}
+
+[data-theme="dark"] .dark\:hover\:bg-neutral-200:hover {
+  background-color: #c4c5c8;
+}
+
+:root:not([data-theme="dark"]) .bg-gray-900.text-white {
+  color: #f3eee3;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not(.bg-transparent),
+select,
+textarea {
+  background-color: var(--field-bg);
+}
+
+label.text-gray-700 {
+  color: var(--color-ink-secondary);
+}
+
+[data-theme="dark"] label.dark\:text-neutral-300 {
+  color: var(--color-ink-secondary);
+}
+
+/* Sublinhado dos links: cor de detalhe (Ember). So a linha - o texto do link
+   mantem a cor de texto. */
+a {
+  text-decoration-color: var(--color-ember);
 }
 
 /*
@@ -337,15 +476,15 @@ body {
  * classes gray e neutral que as tabelas usam).
  */
 :root {
-  --rt-card-bg: #ffffff;
-  --rt-card-border: #e5e7eb;
-  --rt-label: #6b7280;
+  --rt-card-bg: #faf7f1;
+  --rt-card-border: #e0d8c8;
+  --rt-label: #5b554b;
 }
 
 [data-theme="dark"] {
-  --rt-card-bg: #1f2937;
-  --rt-card-border: #2a3441;
-  --rt-label: #94a3b8;
+  --rt-card-bg: #313338;
+  --rt-card-border: #3a3c42;
+  --rt-label: #a3a6aa;
 }
 
 .rt-sr {

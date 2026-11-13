@@ -3,8 +3,8 @@ import { Plus } from "lucide-react";
 // Botão de criação de nível de página (ex.: "Nova receita", "Nova venda",
 // "Novo cliente"). Cores = botão de contorno padrão do app (as do "Cancelar"
 // dos modais, a variação mais usada; disabled:opacity-60 é o disabled dessa
-// mesma família). O ícone Plus não tem cor própria: herda a cor do texto
-// (currentColor do lucide), inclusive no hover e no tema escuro. O
+// mesma família). O ícone Plus usa a cor de detalhe (text-ember), inclusive no hover e
+// no tema escuro; o rótulo mantém a cor de texto do botão. O
 // disabled reduz a opacidade do botão inteiro, ícone incluso. O contorno de
 // foco não existe no estilo de contorno; foi definido aqui. h-9.5 (38px) é a
 // mesma altura explícita dos selects/datas do painel de filtros do Financeiro
@@ -13,7 +13,8 @@ import { Plus } from "lucide-react";
 export const CREATE_BUTTON_CLASS =
   "inline-flex h-9.5 items-center justify-center gap-1.5 border border-gray-300 px-4 py-2 text-sm font-semibold whitespace-nowrap text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 dark:focus-visible:outline-neutral-100";
 
-export const CREATE_BUTTON_ICON_CLASS = "shrink-0";
+// O "+" usa a cor de detalhe (Ember, #D9541E): detalhe grafico (>= 3:1), nunca o texto.
+export const CREATE_BUTTON_ICON_CLASS = "shrink-0 text-ember";
 
 // Conteúdo do botão (ícone + rótulo). Sem estado nem hooks: serve dentro de
 // <button> (componentes cliente) e de <Link> (páginas de servidor). O ícone é

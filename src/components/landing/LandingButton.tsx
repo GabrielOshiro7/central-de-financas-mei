@@ -13,7 +13,8 @@ const baseClasses =
   "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-landing-primary";
 
 const variantClasses: Record<LandingButtonVariant, string> = {
-  primary: "bg-landing-primary text-white shadow-sm hover:opacity-90 hover:shadow-md",
+  // Texto #111111 sobre o laranja de marca (texto branco nao passa no contraste).
+  primary: "bg-landing-primary text-landing-on-primary shadow-sm hover:opacity-90 hover:shadow-md",
   outline:
     "border border-landing-border bg-landing-card text-landing-foreground hover:bg-landing-background hover:border-landing-foreground/20",
 };

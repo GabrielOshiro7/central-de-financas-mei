@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const { business } = await requireOnboardedUser();
 
   return (
-    <div className={`${inter.className} min-h-screen bg-[#FAF9F6] dark:bg-neutral-950`}>
+    <div className={`${inter.className} min-h-screen bg-page`}>
       <Sidebar businessName={business.name ?? "Minha empresa"} />
       {/* overflow-x-clip: recorta nas bordas do main o fundo full-bleed da
           barra do Financeiro (.subnav-backdrop). "clip" (e não "hidden") não
