@@ -24,6 +24,7 @@ async function register(page: Page, name: string, email: string) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirmar senha").fill(PASSWORD);
+  await page.getByLabel(/Li e aceito/).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
@@ -89,10 +90,18 @@ test.describe("Enter nos formulários", () => {
     await expect(page.getByLabel("Confirmar senha")).toBeFocused();
     await page.getByLabel("Confirmar senha").fill(PASSWORD);
     await page.getByLabel("Confirmar senha").press("Enter");
+    // Novo campo obrigatorio: o aceite dos Termos e da Politica (caixa) vem antes do botao.
+    // A caixa de aceite dos Termos NAO entra na navegacao por Enter (Enter pula caixas de
+    // marcar e vai ao botao); ela fica acessivel por Tab/clique.
     await expect(page.getByRole("button", { name: "Criar conta" })).toBeFocused();
 
     await page.waitForTimeout(500);
     await expect(page).toHaveURL(/\/register/); // nenhum Enter enviou o formulario
+    // Aceite obrigatorio dos Termos (caixa): sem ele o Enter no botao so mostra o erro.
+    await page.keyboard.press("Enter");
+    await expect(page.locator('p[role="alert"]')).toContainText("Aceite os Termos");
+    await page.getByLabel(/Li e aceito/).check();
+    await page.getByRole("button", { name: "Criar conta" }).focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/onboarding/);
   });

@@ -6,6 +6,9 @@ export const registerSchema = z
     email: z.string().trim().min(1, "Digite seu e-mail.").email("Digite um e-mail valido."),
     password: z.string().min(10, "A senha precisa ter pelo menos 10 caracteres."),
     confirmPassword: z.string().min(1, "Confirme sua senha."),
+    // Aceite obrigatorio dos Termos de Servico e da Politica de Privacidade. O servidor
+    // grava a data/hora e as VERSOES vigentes (nunca versoes enviadas pelo cliente).
+    acceptTerms: z.literal(true, { message: "Aceite os Termos de Serviço e a Política de Privacidade para criar a conta." }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "As senhas não são iguais.",

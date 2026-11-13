@@ -5,6 +5,7 @@ import { createUserSession } from "@/lib/auth/cookies";
 import { rateLimit } from "@/lib/auth/rateLimit";
 import { getClientIp } from "@/lib/http";
 import { registerSchema, normalizeEmail } from "@/lib/validation/auth";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "@/content/legal/meta";
 
 const RATE_LIMIT = { max: 10, windowMs: 10 * 60 * 1000 }; // 10 tentativas / 10 min por IP
 
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
   const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
-    data: { name, email, passwordHash },
+    // Aceite dos Termos e da Politica: quando e quais versoes (as vigentes agora).
+    data: { name, email, passwordHash, legalAcceptedAt: new Date(), termsVersion: TERMS_VERSION, privacyVersion: PRIVACY_POLICY_VERSION },
     select: { id: true, name: true, email: true },
   });
 

@@ -8,7 +8,7 @@ const PASSWORD = "SenhaValida123";
 async function loginOnboardedUser(context: BrowserContext, label: string) {
   const email = `sidebar-${label}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
   const reg = await context.request.post("/api/auth/register", {
-    data: { name: "Sidebar E2E", email, password: PASSWORD, confirmPassword: PASSWORD },
+    data: { name: "Sidebar E2E", email, password: PASSWORD, confirmPassword: PASSWORD, acceptTerms: true },
   });
   expect(reg.status()).toBe(201);
 

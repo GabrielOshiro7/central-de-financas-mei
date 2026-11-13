@@ -29,7 +29,7 @@ async function setupBusiness(page: Page, label: string) {
   const request = page.context().request;
   const email = `mobile-${label}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
   await ok(
-    await request.post("/api/auth/register", { data: { name: "Mobile E2E", email, password: PASSWORD, confirmPassword: PASSWORD } }),
+    await request.post("/api/auth/register", { data: { name: "Mobile E2E", email, password: PASSWORD, confirmPassword: PASSWORD, acceptTerms: true } }),
     "register"
   );
   const answers: [number, unknown][] = [

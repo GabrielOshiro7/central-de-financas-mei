@@ -300,6 +300,11 @@ a {
   display: none;
 }
 
+/* Aviso de cookies: no app, comeca depois da barra lateral (nao cobre os botoes dela). */
+body:has([data-app-shell]) .cookie-notice {
+  margin-left: var(--sidebar-w);
+}
+
 /* Contador de insights nao lidos sobre o icone: so existe com a barra recolhida
    (ou no celular, que forca o visual recolhido); expandida ele fica ao lado do rotulo. */
 .sidebar-badge-collapsed {

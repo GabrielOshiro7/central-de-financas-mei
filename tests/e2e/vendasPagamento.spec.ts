@@ -22,7 +22,7 @@ async function ok(response: { ok(): boolean; status(): number; text(): Promise<s
 async function setupBusiness(page: Page, label: string) {
   const request = page.context().request;
   const email = `vendas-pag-${label}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
-  await ok(await request.post("/api/auth/register", { data: { name: "Dono Pagamento", email, password: PASSWORD, confirmPassword: PASSWORD } }), "register");
+  await ok(await request.post("/api/auth/register", { data: { name: "Dono Pagamento", email, password: PASSWORD, confirmPassword: PASSWORD, acceptTerms: true } }), "register");
   const answers: [number, unknown][] = [
     [1, { businessType: "LOJA" }],
     [2, { revenueModel: ["venda_produtos"] }],

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import { cookies } from "next/headers";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
+import { COOKIE_NOTICE_COOKIE } from "@/content/legal/meta";
+import { CookieNotice } from "@/components/legal/CookieNotice";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { HydrationMarker } from "@/components/HydrationMarker";
 import "./globals.css";
@@ -40,7 +42,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // Tema: o SERVIDOR le o cookie "theme" e ja renderiza a <html> com o tema certo
   // (sem script que troque depois - nada de "piscar"). Padrao CLARO; o app nao segue
   // prefers-color-scheme. Ver src/lib/theme.ts.
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const theme = parseTheme(cookieStore.get(THEME_COOKIE)?.value);
+  // Aviso de cookies na primeira visita; "Entendi" grava o cookie e o servidor deixa de renderiza-lo.
+  const showCookieNotice = cookieStore.get(COOKIE_NOTICE_COOKIE)?.value !== "1";
 
   return (
     <html
@@ -77,7 +82,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }}
         />
-        <ThemeProvider initialTheme={theme}>{children}</ThemeProvider>
+        <ThemeProvider initialTheme={theme}>
+          {children}
+          {showCookieNotice && <CookieNotice />}
+        </ThemeProvider>
         <HydrationMarker />
       </body>
     </html>

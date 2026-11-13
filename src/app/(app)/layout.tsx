@@ -25,7 +25,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const unreadInsights = await countUnreadInsights(user.id, business.id, clockFor(business));
 
   return (
-    <div className={`${inter.className} min-h-screen bg-page`}>
+    <div data-app-shell="" className={`${inter.className} min-h-screen bg-page`}>
       <Sidebar businessName={business.name ?? "Minha empresa"} unreadInsights={unreadInsights} />
       <ThemeSync savedTheme={themeFromPreference(user.themePreference)} />
       {/* overflow-x-clip: recorta nas bordas do main o fundo full-bleed da

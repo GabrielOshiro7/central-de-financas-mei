@@ -26,6 +26,13 @@ model User {
   // so leva a escolha para outro navegador/dispositivo (aplicada no login).
   themePreference ThemePreference? @map("theme_preference")
 
+  // Aceite dos Termos de Servico e da Politica de Privacidade no cadastro: quando foi e
+  // quais VERSOES (src/content/legal/meta.ts). NULL em quem se cadastrou antes desta
+  // funcionalidade (a re-aceitacao dos usuarios existentes sera decidida depois).
+  legalAcceptedAt DateTime? @map("legal_accepted_at")
+  termsVersion    String?   @map("terms_version")
+  privacyVersion  String?   @map("privacy_version")
+
   sessions         Session[]
   insightReads     InsightRead[]
   resetTokens      PasswordResetToken[]

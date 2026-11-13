@@ -26,6 +26,7 @@ async function setupBusiness(page: Page, prefix: string) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirmar senha").fill(PASSWORD);
+  await page.getByLabel(/Li e aceito/).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
   await page.getByRole("button", { name: "Loja", exact: true }).click();
   await page.getByRole("button", { name: "Continuar" }).click();

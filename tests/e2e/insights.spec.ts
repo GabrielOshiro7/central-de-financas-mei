@@ -28,6 +28,7 @@ async function register(page: Page, name: string, email: string) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirmar senha").fill(PASSWORD);
+  await page.getByLabel(/Li e aceito/).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
@@ -86,7 +87,8 @@ async function addExpense(page: Page, description: string, amount: string, dateI
 // O link de acao fica dentro do proprio card (o <h3> do titulo e filho
 // direto do card) - cada insight tem o seu, entao o clique e escopado.
 function insightCard(page: Page, title: string) {
-  return page.getByRole("heading", { name: title, exact: true }).locator("xpath=..");
+  // O card inteiro (o link de acao fica no rodape, ao lado do botao lido/nao lido).
+  return page.getByRole("heading", { name: title, exact: true }).locator("xpath=ancestor::div[contains(@class,'p-5')][1]");
 }
 
 test.describe("Etapa 7 - insights", () => {
