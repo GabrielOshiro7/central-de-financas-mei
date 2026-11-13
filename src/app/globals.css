@@ -125,6 +125,7 @@ body {
   --color-sidebar-fg: #a8a29a;
   --color-sidebar-fg-active: #f3eee3;
   --color-ink-secondary: #5b554b;
+  --color-ember-ink: #111111;
 }
 
 [data-theme="dark"] {
@@ -299,6 +300,16 @@ a {
   display: none;
 }
 
+/* Contador de insights nao lidos sobre o icone: so existe com a barra recolhida
+   (ou no celular, que forca o visual recolhido); expandida ele fica ao lado do rotulo. */
+.sidebar-badge-collapsed {
+  display: none;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-badge-collapsed {
+  display: inline-block;
+}
+
 [data-sidebar-collapsed="true"] .sidebar-header,
 [data-sidebar-collapsed="true"] .sidebar-nav-link {
   justify-content: center;
@@ -354,6 +365,10 @@ a {
 @media (max-width: 767px) {
   .sidebar-label {
     display: none;
+  }
+
+  .sidebar-badge-collapsed {
+    display: inline-block;
   }
 
   .sidebar-header,

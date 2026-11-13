@@ -82,7 +82,26 @@ const NAV_ITEMS = [
  * ícone do botão de recolher/expandir (aria-expanded, Chevron) depois que o
  * componente monta.
  */
-export function Sidebar({ businessName }: { businessName: string }) {
+// Contador de insights nao lidos: "1".."9" e "9+" acima disso. Pilula pequena com fundo
+// Ember (#D9541E) e texto #111111 (contraste >= 4,5:1 nos dois temas).
+function unreadLabel(count: number): string {
+  return count === 1 ? "1 insight não lido" : `${count} insights não lidos`;
+}
+
+function UnreadBadge({ count, className }: { count: number; className: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={unreadLabel(count)}
+      data-testid="insights-unread-badge"
+      className={`min-w-[1.125rem] rounded-full bg-ember px-1 text-center text-[11px] leading-[1.125rem] font-semibold text-ember-ink ${className}`}
+    >
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
+
+export function Sidebar({ businessName, unreadInsights = 0 }: { businessName: string; unreadInsights?: number }) {
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(
     subscribeCollapsed,
@@ -130,6 +149,9 @@ export function Sidebar({ businessName }: { businessName: string }) {
                 <Link
                   href={href}
                   aria-current={active ? "page" : undefined}
+                  // Com contador, o nome acessivel mantem o rotulo e diz quantos nao lidos
+                  // (recolhida, o rotulo visivel some e so restaria o contador).
+                  aria-label={href === "/insights" && unreadInsights > 0 ? `${label}, ${unreadLabel(unreadInsights)}` : undefined}
                   title={label}
                   className={`sidebar-nav-link flex items-center gap-3 border-l-2 px-2.5 py-2.5 text-sm font-medium transition-colors ${
                     active
@@ -137,8 +159,16 @@ export function Sidebar({ businessName }: { businessName: string }) {
                       : "border-transparent text-sidebar-fg hover:bg-sidebar-hover hover:text-sidebar-fg-active"
                   }`}
                 >
-                  <Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+                  <span className="relative inline-flex shrink-0">
+                    <Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
+                    {/* Recolhida (ou celular): o contador fica sobre o icone. */}
+                    {href === "/insights" && unreadInsights > 0 && (
+                      <UnreadBadge count={unreadInsights} className="sidebar-badge-collapsed absolute -top-2 -right-2.5" />
+                    )}
+                  </span>
                   <span className="sidebar-label truncate whitespace-nowrap">{label}</span>
+                  {/* Expandida: ao lado do rotulo (some junto com ele quando recolhida). */}
+                  {href === "/insights" && unreadInsights > 0 && <UnreadBadge count={unreadInsights} className="sidebar-label ml-auto" />}
                 </Link>
                 <span
                   role="tooltip"

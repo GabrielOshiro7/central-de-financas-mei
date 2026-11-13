@@ -4,6 +4,8 @@ import { requireOnboardedUser } from "@/lib/auth/guards";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { ThemeSync } from "@/components/ThemeSync";
 import { themeFromPreference } from "@/lib/theme";
+import { countUnreadInsights } from "@/lib/insights/reads";
+import { clockFor } from "@/lib/time/zoned";
 
 // Tipografia do app autenticado (Inter) - escopada só a esta subárvore via
 // `inter.className`, não ao body inteiro, para não mudar a landing pública
@@ -18,10 +20,13 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] }
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { user, business } = await requireOnboardedUser();
+  // Insights nao lidos (uma contagem no banco) - contador ao lado da lampada da barra
+  // lateral; revalidado por router.refresh() ao marcar/desmarcar.
+  const unreadInsights = await countUnreadInsights(user.id, business.id, clockFor(business));
 
   return (
     <div className={`${inter.className} min-h-screen bg-page`}>
-      <Sidebar businessName={business.name ?? "Minha empresa"} />
+      <Sidebar businessName={business.name ?? "Minha empresa"} unreadInsights={unreadInsights} />
       <ThemeSync savedTheme={themeFromPreference(user.themePreference)} />
       {/* overflow-x-clip: recorta nas bordas do main o fundo full-bleed da
           barra do Financeiro (.subnav-backdrop). "clip" (e não "hidden") não

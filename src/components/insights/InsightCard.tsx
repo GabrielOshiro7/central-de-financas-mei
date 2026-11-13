@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Lightbulb } from "lucide-react";
 import type { InsightCategory, InsightMetric, InsightPriority } from "@prisma/client";
 import { INSIGHT_CATEGORY_LABELS, INSIGHT_PRIORITY_LABELS } from "@/lib/insights/options";
+import { InsightReadShell } from "@/components/insights/InsightReadShell";
 
 export type InsightCardData = {
   id: string;
@@ -47,11 +48,14 @@ function actionLinkFor(metric: InsightMetric): { href: string; label: string } |
   }
 }
 
-export function InsightCard({ insight }: { insight: InsightCardData }) {
+// `readState` so e passado pela pagina Insights: com ele o card ganha o botao
+// lido/nao lido (canto inferior direito). Sem ele (painel do Dashboard) o card e o de
+// sempre.
+export function InsightCard({ insight, readState }: { insight: InsightCardData; readState?: { key: string; read: boolean } }) {
   const action = actionLinkFor(insight.metric);
 
-  return (
-    <div className="flex flex-col gap-3 border border-gray-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+  const body = (
+    <>
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE_STYLE[insight.priority]}`}>
           {INSIGHT_PRIORITY_LABELS[insight.priority]}
@@ -71,10 +75,26 @@ export function InsightCard({ insight }: { insight: InsightCardData }) {
         </p>
       )}
 
-      {action && (
-        <Link href={action.href} className="text-xs font-medium text-gray-700 hover:underline dark:text-neutral-300">
-          {action.label} →
-        </Link>
+    </>
+  );
+
+  const link = action && (
+    <Link href={action.href} className="text-xs font-medium text-gray-700 hover:underline dark:text-neutral-300">
+      {action.label} →
+    </Link>
+  );
+
+  return (
+    <div className="flex flex-col gap-3 border border-gray-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900">
+      {readState ? (
+        <InsightReadShell insightKey={readState.key} initialRead={readState.read} footerLeft={link}>
+          {body}
+        </InsightReadShell>
+      ) : (
+        <>
+          {body}
+          {link}
+        </>
       )}
     </div>
   );

@@ -1,12 +1,16 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
+import { insightKey, listReadKeys } from "@/lib/insights/reads";
 import { InsightCard } from "@/components/insights/InsightCard";
 import { RegenerateButton } from "@/components/insights/RegenerateButton";
 import { clockFor } from "@/lib/time/zoned";
 
 export default async function InsightsPage() {
-  const { business } = await requireOnboardedUser();
+  const { user, business } = await requireOnboardedUser();
   const insights = await getInsightsForBusiness(business.id, clockFor(business));
+  // Estado lido/nao lido DESTE usuario (chave estavel: metrica + mes).
+  const keyOf = (insight: (typeof insights)[number]) => insightKey(insight.metric, insight.periodKey);
+  const readKeys = await listReadKeys(user.id, business.id, insights.map(keyOf));
 
   return (
     <div className="flex flex-col gap-6">
@@ -25,7 +29,7 @@ export default async function InsightsPage() {
         // logica de ordenacao aqui.
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {insights.map((insight) => (
-            <InsightCard key={insight.id} insight={insight} />
+            <InsightCard key={insight.id} insight={insight} readState={{ key: keyOf(insight), read: readKeys.has(keyOf(insight)) }} />
           ))}
         </div>
       )}

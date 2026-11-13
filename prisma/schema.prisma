@@ -27,6 +27,7 @@ model User {
   themePreference ThemePreference? @map("theme_preference")
 
   sessions         Session[]
+  insightReads     InsightRead[]
   resetTokens      PasswordResetToken[]
   business         Business?
   financialEntries FinancialEntry[]
@@ -263,6 +264,7 @@ model Business {
   appointments     Appointment[]
 
   @@map("businesses")
+  insightReads InsightRead[]
 }
 
 // Categorias padrao do sistema tem businessId nulo e ficam visiveis para
@@ -767,6 +769,25 @@ model Insight {
   @@index([businessId, periodKey])
   @@index([businessId, priority])
   @@map("insights")
+}
+
+// Estado de leitura dos insights POR USUARIO. A chave do insight e deterministica e
+// estavel entre recalculos: "<metrica em minusculas>:<periodo yyyy-mm>" (ex.:
+// "expense_growth:2026-11") - nao e o id da linha de insights (que muda se a metrica
+// deixa de disparar e volta). Existir uma linha = lido; apagar = nao lido. Unico por
+// usuario + empresa + chave (marcar duas vezes e idempotente).
+model InsightRead {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  insightKey String   @map("insight_key")
+  readAt     DateTime @default(now()) @map("read_at")
+
+  @@unique([userId, businessId, insightKey])
+  @@index([businessId])
+  @@map("insight_reads")
 }
 
 model Session {
