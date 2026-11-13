@@ -51,12 +51,13 @@ async function onboard(page: Page) {
 const legalNav = (page: Page) => page.getByRole("navigation", { name: "Documentos legais" });
 
 test.describe("páginas legais (públicas, rascunho)", () => {
-  test("/privacidade, /termos e /cookies abrem sem login, com a faixa de rascunho, versão e seções", async ({ browser }) => {
+  test("/privacidade, /termos, /cookies e /tokushoho abrem sem login, com a faixa de rascunho, versão e seções", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
     const pages = [
-      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros" },
-      { path: "/termos", title: "Termos de Serviço", section: "4. O Serviço não substitui contador nem assessoria" },
-      { path: "/cookies", title: "Cookies", section: "2. O que usamos" },
+      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros", version: "0.2" },
+      { path: "/termos", title: "Termos de Serviço", section: "6. Assinatura", version: "0.2" },
+      { path: "/cookies", title: "Cookies", section: "2. O que usamos", version: "0.1" },
+      { path: "/tokushoho", title: "特定商取引法に基づく表記", section: "表示事項 / Informações do vendedor", version: "0.1" },
     ];
     for (const p of pages) {
       const res = await page.goto(p.path);
@@ -64,7 +65,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
       await expect(page).toHaveURL(new RegExp(`${p.path}$`));
       await expect(page.getByRole("heading", { level: 1, name: p.title })).toBeVisible();
       await expect(page.getByTestId("legal-draft-banner")).toHaveText(DRAFT);
-      await expect(page.getByTestId("legal-version")).toContainText("Versão 0.1");
+      await expect(page.getByTestId("legal-version")).toContainText(`Versão ${p.version}`);
       await expect(page.getByRole("heading", { level: 2, name: p.section })).toBeVisible();
       await expect(legalNav(page)).toBeVisible(); // links cruzados entre as três páginas
     }
@@ -79,6 +80,65 @@ test.describe("páginas legais (públicas, rascunho)", () => {
     await page.goto("/termos");
     await expect(page.getByText(/\[PREENCHER: lei aplicável/)).toBeVisible();
     await expect(page.getByText(/\[PREENCHER: idade mínima/).first()).toBeVisible();
+    await context.close();
+  });
+
+  test("os Termos têm a seção de assinatura (substituiu planos/pagamento) e a Política, o provedor de cobrança", async ({ browser }) => {
+    const { context, page } = await freshPage(browser);
+    await page.goto("/termos");
+    await expect(page.getByRole("heading", { level: 2, name: "6. Assinatura" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Planos e pagamento/ })).toHaveCount(0);
+    for (const marker of [/\[PREENCHER: planos disponíveis/, /\[PREENCHER: mensal, anual ou ambos\]/, /\[PREENCHER: existe período de teste/, /\[PREENCHER: prazo para regularizar/, /\[PREENCHER: prazo do aviso prévio/, /\[PREENCHER: por quantos dias/]) {
+      await expect(page.getByText(marker)).toBeVisible();
+    }
+    await expect(page.getByText(/\[VERIFICAR COM ADVOGADO:[^\]]*reembolso/)).toBeVisible();
+    await expect(page.getByText(/renova automaticamente/)).toBeVisible();
+    const toTokushoho = page.locator("article").getByText(/página 特定商取引法に基づく表記/);
+    await expect(toTokushoho).toBeVisible();
+
+    await page.goto("/privacidade");
+    await expect(page.getByText("Os dados do cartão são enviados diretamente ao provedor e NÃO são armazenados pelo Serviço.")).toBeVisible();
+    await expect(page.getByText("[PREENCHER: nome do provedor].")).toBeVisible();
+    await expect(page.getByText(/Cobrança da assinatura: \[PREENCHER: provedor de cobrança e país\]/)).toBeVisible();
+    await context.close();
+  });
+
+  test("/tokushoho: título em japonês, subtítulo em português e os 12 itens em japonês e português, todos a preencher", async ({ browser }) => {
+    const { context, page } = await freshPage(browser);
+    const res = await page.goto("/tokushoho");
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("特定商取引法に基づく表記");
+    await expect(page.getByText("Informações conforme a Lei de Transações Comerciais Específicas (Japão)")).toBeVisible();
+    await expect(page.getByTestId("legal-draft-banner")).toHaveText(DRAFT);
+
+    const rows = page.getByTestId("tokushoho-table").locator("tbody tr");
+    await expect(rows).toHaveCount(12);
+    const items = [
+      ["販売事業者", "Vendedor (razão social)"],
+      ["運営責任者", "Responsável pela operação"],
+      ["所在地", "Endereço"],
+      ["電話番号", "Telefone"],
+      ["メールアドレス", "E-mail"],
+      ["販売価格", "Preço de venda"],
+      ["商品代金以外の必要料金", "Outras taxas além do preço"],
+      ["支払方法", "Forma de pagamento"],
+      ["支払時期", "Quando é cobrado"],
+      ["役務の提供時期", "Início do serviço"],
+      ["返品・キャンセル", "Cancelamento e reembolso"],
+      ["動作環境", "Ambiente de funcionamento"],
+    ];
+    for (const [i, [jp, pt]] of items.entries()) {
+      const row = rows.nth(i);
+      await expect(row.getByRole("rowheader")).toContainText(jp);
+      await expect(row.getByRole("rowheader")).toContainText(pt);
+      const cells = row.getByRole("cell");
+      await expect(cells).toHaveCount(2); // conteúdo em japonês e em português
+      await expect(cells.nth(0)).toContainText("[PREENCHER:");
+      await expect(cells.nth(1)).toContainText("[PREENCHER:");
+    }
+    // Telefone: só vale omitir com aval do advogado.
+    await expect(rows.nth(3)).toContainText("[VERIFICAR COM ADVOGADO:");
+    await expect(rows.nth(3)).toContainText("fornecido sem demora mediante solicitação");
     await context.close();
   });
 
@@ -106,7 +166,16 @@ test.describe("links dos documentos legais", () => {
       await expect(nav.getByRole("link", { name: "Privacidade" })).toHaveAttribute("href", "/privacidade");
       await expect(nav.getByRole("link", { name: "Termos" })).toHaveAttribute("href", "/termos");
       await expect(nav.getByRole("link", { name: "Cookies" })).toHaveAttribute("href", "/cookies");
+      await expect(nav.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
     }
+    // Também no rodapé de cada página legal.
+    for (const path of ["/privacidade", "/termos", "/cookies", "/tokushoho"]) {
+      await page.goto(path);
+      await expect(legalNav(page).getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
+    }
+    await gotoHydrated(page, "/login");
+    await legalNav(page).getByRole("link", { name: "特定商取引法に基づく表記" }).click();
+    await expect(page).toHaveURL(/\/tokushoho$/);
     await gotoHydrated(page, "/login");
     await legalNav(page).getByRole("link", { name: "Termos" }).click();
     await expect(page).toHaveURL(/\/termos$/);
@@ -124,6 +193,7 @@ test.describe("links dos documentos legais", () => {
     await expect(nav.getByRole("link", { name: "Privacidade" })).toHaveAttribute("href", "/privacidade");
     await expect(nav.getByRole("link", { name: "Termos" })).toHaveAttribute("href", "/termos");
     await expect(nav.getByRole("link", { name: "Cookies" })).toHaveAttribute("href", "/cookies");
+    await expect(nav.getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
     await context.close();
   });
 });
@@ -221,7 +291,7 @@ test.describe("aceite dos Termos e da Política no cadastro", () => {
     await registerThroughForm(page, mail, true);
     await expect(page).toHaveURL(/\/onboarding|\/dashboard/);
     const user = await prisma.user.findUniqueOrThrow({ where: { email: mail } });
-    expect([user.termsVersion, user.privacyVersion]).toEqual(["0.1", "0.1"]);
+    expect([user.termsVersion, user.privacyVersion]).toEqual(["0.2", "0.2"]);
     expect(user.legalAcceptedAt).not.toBeNull();
     expect(user.legalAcceptedAt!.getTime()).toBeGreaterThanOrEqual(before - 5000);
     await context.close();

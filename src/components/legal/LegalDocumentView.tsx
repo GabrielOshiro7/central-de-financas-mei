@@ -53,6 +53,44 @@ function Block({ block }: { block: LegalBlock }) {
           </table>
         </div>
       );
+    case "bilingual-table":
+      return (
+        <div className="overflow-x-auto">
+          <table className={tableClass} data-testid="tokushoho-table">
+            <thead>
+              <tr>
+                <th scope="col" className={thClass}>
+                  <span lang="ja">項目</span> / Item
+                </th>
+                <th scope="col" className={thClass}>
+                  <span lang="ja">内容（日本語）</span>
+                </th>
+                <th scope="col" className={thClass}>
+                  Conteúdo (português)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row) => (
+                <tr key={row.jp}>
+                  <th scope="row" className={`${tdClass} font-semibold`}>
+                    <span lang="ja" className="block">
+                      {row.jp}
+                    </span>
+                    <span className="block text-xs font-normal text-gray-500 dark:text-neutral-400">{row.pt}</span>
+                  </th>
+                  <td lang="ja" className={tdClass}>
+                    {row.jpValue}
+                  </td>
+                  <td lang="pt-BR" className={tdClass}>
+                    {row.ptValue}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     case "cookie-table":
       return (
         <div className="overflow-x-auto">
@@ -104,7 +142,10 @@ export function LegalDocumentView({ doc }: { doc: LegalDocument }) {
           ← {SERVICE_NAME}
         </Link>
         <article className="mt-6 border border-gray-200 bg-white p-6 sm:p-8 dark:border-neutral-800 dark:bg-neutral-900">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">{doc.title}</h1>
+          <h1 lang={doc.titleLang} className="text-2xl font-bold text-gray-900 dark:text-neutral-100">
+            {doc.title}
+          </h1>
+          {doc.subtitle && <p className="mt-1 text-sm text-gray-600 dark:text-neutral-400">{doc.subtitle}</p>}
           <p className="mt-2 text-xs text-gray-500 dark:text-neutral-400" data-testid="legal-version">
             Versão {doc.version} · Vigência: {doc.effectiveDate}
           </p>

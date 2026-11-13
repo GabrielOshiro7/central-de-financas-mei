@@ -1,9 +1,10 @@
-import { LEGAL_EFFECTIVE_DATE, SERVICE_NAME, TERMS_VERSION } from "@/content/legal/meta";
+import { LEGAL_EFFECTIVE_DATE, LEGAL_PATHS, SERVICE_NAME, TERMS_VERSION } from "@/content/legal/meta";
 import type { LegalDocument } from "@/content/legal/types";
 
 // RASCUNHO para revisao juridica. Descreve o servico como ele e hoje (gestao financeira,
-// vendas, clientes e agenda para pequenos negocios). O que o codigo nao define (planos,
-// pagamento, foro, idade minima, contato) vira [PREENCHER: ...].
+// vendas, clientes e agenda para pequenos negocios), agora como servico PAGO (assinatura,
+// ainda sem provedor de cobranca). O que o codigo nao define (planos, precos, prazos,
+// foro, idade minima, contato) vira [PREENCHER: ...].
 export const TERMS_OF_SERVICE: LegalDocument = {
   slug: "termos",
   title: "Termos de Serviço",
@@ -73,10 +74,31 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       ],
     },
     {
-      id: "planos",
-      title: "6. Planos e pagamento",
+      id: "assinatura",
+      title: "6. Assinatura",
       blocks: [
-        { type: "p", text: "[PREENCHER: o Serviço é gratuito ou pago? Se pago: planos, preços, forma e periodicidade de cobrança, reembolso e cancelamento. Hoje o aplicativo não possui cobrança nem integração de pagamento.]" },
+        {
+          type: "p",
+          text: `O uso do ${SERVICE_NAME} é pago, por assinatura. Hoje o aplicativo ainda não possui cobrança nem provedor de pagamento integrado; as condições abaixo valerão a partir da contratação e dependem de serem definidas pelo operador.`,
+        },
+        {
+          type: "ul",
+          items: [
+            "Planos e preços: [PREENCHER: planos disponíveis, o que cada um inclui e o preço de cada um, com impostos]",
+            "Ciclo de cobrança: [PREENCHER: mensal, anual ou ambos]",
+            "Período de teste gratuito: [PREENCHER: existe período de teste? quantos dias? o que acontece ao final dele?]",
+            "Renovação automática: a assinatura se renova automaticamente ao fim de cada ciclo, pelo mesmo plano, e a cobrança é feita a cada renovação. Para evitar a próxima renovação, desative-a antes da data de renovação em [PREENCHER: onde e como o usuário desativa a renovação automática no aplicativo].",
+            "Falha de pagamento: [PREENCHER: prazo para regularizar após uma cobrança recusada e a consequência — por exemplo, suspensão do acesso — e se há nova tentativa de cobrança]",
+            "Cancelamento: você pode cancelar a assinatura a qualquer momento, e o acesso continua até o fim do período já pago. [PREENCHER: como cancelar e confirmar o efeito exato no fim do período pago]",
+            "Reembolso: [PREENCHER: há reembolso? em quais casos e em que prazo] [VERIFICAR COM ADVOGADO: regras de reembolso e de arrependimento aplicáveis à venda online por assinatura, no Japão e para consumidores de outros países]",
+            "Reajuste de preço: podemos alterar os preços dos planos mediante aviso prévio de [PREENCHER: prazo do aviso prévio, por exemplo número de dias]; o novo preço vale a partir da renovação seguinte ao aviso, e você pode cancelar antes dela.",
+            "Dados após o cancelamento: [PREENCHER: por quantos dias você pode exportar ou solicitar os seus dados depois do cancelamento e em quanto tempo os dados são excluídos depois disso. Hoje não há exportação completa pelo aplicativo]",
+          ],
+        },
+        {
+          type: "p",
+          text: `Os pagamentos são processados por um provedor de cobrança de terceiros (ver a Política de Privacidade, ${LEGAL_PATHS.privacy}). As informações exigidas pela Lei de Transações Comerciais Específicas do Japão (vendedor, preços, pagamento e cancelamento) estão na página 特定商取引法に基づく表記 (${LEGAL_PATHS.tokushoho}).`,
+        },
       ],
     },
     {

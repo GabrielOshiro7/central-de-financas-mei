@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { LEGAL_DOCUMENTS } from "@/content/legal";
-import { LEGAL_DOCS_DRAFT, PRIVACY_POLICY_VERSION, TERMS_VERSION, COOKIE_NOTICE_COOKIE } from "@/content/legal/meta";
+import { LEGAL_DOCS_DRAFT, PRIVACY_POLICY_VERSION, TERMS_VERSION, TOKUSHOHO_VERSION, COOKIE_NOTICE_COOKIE } from "@/content/legal/meta";
 import { STORAGE_INVENTORY } from "@/content/legal/cookieInventory";
 import { findLegalMarkers, legalDocumentStrings, type LegalDocument } from "@/content/legal/types";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/session";
@@ -66,8 +66,8 @@ describe("documentos legais reais", () => {
     if (hasMarkers) expect(LEGAL_DOCS_DRAFT).toBe(true);
   });
 
-  it("as três páginas existem, com versão e vigência, e a Política e os Termos têm marcadores a revisar", () => {
-    expect(LEGAL_DOCUMENTS.map((d) => d.slug)).toEqual(["privacidade", "termos", "cookies"]);
+  it("as quatro páginas existem, com versão e vigência, e a Política e os Termos têm marcadores a revisar", () => {
+    expect(LEGAL_DOCUMENTS.map((d) => d.slug)).toEqual(["privacidade", "termos", "cookies", "tokushoho"]);
     for (const d of LEGAL_DOCUMENTS) {
       expect(d.version).toMatch(/^\d+\.\d+/);
       expect(d.effectiveDate.length).toBeGreaterThan(0);
@@ -90,6 +90,75 @@ describe("documentos legais reais", () => {
     expect(terms).toMatch(/\[PREENCHER: foro/);
     expect(terms).toMatch(/\[PREENCHER: idade mínima/);
     expect(terms).toMatch(/\[VERIFICAR COM ADVOGADO:[^\]]*limitação de responsabilidade/);
+  });
+
+  it("os Termos têm a seção de assinatura (preços, teste, falha de pagamento, reembolso, dados) e remetem ao /tokushoho", () => {
+    const terms = LEGAL_DOCUMENTS[1];
+    expect(terms.sections.find((s) => s.id === "assinatura")?.title).toBe("6. Assinatura");
+    expect(terms.sections.some((s) => s.id === "planos")).toBe(false); // substituiu "Planos e pagamento"
+    const text = legalDocumentStrings(terms).join("\n");
+    expect(text).toMatch(/\[PREENCHER: planos disponíveis/);
+    expect(text).toMatch(/\[PREENCHER: existe período de teste/);
+    expect(text).toMatch(/\[PREENCHER: prazo para regularizar/);
+    expect(text).toMatch(/\[VERIFICAR COM ADVOGADO:[^\]]*reembolso/);
+    expect(text).toMatch(/\[PREENCHER: prazo do aviso prévio/);
+    expect(text).toMatch(/\[PREENCHER: por quantos dias/);
+    expect(text).toContain("/tokushoho");
+  });
+
+  it("a Política cita o provedor de cobrança como [PREENCHER] e diz que o cartão não é guardado pelo Serviço", () => {
+    const privacy = legalDocumentStrings(LEGAL_DOCUMENTS[0]).join("\n");
+    expect(privacy).toMatch(/\[PREENCHER: nome do provedor\]/);
+    expect(privacy).toMatch(/\[PREENCHER: provedor de cobrança e país\]/);
+    expect(privacy).toContain("NÃO são armazenados pelo Serviço");
+    expect(privacy).not.toMatch(/serviços de pagamento ou de inteligência artificial/); // a frase antiga ("sem pagamento") saiu
+  });
+});
+
+describe("página /tokushoho (特定商取引法に基づく表記)", () => {
+  const tokushoho = LEGAL_DOCUMENTS.find((d) => d.slug === "tokushoho")!;
+  const table = tokushoho.sections.flatMap((s) => s.blocks).find((b) => b.type === "bilingual-table");
+
+  it("tem o título em japonês e o subtítulo em português", () => {
+    expect(tokushoho.title).toBe("特定商取引法に基づく表記");
+    expect(tokushoho.subtitle).toBe("Informações conforme a Lei de Transações Comerciais Específicas (Japão)");
+    expect(tokushoho.version).toBe(TOKUSHOHO_VERSION);
+  });
+
+  it("lista os 12 itens da lei, em japonês e em português, na ordem", () => {
+    if (table?.type !== "bilingual-table") throw new Error("tabela bilíngue ausente");
+    expect(table.rows.map((r) => r.jp)).toEqual([
+      "販売事業者",
+      "運営責任者",
+      "所在地",
+      "電話番号",
+      "メールアドレス",
+      "販売価格",
+      "商品代金以外の必要料金",
+      "支払方法",
+      "支払時期",
+      "役務の提供時期",
+      "返品・キャンセル",
+      "動作環境",
+    ]);
+    for (const row of table.rows) {
+      expect([row.jp, row.pt, row.jpValue, row.ptValue].every((t) => t.trim().length > 0)).toBe(true);
+      // Nenhum dado inventado: todo conteúdo é marcador a preencher, nos dois idiomas.
+      expect(row.jpValue).toMatch(/\[PREENCHER:/);
+      expect(row.ptValue).toMatch(/\[PREENCHER:/);
+    }
+  });
+
+  it("o telefone só pode ser omitido se o advogado aprovar (marcador nos dois idiomas)", () => {
+    if (table?.type !== "bilingual-table") throw new Error("tabela bilíngue ausente");
+    const phone = table.rows.find((r) => r.jp === "電話番号")!;
+    expect(phone.jpValue).toMatch(/\[VERIFICAR COM ADVOGADO:/);
+    expect(phone.ptValue).toMatch(/\[VERIFICAR COM ADVOGADO:[^\]]*sem demora mediante solicitação/);
+  });
+
+  it("os marcadores da página são detectados (a faixa de rascunho vale para ela também)", () => {
+    expect(findLegalMarkers(tokushoho).length).toBeGreaterThan(12 * 2);
+    expect(LEGAL_DOCS_DRAFT).toBe(true);
   });
 });
 

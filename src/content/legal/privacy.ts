@@ -10,7 +10,8 @@ import type { LegalDocument } from "@/content/legal/types";
 
 // RASCUNHO para revisao juridica. Estruturada para a Lei de Protecao de Informacoes
 // Pessoais do Japao (APPI). Todo fato vem do codigo (ver inventario da Fase 0); o que o
-// codigo nao diz vira [PREENCHER: ...].
+// codigo nao diz vira [PREENCHER: ...]. O Servico sera pago (assinatura) e ainda nao ha
+// provedor de cobranca: o que for dele (nome, dados guardados) fica como [PREENCHER].
 export const PRIVACY_POLICY: LegalDocument = {
   slug: "privacidade",
   title: "Política de Privacidade",
@@ -47,6 +48,7 @@ export const PRIVACY_POLICY: LegalDocument = {
             "Preferências: tema escolhido (claro ou escuro).",
             "Aceite destes documentos: data e hora e as versões dos Termos de Serviço e desta Política aceitas no cadastro (somente para contas criadas depois dessa função existir).",
             "Dados de sessão: identificador da sessão (guardado só como hash), datas de criação, expiração e última atividade.",
+            "Assinatura (o Serviço é pago): apenas o necessário para a assinatura — status, plano, datas e o identificador do cliente no provedor de cobrança. [PREENCHER: confirmar a lista exata quando a cobrança for implementada; hoje o aplicativo ainda não guarda dados de assinatura]",
           ],
         },
         { type: "p", text: "2.2 Dados financeiros e operacionais que você registra no Serviço:" },
@@ -90,6 +92,7 @@ export const PRIVACY_POLICY: LegalDocument = {
           items: [
             "Criar e manter a sua conta e autenticar o seu acesso.",
             "Prestar o Serviço: controle financeiro, vendas, clientes, agenda, indicadores e insights.",
+            "Gerenciar a assinatura: saber qual plano está ativo, até quando e se há pagamento pendente.",
             "Lembrar as suas preferências (por exemplo, o tema).",
             "Proteger a conta e o Serviço contra acesso indevido e abuso (sessões com expiração, confirmação de senha em ações sensíveis, limite de tentativas).",
             "Cumprir obrigações legais e responder a solicitações dos titulares.",
@@ -107,23 +110,35 @@ export const PRIVACY_POLICY: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: "Conforme o levantamento do funcionamento atual do Serviço: o navegador do usuário não envia informações a domínios de terceiros. Não há ferramentas de análise de acesso, publicidade, rastreadores, mapas, redes de distribuição de conteúdo (CDN), serviços de pagamento ou de inteligência artificial de terceiros. As fontes de texto são empacotadas no próprio Serviço, e não carregadas de servidores externos.",
+          text: "Conforme o levantamento do funcionamento atual do Serviço: o navegador do usuário não envia informações a domínios de terceiros. Não há ferramentas de análise de acesso, publicidade, rastreadores, mapas, redes de distribuição de conteúdo (CDN) ou serviços de inteligência artificial de terceiros. As fontes de texto são empacotadas no próprio Serviço, e não carregadas de servidores externos. A única mudança prevista é o provedor de cobrança, descrito abaixo, que entrará quando a assinatura for implementada.",
         },
         {
           type: "table",
           head: ["Destino", "Informação enviada", "Finalidade"],
           rows: [
-            ["Domínios de terceiros a partir do navegador", "Nenhuma", "—"],
+            ["Domínios de terceiros a partir do navegador", "Nenhuma hoje (ver o provedor de cobrança abaixo)", "—"],
             ["Serviços de análise, publicidade ou IA de terceiros", "Nenhuma", "—"],
+            ["Provedor de cobrança: [PREENCHER: nome do provedor e país]", "[PREENCHER: quais dados são enviados — por exemplo, e-mail e dados de pagamento informados diretamente ao provedor]", "Processar o pagamento da assinatura"],
+          ],
+        },
+        { type: "p", text: "Pagamentos da assinatura:" },
+        {
+          type: "ul",
+          items: [
+            "Os pagamentos serão processados por um provedor terceiro de cobrança: [PREENCHER: nome do provedor].",
+            "Os dados do cartão são enviados diretamente ao provedor e NÃO são armazenados pelo Serviço.",
+            "O Serviço guarda apenas o necessário para a assinatura: status, plano, datas e o identificador do cliente no provedor. [PREENCHER: confirmar quando a cobrança for implementada]",
+            "O provedor trata os dados do pagamento conforme a política de privacidade dele: [PREENCHER: endereço da política do provedor e país onde os dados são processados].",
           ],
         },
         {
           type: "p",
-          text: "Provedores de infraestrutura que processam informações em nosso nome (hospedagem do aplicativo, banco de dados, envio de e-mails de recuperação de senha, cópias de segurança):",
+          text: "Provedores que processam informações em nosso nome (cobrança da assinatura, hospedagem do aplicativo, banco de dados, envio de e-mails de recuperação de senha, cópias de segurança):",
         },
         {
           type: "ul",
           items: [
+            "Cobrança da assinatura: [PREENCHER: provedor de cobrança e país]",
             "Hospedagem do aplicativo: [PREENCHER: provedor e país]",
             "Banco de dados: [PREENCHER: provedor e país]",
             "Envio de e-mails: [PREENCHER: provedor e país — hoje o link de recuperação de senha apenas é registrado no log do servidor, não é enviado por e-mail]",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LEGAL_PATHS } from "@/content/legal/meta";
+import { LEGAL_PATHS, TOKUSHOHO_LINK_LABEL } from "@/content/legal/meta";
 
 // Links para os documentos legais (rodape da landing, telas de login/cadastro/recuperacao,
 // Configuracoes e as proprias paginas legais). `newTab`: abre em nova aba (ex.: no
@@ -27,6 +27,9 @@ export function LegalLinks({
       </Link>
       <Link href={LEGAL_PATHS.cookies} className={link} {...target}>
         Cookies
+      </Link>
+      <Link href={LEGAL_PATHS.tokushoho} lang="ja" className={link} {...target}>
+        {TOKUSHOHO_LINK_LABEL}
       </Link>
     </nav>
   );

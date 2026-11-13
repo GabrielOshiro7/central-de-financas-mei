@@ -12,13 +12,20 @@ export type LegalBlock =
   // Tabela de cookies/armazenamento local, gerada do inventario (cookieInventory.ts).
   | { type: "cookie-table" }
   // Tabela generica (cabecalho + linhas).
-  | { type: "table"; head: string[]; rows: string[][] };
+  | { type: "table"; head: string[]; rows: string[][] }
+  // Tabela bilingue (japones + portugues) da pagina /tokushoho: um item por linha, com o
+  // nome do item e o conteudo nos dois idiomas.
+  | { type: "bilingual-table"; rows: { jp: string; pt: string; jpValue: string; ptValue: string }[] };
 
 export type LegalSection = { id: string; title: string; blocks: LegalBlock[] };
 
 export type LegalDocument = {
-  slug: "privacidade" | "termos" | "cookies";
+  slug: "privacidade" | "termos" | "cookies" | "tokushoho";
   title: string;
+  // Subtitulo opcional (ex.: traducao do titulo, na pagina /tokushoho).
+  subtitle?: string;
+  // Idioma do titulo quando difere do portugues do restante da pagina (ex.: "ja").
+  titleLang?: string;
   version: string;
   // "AAAA-MM-DD" ou um marcador [PREENCHER: ...] enquanto nao definida.
   effectiveDate: string;
@@ -38,6 +45,8 @@ function blockStrings(block: LegalBlock): string[] {
       return block.items;
     case "table":
       return [...block.head, ...block.rows.flat()];
+    case "bilingual-table":
+      return block.rows.flatMap((row) => [row.jp, row.pt, row.jpValue, row.ptValue]);
     case "cookie-table":
       return [];
   }
@@ -47,6 +56,7 @@ function blockStrings(block: LegalBlock): string[] {
 export function legalDocumentStrings(doc: LegalDocument): string[] {
   return [
     doc.title,
+    doc.subtitle ?? "",
     doc.version,
     doc.effectiveDate,
     doc.intro ?? "",
