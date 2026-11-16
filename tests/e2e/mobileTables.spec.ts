@@ -80,13 +80,10 @@ async function createClientAndSale(page: Page, label: string) {
 }
 
 // Rótulo da coluna lido por leitor de tela (span .rt-sr), não só o visual.
-// `timeout`: depois de uma acao que chama a API pela primeira vez (ex.: Pausar),
-// o `next dev` compila a rota a frio e o router.refresh() leva mais que os 5 s
-// padrao da assercao.
-async function expectCellLabel(card: Locator, label: string, value: RegExp | string, timeout?: number) {
+async function expectCellLabel(card: Locator, label: string, value: RegExp | string) {
   const cell = card.getByRole("cell", { name: new RegExp(`^${label}: `) });
   await expect(cell).toBeVisible();
-  await expect(cell).toContainText(value, { timeout });
+  await expect(cell).toContainText(value);
 }
 
 test.describe("tabelas em tela estreita (390px)", () => {
@@ -173,7 +170,7 @@ test.describe("tabelas em tela estreita (390px)", () => {
     await expectCellLabel(recurringCard, "Valor", /900/);
     await expectCellLabel(recurringCard, "Frequência", /Mensal/);
     await recurringCard.getByRole("button", { name: "Pausar" }).click();
-    await expectCellLabel(recurringCard, "Status", "Pausada", 30_000);
+    await expectCellLabel(recurringCard, "Status", "Pausada");
   });
 
   test("4. lançamentos recorrentes: card e Pausar", async ({ page }) => {
@@ -199,7 +196,7 @@ test.describe("tabelas em tela estreita (390px)", () => {
     await expectCellLabel(card, "Valor", /50/);
     await expectCellLabel(card, "Tipo", "Despesa");
     await card.getByRole("button", { name: "Pausar" }).click();
-    await expectCellLabel(card, "Status", "Pausada", 30_000);
+    await expectCellLabel(card, "Status", "Pausada");
   });
 
   test("5. clientes: card e Ver abre o cliente", async ({ page }) => {

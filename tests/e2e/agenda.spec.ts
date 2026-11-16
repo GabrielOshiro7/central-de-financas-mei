@@ -450,7 +450,7 @@ test.describe("Agenda - legado com horário (TIMED, gravado no banco)", () => {
     await expect(dialog.getByTestId("undo-received-amount")).toContainText("R$ 80,00");
     await dialog.getByLabel("Concluí por engano").check();
     await dialog.getByRole("button", { name: "Desfazer conclusão" }).click();
-    await expect(dialog).toHaveCount(0, { timeout: 30_000 }); // 1a chamada da rota /undo compila no `next dev`
+    await expect(dialog).toHaveCount(0);
     await expect(first.getByText("Agendado", { exact: true })).toBeVisible();
     await expect(first.getByRole("button", { name: "Concluir" })).toBeVisible();
 
@@ -501,11 +501,10 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
     return dialog;
   }
 
-  // O dialogo fecha quando a rota responde. Espera maior: a primeira chamada
-  // da rota /undo no `next dev` inclui a compilacao dela.
+  // O dialogo fecha quando a rota responde (as rotas ja compiladas pelo aquecimento do globalSetup).
   async function confirmUndo(page: Page) {
     await confirmDialog(page).getByRole("button", { name: "Desfazer conclusão" }).click();
-    await expect(confirmDialog(page)).toHaveCount(0, { timeout: 30_000 });
+    await expect(confirmDialog(page)).toHaveCount(0);
   }
 
   test("concluir agora -> desfazer (o cliente não veio): Caixa e receita do dia voltam ao valor anterior", async ({ page }) => {

@@ -10,7 +10,7 @@ import { materializeInProcessTz } from "../../helpers/materializeInProcessTz";
 // empresa. O incidente original: um servidor em UTC materializou moldes que
 // o servidor em JST ja tinha gerado, e a chave antiga (molde, instante) nao
 // reconheceu a "meia-noite" de outro fuso -> duplicatas. Aqui a mesma
-// materializacao roda em PROCESSOS com TZ diferentes (filho via tsx) e no
+// materializacao roda em PROCESSOS com TZ diferentes (workers por fuso) e no
 // processo do proprio Vitest (que a matriz roda em UTC/Tokyo/New_York) - o
 // resultado tem de ser sempre UMA linha por dia. Desde a F6d nao ha mais
 // instante gravado (occurred_at/due_date): o dia gravado (occurredOn/dueOn) e
@@ -18,12 +18,11 @@ import { materializeInProcessTz } from "../../helpers/materializeInProcessTz";
 // intervalos de 167 h/169 h no horario de verao sairam junto com as colunas.
 const { Decimal } = Prisma;
 
-// So nos casos que sobem PROCESSO FILHO (materializeInProcessTz, via tsx):
-// cada filho carrega o tsx e o Prisma do zero, e com ate dois filhos por
-// caso, a suite inteira em paralelo e o disco lento o caso passou do
-// limite padrao de 5 s do Vitest (6,2 s observado na Agenda A4) sem nenhuma
-// falha de assercao. Os demais casos mantem o limite padrao.
-const CHILD_PROCESS_TIMEOUT_MS = 20_000;
+// Os PROCESSOS com TZ proprio (UTC, New York, Tokyo) sao workers de longa duracao subidos
+// UMA vez no globalSetup do Vitest (tests/globalSetup/timeZoneWorkers.ts): cada caso so faz
+// uma chamada local a eles. Antes, cada caso subia 1-2 processos via tsx (~1 s cada, varias
+// vezes mais com a suite inteira em paralelo) e precisava de um limite de 20 s; agora todos
+// os casos rodam no limite padrao.
 
 const createdUserIds: string[] = [];
 let expenseCategoryId: string;
@@ -82,19 +81,19 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
     // 05:30 JST de 15/04 = 20:30 UTC de 14/04: madrugada de Toquio, o pior caso.
     const now = new Date("2026-04-14T20:30:00.000Z");
 
-    const first = materializeInProcessTz("UTC", "entries", businessId, userId, now);
+    const first = await materializeInProcessTz("UTC", "entries", businessId, userId, now);
     expect(first.processTimeZone).toBe("UTC");
     expect(first.created).toBe(3);
 
     const second = await materializeRecurringEntries(businessId, userId, now);
     expect(second.created).toBe(0);
 
-    const third = materializeInProcessTz("America/New_York", "entries", businessId, userId, now);
+    const third = await materializeInProcessTz("America/New_York", "entries", businessId, userId, now);
     expect(third.processTimeZone).toBe("America/New_York");
     expect(third.created).toBe(0);
 
     expect(await entryRows(mold.id)).toEqual(sameDay("2026-01-31", "2026-02-28", "2026-03-31"));
-  }, CHILD_PROCESS_TIMEOUT_MS);
+  });
 
   it("cenário do incidente: linha antiga gravada por um host em UTC (meia-noite UTC) não é duplicada pela materialização nova", async () => {
     const tz = "Asia/Tokyo";
@@ -172,11 +171,11 @@ describe("lançamentos recorrentes: uma linha por dia, qualquer que seja o fuso 
         },
       });
       const now = startOfDayInstant("2026-03-15", tz);
-      materializeInProcessTz("Asia/Tokyo", "entries", businessId, userId, now);
+      await materializeInProcessTz("Asia/Tokyo", "entries", businessId, userId, now);
       await materializeRecurringEntries(businessId, userId, now);
       expect(await entryRows(mold.id), tz).toEqual(sameDay("2026-01-01", "2026-02-01", "2026-03-01"));
     }
-  }, CHILD_PROCESS_TIMEOUT_MS);
+  });
 });
 
 describe("contas recorrentes: as mesmas propriedades", () => {
@@ -191,12 +190,12 @@ describe("contas recorrentes: as mesmas propriedades", () => {
     });
     const now = new Date("2026-01-14T20:30:00.000Z"); // 05:30 JST de 15/01; horizonte de 90 dias cobre até abril
 
-    expect(materializeInProcessTz("UTC", "bills", businessId, userId, now)).toEqual({ processTimeZone: "UTC", created: 3 });
+    expect(await materializeInProcessTz("UTC", "bills", businessId, userId, now)).toEqual({ processTimeZone: "UTC", created: 3 });
     expect((await materializeRecurringBills(businessId, clockFor({ timezone: tz }, now))).created).toBe(0);
-    expect(materializeInProcessTz("America/New_York", "bills", businessId, userId, now)).toEqual({ processTimeZone: "America/New_York", created: 0 });
+    expect(await materializeInProcessTz("America/New_York", "bills", businessId, userId, now)).toEqual({ processTimeZone: "America/New_York", created: 0 });
 
     expect(await billRows(mold.id)).toEqual(sameDay("2026-01-31", "2026-02-28", "2026-03-31"));
-  }, CHILD_PROCESS_TIMEOUT_MS);
+  });
 
   it("cenário do incidente: conta antiga com vencimento à meia-noite UTC não é duplicada", async () => {
     const tz = "Asia/Tokyo";
@@ -253,9 +252,9 @@ describe("contas recorrentes: as mesmas propriedades", () => {
         },
       });
       const now = startOfDayInstant("2026-01-02", tz);
-      materializeInProcessTz("Asia/Tokyo", "bills", businessId, userId, now);
+      await materializeInProcessTz("Asia/Tokyo", "bills", businessId, userId, now);
       await materializeRecurringBills(businessId, clockFor({ timezone: tz }, now));
       expect(await billRows(mold.id), tz).toEqual(sameDay("2026-01-10", "2026-02-10"));
     }
-  }, CHILD_PROCESS_TIMEOUT_MS);
+  });
 });

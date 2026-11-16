@@ -176,8 +176,6 @@ for (const browserTimeZone of ["America/Sao_Paulo", "UTC"]) {
     });
 
     test("datas, horarios e valores iniciais saem no fuso da empresa, sem erro de hidratacao", async ({ page }) => {
-      // Varias rotas compiladas pela primeira vez no `next dev` (ver agenda.spec.ts).
-      test.setTimeout(120_000);
       const hydrationProblems = collectHydrationProblems(page);
 
       const email = uniqueEmail("fuso-f4");

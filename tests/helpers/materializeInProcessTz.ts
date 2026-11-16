@@ -1,27 +1,23 @@
-import { spawnSync } from "node:child_process";
-import { join } from "node:path";
+import { inject } from "vitest";
+import type { TimeZoneWorkerZone } from "./timeZoneWorkers";
 
-// Roda materializeRecurringEntries/materializeRecurringBills num PROCESSO
-// FILHO com o fuso do processo = `processTimeZone` (ver materializeChild.ts).
-// Devolve o fuso que o filho realmente viu, para o teste provar que rodou nele.
-export function materializeInProcessTz(
-  processTimeZone: string,
+// Roda materializeRecurringEntries/materializeRecurringBills num PROCESSO com o fuso
+// `processTimeZone` (um worker por fuso, subido no globalSetup - ver materializeWorker.ts).
+// Devolve o fuso que o processo realmente viu, para o teste provar que rodou nele.
+export async function materializeInProcessTz(
+  processTimeZone: TimeZoneWorkerZone,
   kind: "entries" | "bills",
   businessId: string,
   userId: string,
   now: Date
-): { processTimeZone: string; created: number } {
-  const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
-  const child = join(process.cwd(), "tests", "helpers", "materializeChild.ts");
-  const result = spawnSync(process.execPath, [tsxCli, child, kind, businessId, userId, now.toISOString()], {
-    cwd: process.cwd(),
-    env: { ...process.env, TZ: processTimeZone },
-    encoding: "utf8",
-    timeout: 60_000,
+): Promise<{ processTimeZone: string; created: number }> {
+  const port = inject("timeZoneWorkerPorts")[processTimeZone];
+  if (!port) throw new Error(`Sem worker para o fuso ${processTimeZone} (ver tests/helpers/timeZoneWorkers.ts).`);
+  const res = await fetch(`http://127.0.0.1:${port}/`, {
+    method: "POST",
+    body: JSON.stringify({ kind, businessId, userId, now: now.toISOString() }),
   });
-  if (result.status !== 0) {
-    throw new Error(`materializeChild falhou (TZ=${processTimeZone}): ${result.stderr || result.error}`);
-  }
-  const lastLine = result.stdout.trim().split("\n").pop()!;
-  return JSON.parse(lastLine);
+  const body = (await res.json()) as { processTimeZone: string; created: number; error?: string };
+  if (!res.ok) throw new Error(`worker ${processTimeZone} falhou: ${body.error}`);
+  return { processTimeZone: body.processTimeZone, created: body.created };
 }

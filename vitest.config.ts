@@ -11,6 +11,9 @@ export default defineConfig({
     // demais.
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
+    // Um processo por fuso (UTC/New York/Tokyo) para os testes de idempotencia dos recorrentes,
+    // subido uma vez antes dos arquivos de teste.
+    globalSetup: ["./tests/globalSetup/timeZoneWorkers.ts"],
     include: [
       "tests/unit/**/*.test.ts",
       "tests/unit/**/*.test.tsx",

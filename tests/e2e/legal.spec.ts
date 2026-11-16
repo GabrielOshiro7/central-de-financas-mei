@@ -60,7 +60,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
       { path: "/tokushoho", title: "特定商取引法に基づく表記", section: "表示事項 / Informações do vendedor", version: "0.1" },
     ];
     for (const p of pages) {
-      const res = await page.goto(p.path);
+      const res = await gotoHydrated(page, p.path);
       expect(res?.status()).toBe(200); // sem redirecionamento para o login
       await expect(page).toHaveURL(new RegExp(`${p.path}$`));
       await expect(page.getByRole("heading", { level: 1, name: p.title })).toBeVisible();
@@ -74,10 +74,10 @@ test.describe("páginas legais (públicas, rascunho)", () => {
 
   test("a Política e os Termos mostram os campos a preencher e as notas para o advogado", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
-    await page.goto("/privacidade");
+    await gotoHydrated(page, "/privacidade");
     await expect(page.getByText("[PREENCHER: e-mail de contato de privacidade]")).toBeVisible();
     await expect(page.getByText(/\[VERIFICAR COM ADVOGADO:[^\]]*LGPD/)).toBeVisible();
-    await page.goto("/termos");
+    await gotoHydrated(page, "/termos");
     await expect(page.getByText(/\[PREENCHER: lei aplicável/)).toBeVisible();
     await expect(page.getByText(/\[PREENCHER: idade mínima/).first()).toBeVisible();
     await context.close();
@@ -85,7 +85,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
 
   test("os Termos têm a seção de assinatura (substituiu planos/pagamento) e a Política, o provedor de cobrança", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
-    await page.goto("/termos");
+    await gotoHydrated(page, "/termos");
     await expect(page.getByRole("heading", { level: 2, name: "6. Assinatura" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Planos e pagamento/ })).toHaveCount(0);
     for (const marker of [/\[PREENCHER: planos disponíveis/, /\[PREENCHER: mensal, anual ou ambos\]/, /\[PREENCHER: existe período de teste/, /\[PREENCHER: prazo para regularizar/, /\[PREENCHER: prazo do aviso prévio/, /\[PREENCHER: por quantos dias/]) {
@@ -96,7 +96,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
     const toTokushoho = page.locator("article").getByText(/página 特定商取引法に基づく表記/);
     await expect(toTokushoho).toBeVisible();
 
-    await page.goto("/privacidade");
+    await gotoHydrated(page, "/privacidade");
     await expect(page.getByText("Os dados do cartão são enviados diretamente ao provedor e NÃO são armazenados pelo Serviço.")).toBeVisible();
     await expect(page.getByText("[PREENCHER: nome do provedor].")).toBeVisible();
     await expect(page.getByText(/Cobrança da assinatura: \[PREENCHER: provedor de cobrança e país\]/)).toBeVisible();
@@ -105,7 +105,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
 
   test("/tokushoho: título em japonês, subtítulo em português e os 12 itens em japonês e português, todos a preencher", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
-    const res = await page.goto("/tokushoho");
+    const res = await gotoHydrated(page, "/tokushoho");
     expect(res?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("特定商取引法に基づく表記");
     await expect(page.getByText("Informações conforme a Lei de Transações Comerciais Específicas (Japão)")).toBeVisible();
@@ -144,7 +144,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
 
   test("/cookies: a tabela lista exatamente o que o sistema grava, sem análise nem publicidade", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
-    await page.goto("/cookies");
+    await gotoHydrated(page, "/cookies");
     const rows = page.getByTestId("cookie-table").locator("tbody tr");
     await expect(rows).toHaveCount(4);
     for (const name of ["session", "theme", "cookie-notice", "sidebar-collapsed"]) {
@@ -170,7 +170,7 @@ test.describe("links dos documentos legais", () => {
     }
     // Também no rodapé de cada página legal.
     for (const path of ["/privacidade", "/termos", "/cookies", "/tokushoho"]) {
-      await page.goto(path);
+      await gotoHydrated(page, path);
       await expect(legalNav(page).getByRole("link", { name: "特定商取引法に基づく表記" })).toHaveAttribute("href", "/tokushoho");
     }
     await gotoHydrated(page, "/login");
