@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import {
   BUSINESS_TYPE_OPTIONS,
   CURRENCY_OPTIONS,

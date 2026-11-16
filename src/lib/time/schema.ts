@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { isValidTimeZone } from "@/lib/time/zoned";
 import { isSupportedCountry, isZoneOfCountry } from "@/lib/time/countryZones";
 

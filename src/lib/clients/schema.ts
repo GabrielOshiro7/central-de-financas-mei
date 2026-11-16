@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 const clientTypeValues = ["PESSOA_FISICA", "PESSOA_JURIDICA"] as const;
 

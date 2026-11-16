@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import type { Currency } from "@prisma/client";
 import { isIntegerCurrency } from "@/lib/money";
 import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";

@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
+import { staticSecurityHeaders } from "./src/lib/security/headers";
 
 const nextConfig: NextConfig = {
+  // Nao anunciar o framework (X-Powered-By: Next.js).
+  poweredByHeader: false,
   // So o servidor do Playwright define NEXT_DIST_DIR (".next-test"): dois
   // `next dev` nao compartilham a mesma pasta de build (lock em .next/dev).
   distDir: process.env.NEXT_DIST_DIR || ".next",
@@ -22,6 +25,11 @@ const nextConfig: NextConfig = {
   // mesmo conteudo) - a raiz do modulo cai na primeira aba. Temporario (307)
   // de proposito: o destino pode mudar, e um 308 ficaria em cache no
   // navegador/CDN. A query string (ex.: ?period=LAST_MONTH) e repassada.
+  // Cabecalhos de seguranca fixos em TODAS as respostas (paginas, API e arquivos estaticos). A CSP
+  // (com nonce por requisicao) e montada em src/proxy.ts. HSTS so em producao (ver headers.ts).
+  async headers() {
+    return [{ source: "/:path*", headers: staticSecurityHeaders({ isProduction: process.env.NODE_ENV === "production" }) }];
+  },
   async redirects() {
     return [{ source: "/financeiro", destination: "/financeiro/receitas", permanent: false }];
   },

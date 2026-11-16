@@ -1,8 +1,9 @@
 import crypto from "crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createUserSession } from "@/lib/auth/cookies";
+import { cleanupExpiredAuthDataSafely } from "@/lib/auth/cleanup";
 import { rateLimit } from "@/lib/auth/rateLimit";
 import { getClientIp } from "@/lib/http";
 import { loginSchema, normalizeEmail } from "@/lib/validation/auth";
@@ -58,6 +59,12 @@ export async function POST(request: Request) {
   }
 
   await createUserSession(user.id, rememberMe);
+
+  // Limpeza oportunista de sessoes/links vencidos de todos os usuarios. after(): roda DEPOIS de a
+  // resposta ser enviada (nao atrasa o login) e o Next.js garante que termine, inclusive em
+  // plataformas serverless (waitUntil na Vercel). Nunca lanca (falha so gera log). Ver
+  // src/lib/auth/cleanup.ts.
+  after(() => cleanupExpiredAuthDataSafely());
 
   // O tema salvo no banco passa a valer neste navegador: atualiza o cookie "theme" e
   // devolve o tema para o cliente aplicar na hora (sem escolha salva: nada muda).

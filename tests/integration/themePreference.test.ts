@@ -9,6 +9,9 @@ import { POST as postLogin } from "@/app/api/auth/login/route";
 // tema salvo (cookie "theme" + corpo). Sessao simulada, como nas demais integracoes
 // de rota; o login real chama createUserSession (next/headers), tambem simulado.
 const session = vi.hoisted(() => ({ user: null as null | { id: string; name: string; email: string; themePreference: null } }));
+// after() do Next.js so existe numa requisicao real (fora dela lanca): aqui a tarefa agendada (a limpeza de
+// sessoes/links vencidos) nao roda, para nao mexer no banco compartilhado. Ver authCleanup.test.ts.
+vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), after: () => {} }));
 vi.mock("@/lib/auth/cookies", () => ({
   getCurrentUser: async () => session.user,
   createUserSession: async () => new Date(),

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/db";
 import { rateLimit } from "@/lib/auth/rateLimit";
+import { cleanupExpiredAuthDataSafely } from "@/lib/auth/cleanup";
 import { getClientIp } from "@/lib/http";
 import {
   RESET_TOKEN_DURATION_MS,
@@ -50,6 +51,11 @@ export async function POST(request: Request) {
         expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
       },
     });
+
+    // Limpeza oportunista de sessoes/links vencidos de todos os usuarios. after(): roda DEPOIS de
+    // a resposta ser enviada (nao atrasa a resposta) e o Next.js garante que termine, inclusive
+    // em plataformas serverless. Nunca lanca (falha so gera log). Ver src/lib/auth/cleanup.ts.
+    after(() => cleanupExpiredAuthDataSafely());
 
     const resetUrl = `${process.env.APP_URL ?? "http://localhost:3000"}/reset-password/${rawToken}`;
     await emailService.sendPasswordResetEmail(user.email, resetUrl);

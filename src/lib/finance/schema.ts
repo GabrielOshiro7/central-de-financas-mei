@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 import { isIntegerCurrency } from "@/lib/money";
 import type { Currency } from "@prisma/client";
 

@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "@/lib/zod";
 
 // Tema do app (claro/escuro). Um unico mecanismo: o atributo `data-theme` na <html>
 // (casa com o `@custom-variant dark` de globals.css). O SERVIDOR le o cookie "theme"

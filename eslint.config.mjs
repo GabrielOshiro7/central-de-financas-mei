@@ -14,6 +14,17 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Zod so entra por @/lib/zod (JIT desligado no navegador: evita violacao de CSP, ver src/lib/zod.ts).
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/zod.ts"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        { paths: [{ name: "zod", message: 'Importe { z } de "@/lib/zod" (JIT do Zod desligado no navegador por causa da CSP).', allowTypeImports: true }] },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

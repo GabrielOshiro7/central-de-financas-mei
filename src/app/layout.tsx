@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { COOKIE_NOTICE_COOKIE } from "@/content/legal/meta";
 import { CookieNotice } from "@/components/legal/CookieNotice";
@@ -43,6 +43,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   // (sem script que troque depois - nada de "piscar"). Padrao CLARO; o app nao segue
   // prefers-color-scheme. Ver src/lib/theme.ts.
   const cookieStore = await cookies();
+  // Nonce da CSP desta requisicao (gerado em src/proxy.ts). O Next.js ja o aplica aos seus
+  // scripts; o <Script> inline abaixo recebe-o explicitamente.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const theme = parseTheme(cookieStore.get(THEME_COOKIE)?.value);
   // Aviso de cookies na primeira visita; "Entendi" grava o cookie e o servidor deixa de renderiza-lo.
   const showCookieNotice = cookieStore.get(COOKIE_NOTICE_COOKIE)?.value !== "1";
@@ -80,6 +83,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Script
           id="sidebar-init-script"
           strategy="beforeInteractive"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: SIDEBAR_INIT_SCRIPT }}
         />
         <ThemeProvider initialTheme={theme}>
