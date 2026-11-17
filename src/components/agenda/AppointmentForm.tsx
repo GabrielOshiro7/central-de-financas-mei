@@ -1,5 +1,6 @@
 "use client";
 
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
@@ -297,7 +298,7 @@ export function AppointmentForm({
           rows={3}
           className={inputClass}
         />
-        <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">Não registre informações de saúde ou dados sensíveis do cliente.</p>
+        <SensitiveDataNotice />
       </section>
 
       {error && (

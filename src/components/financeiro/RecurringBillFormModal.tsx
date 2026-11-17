@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, RecurringBillFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { BillDirection } from "@/lib/finance/bills/status";
@@ -282,6 +283,7 @@ export function RecurringBillFormModal({
           <FormField
             id="bankAccount"
             label="Conta bancária/caixa (opcional)"
+            hint="Use só um apelido (ex.: Caixa, Conta principal). Não digite o número da conta."
             value={bankAccount}
             onChange={(e) => setBankAccount(e.target.value)}
           />
@@ -296,6 +298,7 @@ export function RecurringBillFormModal({
           <FormField
             id="documentNumber"
             label="Número/documento (opcional)"
+            hint="Número da nota ou do boleto, só para você localizar a conta."
             value={documentNumber}
             onChange={(e) => setDocumentNumber(e.target.value)}
           />
@@ -311,6 +314,7 @@ export function RecurringBillFormModal({
               rows={2}
               className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
+            <SensitiveDataNotice />
           </div>
 
           {error && (

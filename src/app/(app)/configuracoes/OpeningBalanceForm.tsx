@@ -72,6 +72,7 @@ export function OpeningBalanceForm({ data, currency }: { data: OpeningBalanceDat
       <MoneyField
         id="openingBalance"
         label="Saldo inicial"
+        hint="Usado só para calcular a posição do seu caixa."
         currency={currency}
         allowNegative
         value={openingBalance}

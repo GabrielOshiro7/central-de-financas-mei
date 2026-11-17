@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { INACTIVITY_TIMEOUT_MINUTES } from "@/lib/auth/sessionPolicy";
+import { describeError } from "@/lib/logging";
 
 // Limpeza OPORTUNISTA de sessoes e links de recuperacao de senha vencidos (sem agendador, no
 // padrao do projeto: o trabalho pega carona em acoes que ja acontecem). Disparada ao concluir
@@ -60,7 +61,7 @@ export async function cleanupExpiredAuthDataSafely(): Promise<AuthCleanupResult 
   try {
     return await cleanupExpiredAuthData();
   } catch (error) {
-    console.error("[auth-cleanup] falha ao limpar sessoes/links vencidos (ignorada):", error);
+    console.error(`[auth-cleanup] falha ao limpar sessoes/links vencidos (ignorada): ${describeError(error)}`);
     return null;
   }
 }

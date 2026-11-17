@@ -59,6 +59,7 @@ export function ProfileForm({ user }: { user: { name: string; email: string } })
       <FormField
         id="email"
         label="E-mail"
+        hint="Usado para entrar na sua conta e recuperar a senha."
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}

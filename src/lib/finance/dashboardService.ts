@@ -41,6 +41,7 @@ import { getSalesSummary, getTopClients, type SalesSummary, type TopClientEntry 
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import type { InsightCardData } from "@/components/insights/InsightCard";
 import type { BusinessClock } from "@/lib/time/zoned";
+import { describeError } from "@/lib/logging";
 
 type Decimal = Prisma.Decimal;
 
@@ -182,7 +183,7 @@ export async function getDashboardData(
     // sucesso - um problema isolado dos insights nunca deveria custar o
     // resto do dashboard.
     getInsightsForBusiness(businessId, clock).catch((err) => {
-      console.error("[dashboard] falha ao gerar/carregar insights, seguindo sem eles:", err);
+      console.error(`[dashboard] falha ao gerar/carregar insights, seguindo sem eles: ${describeError(err)}`);
       return [];
     }),
   ]);

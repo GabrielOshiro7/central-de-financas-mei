@@ -10,23 +10,14 @@ export async function POST() {
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
 
-  const hasRevenueAnswer =
-    business?.businessType === "OUTRO"
-      ? Boolean(business.revenueModelOther)
-      : Boolean(business?.revenueModel && business.revenueModel.length > 0);
-
-  const isComplete =
-    Boolean(business?.businessType) &&
-    hasRevenueAnswer &&
-    Boolean(business?.name) &&
-    Boolean(business?.yearsInBusiness) &&
-    Boolean(business?.employeeCount) &&
-    Boolean(business?.currency) &&
-    business?.averageMonthlyRevenue != null;
+  // So o nome e a moeda sao necessarios. Tipo de negocio, modelo de receita, tempo de existencia,
+  // numero de pessoas e faturamento medio sao opcionais (so informacao de perfil, nenhuma funcao do
+  // sistema os usa).
+  const isComplete = Boolean(business?.name) && Boolean(business?.currency);
 
   if (!business || !isComplete) {
     return NextResponse.json(
-      { error: "Complete todas as perguntas antes de continuar." },
+      { error: "Informe o nome da empresa e a moeda antes de continuar." },
       { status: 400 }
     );
   }

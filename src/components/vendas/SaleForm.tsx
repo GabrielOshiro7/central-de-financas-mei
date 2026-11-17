@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { MoneyField, MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatMoney, isIntegerCurrency } from "@/lib/money";
@@ -567,6 +568,7 @@ export function SaleForm({
           Observações (opcional)
         </label>
         <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className={inputClass} />
+        <SensitiveDataNotice />
       </section>
 
       {error && (

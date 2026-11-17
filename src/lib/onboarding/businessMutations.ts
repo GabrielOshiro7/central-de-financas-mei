@@ -53,10 +53,11 @@ export async function updateBusinessProfile(
     where: { userId },
     data: {
       name: input.name,
-      yearsInBusiness: input.yearsInBusiness,
-      employeeCount: input.employeeCount,
+      // Opcionais: em branco = nao informado (null).
+      yearsInBusiness: input.yearsInBusiness ?? null,
+      employeeCount: input.employeeCount ?? null,
       currency: input.currency,
-      averageMonthlyRevenue: new Decimal(input.averageMonthlyRevenue),
+      averageMonthlyRevenue: input.averageMonthlyRevenue === undefined ? null : new Decimal(input.averageMonthlyRevenue),
     },
     select: { id: true, name: true },
   });

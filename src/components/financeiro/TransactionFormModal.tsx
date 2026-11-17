@@ -4,6 +4,7 @@ import { useId, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType, RecurrenceFrequency } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { MoneyField } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ENTRY_TYPE_OPTIONS, NEW_ENTRY_LABELS } from "@/lib/finance/options";
@@ -479,6 +480,7 @@ export function TransactionFormModal({
               rows={2}
               className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
+            <SensitiveDataNotice />
           </div>
 
           {error && (

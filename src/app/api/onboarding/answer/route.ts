@@ -9,6 +9,7 @@ import {
   step4Schema,
   step5Schema,
   step6Schema,
+  SKIPPABLE_STEPS,
   TOTAL_STEPS,
 } from "@/lib/onboarding/schema";
 
@@ -26,7 +27,7 @@ type BusinessFields = Partial<{
   yearsInBusiness: YearsInBusiness;
   employeeCount: number;
   currency: Currency;
-  averageMonthlyRevenue: InstanceType<typeof Decimal>;
+  averageMonthlyRevenue: InstanceType<typeof Decimal> | null;
 }>;
 
 export async function POST(request: Request) {
@@ -51,6 +52,21 @@ export async function POST(request: Request) {
       { error: "Responda os passos anteriores primeiro." },
       { status: 400 }
     );
+  }
+
+  // Pular uma pergunta so de perfil (tipo, modelo de receita, tempo de existencia, numero de pessoas):
+  // avanca o passo SEM gravar nada - e nunca apaga uma resposta que ja existia. Nome e moeda nao
+  // podem ser pulados.
+  if ((body as { skip?: unknown } | null)?.skip === true) {
+    if (!SKIPPABLE_STEPS.has(step)) {
+      return NextResponse.json({ error: "Esta pergunta é obrigatória." }, { status: 400 });
+    }
+    const skipped = await prisma.business.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, onboardingStep: Math.max(currentStep, step + 1) },
+      update: { onboardingStep: Math.max(currentStep, step + 1) },
+    });
+    return NextResponse.json({ onboardingStep: skipped.onboardingStep, totalSteps: TOTAL_STEPS });
   }
 
   const fields: BusinessFields = {};
@@ -120,7 +136,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: firstIssue(parsed) }, { status: 400 });
       }
       fields.currency = parsed.data.currency;
-      fields.averageMonthlyRevenue = new Decimal(parsed.data.averageMonthlyRevenue);
+      // Faturamento medio e opcional: em branco = nao informado (null).
+      fields.averageMonthlyRevenue =
+        parsed.data.averageMonthlyRevenue === undefined ? null : new Decimal(parsed.data.averageMonthlyRevenue);
       break;
     }
   }

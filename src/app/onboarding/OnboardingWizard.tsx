@@ -19,6 +19,7 @@ import {
   type RevenueBusinessType,
 } from "@/lib/onboarding/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { SKIPPABLE_STEPS } from "@/lib/onboarding/schema";
 
 type OnboardingData = {
   businessType: BusinessType | null;
@@ -75,7 +76,8 @@ export function OnboardingWizard({
       case 5:
         return { employeeCount: Number(data.employeeCount) };
       case 6:
-        return { currency: data.currency, averageMonthlyRevenue: Number(data.averageMonthlyRevenue) };
+        // Faturamento medio e opcional: em branco, o campo nem e enviado.
+        return { currency: data.currency, averageMonthlyRevenue: data.averageMonthlyRevenue ? Number(data.averageMonthlyRevenue) : undefined };
       default:
         return {};
     }
@@ -101,8 +103,10 @@ export function OnboardingWizard({
         return Number.isInteger(n) && n >= 1;
       }
       case 6: {
+        if (!data.currency) return false;
+        if (!data.averageMonthlyRevenue) return true; // opcional
         const n = Number(data.averageMonthlyRevenue);
-        if (!data.currency || !(n > 0)) return false;
+        if (!(n > 0)) return false;
         if (data.currency === "JPY" && !Number.isInteger(n)) return false;
         return true;
       }
@@ -124,6 +128,30 @@ export function OnboardingWizard({
       const result = await res.json();
       if (!res.ok) {
         setError(result.error ?? "Não foi possível salvar sua resposta.");
+        return;
+      }
+      setStep(Math.min(result.onboardingStep ?? step + 1, FINALIZE_STEP));
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  // Pergunta so de perfil: pular avanca sem gravar nada (e sem apagar resposta anterior).
+  async function handleSkip() {
+    if (!SKIPPABLE_STEPS.has(step)) return;
+    setError(null);
+    setPending(true);
+    try {
+      const res = await fetch("/api/onboarding/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step, skip: true }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        setError(result.error ?? "Não foi possível pular esta pergunta.");
         return;
       }
       setStep(Math.min(result.onboardingStep ?? step + 1, FINALIZE_STEP));
@@ -172,6 +200,12 @@ export function OnboardingWizard({
         <div {...enterNav} className="flex flex-col gap-4">
           {renderStepContent()}
 
+          {SKIPPABLE_STEPS.has(step) && (
+            <p className="text-xs text-gray-500 dark:text-neutral-400">
+              Pergunta opcional: é só informação de perfil e nenhuma função do sistema depende dela. Você pode pular.
+            </p>
+          )}
+
           {error && (
             <p role="alert" className="text-sm text-red-600 dark:text-red-400">
               {error}
@@ -198,6 +232,16 @@ export function OnboardingWizard({
                   Continuar
                 </SubmitButtonLike>
               </div>
+              {SKIPPABLE_STEPS.has(step) && (
+                <button
+                  type="button"
+                  onClick={handleSkip}
+                  disabled={pending}
+                  className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                >
+                  Pular
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -233,7 +277,13 @@ export function OnboardingWizard({
             />
           );
         }
-        if (!data.businessType) return null;
+        if (!data.businessType) {
+          return (
+            <p className="text-sm text-gray-600 dark:text-neutral-400">
+              Você pulou o tipo do negócio, então não há opções aqui. Pule também esta pergunta ou volte e escolha o tipo.
+            </p>
+          );
+        }
         return (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2">
@@ -311,7 +361,8 @@ export function OnboardingWizard({
             </div>
             <MoneyField
               id="averageMonthlyRevenue"
-              label="Valor médio mensal"
+              label="Valor médio mensal (opcional)"
+              hint="Só informativo: não entra nos cálculos do painel. A moeda é obrigatória."
               currency={data.currency}
               value={data.averageMonthlyRevenue}
               onChange={(value) => update("averageMonthlyRevenue", value)}

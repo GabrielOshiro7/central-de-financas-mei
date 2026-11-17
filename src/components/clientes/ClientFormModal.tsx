@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientType } from "@prisma/client";
 import { FormField } from "@/components/FormField";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
@@ -196,19 +197,21 @@ export function ClientFormModal({
           <FormField
             id="document"
             label="Documento (CPF/CNPJ/outro, opcional)"
+            hint="Usado apenas para você identificar e buscar o cliente nas suas vendas."
             value={document}
             onChange={(e) => setDocument(e.target.value)}
           />
 
-          <FormField id="phone" label="Telefone (opcional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <FormField id="phone" label="Telefone (opcional)" hint="Só para você contatar o cliente; o sistema não envia mensagens." value={phone} onChange={(e) => setPhone(e.target.value)} />
 
-          <FormField id="whatsapp" label="WhatsApp (opcional)" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+          <FormField id="whatsapp" label="WhatsApp (opcional)" hint="Só para você contatar o cliente." value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
 
-          <FormField id="email" label="E-mail (opcional)" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <FormField id="email" label="E-mail (opcional)" hint="Só para você contatar o cliente; o sistema não envia e-mails a ele." type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
           <FormField
             id="addressLine"
             label="Endereço (opcional)"
+            hint="Guardado só como registro do cliente."
             value={addressLine}
             onChange={(e) => setAddressLine(e.target.value)}
           />
@@ -235,6 +238,7 @@ export function ClientFormModal({
               rows={2}
               className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
             />
+            <SensitiveDataNotice />
           </div>
 
           {error && (

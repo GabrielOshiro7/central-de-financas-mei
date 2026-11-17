@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/SubmitButton";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
 // Caminho de edicao para uma venda "travada" (ja tem parcela PAID) - so
@@ -45,12 +46,17 @@ export function SaleNotesForm({ saleId, initialNotes }: { saleId: string; initia
       <p className="text-sm text-amber-700 dark:text-amber-400">
         Esta venda já tem parcela recebida - só é possível editar as observações.
       </p>
+      <label htmlFor="saleNotes" className="block text-sm font-medium text-gray-700 dark:text-neutral-300">
+        Observações (opcional)
+      </label>
       <textarea
+        id="saleNotes"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={3}
         className="w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
       />
+      <SensitiveDataNotice />
       {error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {error}

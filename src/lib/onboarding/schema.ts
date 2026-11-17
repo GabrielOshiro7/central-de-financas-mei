@@ -59,17 +59,32 @@ export const step5Schema = z.object({
   employeeCount: z.coerce.number().int().min(1, "Informe pelo menos 1 pessoa."),
 });
 
+// Minimizacao de dados: so a moeda e necessaria (formata e valida todos os valores). Tipo de negocio,
+// modelo de receita, tempo de existencia, numero de pessoas e faturamento medio sao so informacao de
+// perfil - nenhuma funcao do sistema os le (ver o levantamento de campos) - entao sao OPCIONAIS.
+// "" / null / undefined = nao informado.
+const blankToUndefined = (value: unknown) =>
+  value === "" || value === null || value === undefined || (typeof value === "number" && Number.isNaN(value)) ? undefined : value;
+
+const optionalAverageRevenue = z.preprocess(
+  blankToUndefined,
+  z.coerce.number().positive("Informe um valor maior que zero.").optional()
+);
+
 export const step6Schema = z
   .object({
     currency: z.enum(currencyValues),
-    averageMonthlyRevenue: z.coerce.number().positive("Informe um valor maior que zero."),
+    averageMonthlyRevenue: optionalAverageRevenue,
   })
   .refine(
-    (data) => !isIntegerCurrency(data.currency) || Number.isInteger(data.averageMonthlyRevenue),
+    (data) => !isIntegerCurrency(data.currency) || data.averageMonthlyRevenue === undefined || Number.isInteger(data.averageMonthlyRevenue),
     { message: "Valores em iene não têm casas decimais.", path: ["averageMonthlyRevenue"] }
   );
 
 export const TOTAL_STEPS = 6;
+
+// Perguntas que o usuario pode PULAR (dados so de perfil). Nome (3) e moeda (6) continuam obrigatorios.
+export const SKIPPABLE_STEPS: ReadonlySet<number> = new Set([1, 2, 4, 5]);
 
 // Edicao a partir da secao "Empresa" em Configuracoes (Etapa 5.1 moveu essa
 // edicao pra la - antes era a pagina de nivel principal "Minha empresa").
@@ -79,12 +94,12 @@ export const TOTAL_STEPS = 6;
 export const businessEditSchema = z
   .object({
     name: z.string().trim().min(1, "Digite o nome da sua empresa."),
-    yearsInBusiness: z.enum(yearsValues),
-    employeeCount: z.coerce.number().int().min(1, "Informe pelo menos 1 pessoa."),
+    yearsInBusiness: z.preprocess(blankToUndefined, z.enum(yearsValues).optional()),
+    employeeCount: z.preprocess(blankToUndefined, z.coerce.number().int().min(1, "Informe pelo menos 1 pessoa.").optional()),
     currency: z.enum(currencyValues),
-    averageMonthlyRevenue: z.coerce.number().positive("Informe um valor maior que zero."),
+    averageMonthlyRevenue: optionalAverageRevenue,
   })
   .refine(
-    (data) => !isIntegerCurrency(data.currency) || Number.isInteger(data.averageMonthlyRevenue),
+    (data) => !isIntegerCurrency(data.currency) || data.averageMonthlyRevenue === undefined || Number.isInteger(data.averageMonthlyRevenue),
     { message: "Valores em iene não têm casas decimais.", path: ["averageMonthlyRevenue"] }
   );

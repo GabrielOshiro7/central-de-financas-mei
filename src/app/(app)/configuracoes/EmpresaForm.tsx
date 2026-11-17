@@ -48,10 +48,11 @@ export function EmpresaForm({
 
     const payload = {
       name,
-      yearsInBusiness,
-      employeeCount: Number(employeeCount),
+      // Opcionais (so informacao de perfil): em branco, nao sao enviados e ficam como "nao informado".
+      yearsInBusiness: yearsInBusiness ?? undefined,
+      employeeCount: employeeCount ? Number(employeeCount) : undefined,
       currency,
-      averageMonthlyRevenue: Number(averageMonthlyRevenue),
+      averageMonthlyRevenue: averageMonthlyRevenue ? Number(averageMonthlyRevenue) : undefined,
     };
 
     const parsed = businessEditSchema.safeParse(payload);
@@ -97,7 +98,7 @@ export function EmpresaForm({
 
       <div>
         <span className="mb-2 block text-sm font-medium text-gray-700 dark:text-neutral-300">
-          Há quanto tempo sua empresa existe?
+          Há quanto tempo sua empresa existe? (opcional)
         </span>
         <div className="flex flex-col gap-2">
           {YEARS_IN_BUSINESS_OPTIONS.map((opt) => (
@@ -109,12 +110,15 @@ export function EmpresaForm({
               {opt.label}
             </ChoiceButton>
           ))}
+          <ChoiceButton selected={yearsInBusiness === null} onClick={() => setYearsInBusiness(null)}>
+            Prefiro não informar
+          </ChoiceButton>
         </div>
       </div>
 
       <FormField
         id="employeeCount"
-        label="Número de pessoas"
+        label="Número de pessoas (opcional)"
         type="number"
         min={1}
         step={1}
@@ -150,7 +154,7 @@ export function EmpresaForm({
       <div>
         <MoneyField
           id="averageMonthlyRevenue"
-          label="Faturamento médio mensal"
+          label="Faturamento médio mensal (opcional)"
           currency={currency}
           value={averageMonthlyRevenue}
           onChange={setAverageMonthlyRevenue}

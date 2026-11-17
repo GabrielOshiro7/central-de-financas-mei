@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency, FinancialEntryType } from "@prisma/client";
 import { AlertTriangle, CheckCircle2, FileSpreadsheet, FileText } from "lucide-react";
+import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { normalizeCategoryName } from "@/lib/finance/categoryName";
 import { parseImportEntryType, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
 
@@ -268,6 +269,8 @@ export function ImportWizard({
           )}
 
           <p className="mt-6 text-xs text-gray-400 dark:text-neutral-500">Formatos aceitos: .xlsx e .csv</p>
+          <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">A coluna observacao é opcional.</p>
+          <SensitiveDataNotice />
         </div>
 
         <div className="border border-dashed border-gray-300 bg-white p-6 text-center dark:border-neutral-700 dark:bg-neutral-900">

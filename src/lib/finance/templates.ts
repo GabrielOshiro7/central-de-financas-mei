@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { IMPORT_COLUMNS } from "@/lib/finance/importParsing";
+import { SENSITIVE_DATA_NOTICE } from "@/lib/privacy/sensitiveDataNotice";
 
 const EXAMPLE_ROWS: [string, string, string, string, string, string][] = [
   ["2026-09-01", "receita", "Venda de produtos", "Venda balcão", "50000", "Cliente X"],
@@ -39,7 +40,7 @@ export async function generateXlsxTemplate(): Promise<ExcelJS.Buffer> {
     "categoria: o nome de uma categoria já cadastrada (maiúsculas/minúsculas e espaços não importam).",
     "descricao: um texto curto descrevendo o lançamento.",
     "valor: número maior que zero (ex.: 50000 ou 50000.00). Para moeda em iene, não use casas decimais.",
-    "observacao: opcional.",
+    `observacao: opcional. ${SENSITIVE_DATA_NOTICE}`,
     "",
     "Não altere os nomes das colunas na primeira linha da aba \"Lançamentos\".",
   ];

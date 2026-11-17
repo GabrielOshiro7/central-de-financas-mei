@@ -173,7 +173,7 @@ describe("cleanupExpiredAuthDataSafely", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(prisma.session, "findMany").mockRejectedValueOnce(new Error("banco fora do ar"));
     await expect(cleanupExpiredAuthDataSafely()).resolves.toBeNull();
-    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"), expect.any(Error));
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"));
   });
 });
 
@@ -227,7 +227,7 @@ describe("rotas: a limpeza roda em after(), sem atrasar nem derrubar o login e a
     expect(error).not.toHaveBeenCalled(); // ainda nao rodou
 
     await expect(runAfterTasks()).resolves.toBeUndefined(); // a tarefa nao lanca
-    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"), expect.any(Error));
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"));
   });
 
   it("limpeza que nunca termina não atrasa o login (a resposta não a espera)", async () => {
@@ -253,7 +253,7 @@ describe("rotas: a limpeza roda em after(), sem atrasar nem derrubar o login e a
     expect(error).not.toHaveBeenCalled();
 
     await expect(runAfterTasks()).resolves.toBeUndefined();
-    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"), expect.any(Error));
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("[auth-cleanup]"));
   });
 
   it("criar o link de recuperação: ao rodar a tarefa agendada, o link vencido some e o novo (válido) fica", async () => {

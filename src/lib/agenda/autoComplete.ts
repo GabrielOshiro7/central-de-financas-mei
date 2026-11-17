@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { completeDayAppointment } from "@/lib/agenda/dayCompletion";
 import { dateKeyToDbDate, todayKey, type BusinessClock } from "@/lib/time/zoned";
+import { describeError } from "@/lib/logging";
 
 // Lote e limite de tempo da conclusao automatica (Agenda A5): o que sobrar
 // fica para a proxima carga de pagina.
@@ -76,12 +77,12 @@ export async function autoCompleteDueAppointments(
         }
         result.failed++;
         skipped.push(id);
-        console.error(`[agenda] conclusão automática falhou (empresa ${businessId}, agendamento ${id}):`, error);
+        console.error(`[agenda] conclusão automática falhou (empresa ${businessId}, agendamento ${id}): ${describeError(error)}`);
       }
     }
   } catch (error) {
     // So a consulta do lote cai aqui (ex.: banco fora): a pagina segue.
-    console.error(`[agenda] conclusão automática interrompida (empresa ${businessId}):`, error);
+    console.error(`[agenda] conclusão automática interrompida (empresa ${businessId}): ${describeError(error)}`);
     return result;
   }
 }

@@ -66,6 +66,7 @@ export function RegisterForm() {
       <FormField
         id="email"
         label="E-mail"
+        hint="Usado para entrar na sua conta e recuperar a senha."
         type="email"
         autoComplete="email"
         value={email}
