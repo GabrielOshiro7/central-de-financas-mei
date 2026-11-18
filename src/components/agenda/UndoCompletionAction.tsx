@@ -25,7 +25,10 @@ export function UndoCompletionAction({
   saleActive,
   receivedLabel,
   onUndone,
+  subject,
 }: {
+  // Titulo/cliente do agendamento: entra no nome acessivel do botao ("Desfazer conclusão: X").
+  subject?: string;
   appointmentId: string;
   saleNumber: number | null;
   // Ha venda vinculada e ela nao esta cancelada.
@@ -72,7 +75,7 @@ export function UndoCompletionAction({
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <button type="button" onClick={() => setOpen(true)} disabled={pending} className={secondaryButtonClass}>
+        <button type="button" onClick={() => setOpen(true)} disabled={pending} aria-label={subject ? `Desfazer conclusão: ${subject}` : undefined} className={secondaryButtonClass}>
           <Undo2 size={13} aria-hidden="true" />
           Desfazer
         </button>

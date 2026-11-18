@@ -33,9 +33,12 @@ export function DayAppointmentActions({
   saleStatus,
   receivedLabel,
   noValue = false,
+  subject,
 }: {
   // Agendamento sem valor: o dialogo de conclusao nao fala de venda/dinheiro.
   noValue?: boolean;
+  // Titulo/cliente do agendamento: entra no nome acessivel dos botoes da linha ("Editar agendamento: X").
+  subject?: string;
   appointmentId: string;
   status: AppointmentStatus;
   dayKey: string;
@@ -91,6 +94,7 @@ export function DayAppointmentActions({
           <span className="text-gray-500 dark:text-neutral-400">Concluído sem venda (valor zero).</span>
         )}
         <UndoCompletionAction
+          subject={subject}
           appointmentId={appointmentId}
           saleNumber={saleNumber}
           saleActive={Boolean(saleId) && saleStatus !== "CANCELLED"}
@@ -105,29 +109,29 @@ export function DayAppointmentActions({
       <div className="flex flex-wrap gap-2">
         {status === "AGENDADO" && (
           <>
-            <Link href={`/agenda/${appointmentId}/editar`} className={secondaryButtonClass}>
+            <Link href={`/agenda/${appointmentId}/editar`} aria-label={subject ? `Editar agendamento: ${subject}` : undefined} className={secondaryButtonClass}>
               <Pencil size={13} aria-hidden="true" />
               Editar
             </Link>
             {dayReached && (
-              <button type="button" onClick={() => setConfirming("complete")} disabled={pending !== null} className={primaryButtonClass}>
+              <button type="button" onClick={() => setConfirming("complete")} aria-label={subject ? `Concluir agora o agendamento: ${subject}` : undefined} disabled={pending !== null} className={primaryButtonClass}>
                 <CircleCheck size={13} aria-hidden="true" />
                 Concluir agora
               </button>
             )}
             {dayReached && (
-              <button type="button" onClick={() => setConfirming("FALTOU")} disabled={pending !== null} className={secondaryButtonClass}>
+              <button type="button" onClick={() => setConfirming("FALTOU")} aria-label={subject ? `Faltou agendamento: ${subject}` : undefined} disabled={pending !== null} className={secondaryButtonClass}>
                 Faltou
               </button>
             )}
-            <button type="button" onClick={() => setConfirming("CANCELADO")} disabled={pending !== null} className={dangerButtonClass}>
+            <button type="button" onClick={() => setConfirming("CANCELADO")} aria-label={subject ? `Cancelar agendamento: ${subject}` : undefined} disabled={pending !== null} className={dangerButtonClass}>
               Cancelar
             </button>
           </>
         )}
 
         {(status === "CANCELADO" || status === "FALTOU") && (
-          <button type="button" onClick={() => setConfirming("AGENDADO")} disabled={pending !== null} className={secondaryButtonClass}>
+          <button type="button" onClick={() => setConfirming("AGENDADO")} aria-label={subject ? `Reabrir agendamento: ${subject}` : undefined} disabled={pending !== null} className={secondaryButtonClass}>
             <RotateCcw size={13} aria-hidden="true" />
             Reabrir
           </button>

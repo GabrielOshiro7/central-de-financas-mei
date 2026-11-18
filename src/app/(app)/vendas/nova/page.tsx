@@ -6,6 +6,9 @@ import { listVisibleProducts } from "@/lib/products/queries";
 import { SaleForm } from "@/components/vendas/SaleForm";
 import { clockFor, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Nova venda" };
+
 export default async function NovaVendaPage() {
   const { business } = await requireOnboardedUser();
 

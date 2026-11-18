@@ -8,6 +8,9 @@ import { defaultServiceRevenueCategoryId } from "@/lib/agenda/calculations";
 import { DayAppointmentForm } from "@/components/agenda/DayAppointmentForm";
 import { clockFor, isDateKey, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Novo agendamento" };
+
 // Criar (Agenda A3): todo agendamento novo e do fluxo por dia (DAY).
 export default async function NovoAgendamentoPage(props: PageProps<"/agenda/novo">) {
   const searchParams = await props.searchParams;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Prisma, type Currency } from "@prisma/client";
-import { Info } from "lucide-react";
+import { InfoTooltip } from "@/components/InfoTooltip";
 import { formatMoney } from "@/lib/money";
 import { describeSignedGrowth } from "@/lib/finance/calculations";
 import { formatSignedGrowthText } from "@/lib/finance/insights";
@@ -105,22 +105,16 @@ export function TrendMiniChart({
     <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900 dark:text-neutral-100">
         <span>{title}</span>
-        {tooltip && (
-          <span
-            className="inline-flex cursor-help text-gray-400 dark:text-neutral-600"
-            title={tooltip}
-            aria-label={tooltip}
-          >
-            <Info size={14} strokeWidth={1.75} aria-hidden="true" />
-          </span>
-        )}
+        {/* Dica acessivel: botao focavel por teclado (o antigo <span title aria-label> nao tinha papel,
+            nao recebia foco e a dica so aparecia ao passar o mouse - WCAG 4.1.2, 2.1.1, 1.4.13). */}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </div>
 
       <svg
         viewBox="0 0 100 40"
         preserveAspectRatio="none"
         className="mt-3 h-32 w-full overflow-visible"
-        role="img"
+        role="group"
         aria-label={`Gráfico de ${title.toLowerCase()}`}
       >
         <line
@@ -158,7 +152,7 @@ export function TrendMiniChart({
               tabIndex={0}
               role="button"
               aria-label={ariaLabelFor(c.point, i)}
-              className="cursor-default touch-manipulation outline-none"
+              className="cursor-default touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 dark:focus-visible:outline-neutral-100"
               onMouseEnter={(e) => show(i, e.currentTarget)}
               onMouseLeave={hide}
               onFocus={(e) => show(i, e.currentTarget)}

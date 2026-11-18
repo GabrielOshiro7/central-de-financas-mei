@@ -156,7 +156,7 @@ test.describe("Financeiro - criação contextual por aba", () => {
     await createDialog.getByRole("button", { name: "Salvar" }).click();
     await expect(createDialog).toHaveCount(0);
 
-    await page.getByRole("row", { name: new RegExp(description) }).getByRole("button", { name: "Editar" }).click();
+    await page.getByRole("row", { name: new RegExp(description) }).getByRole("button", { name: /^Editar/ }).click(); // nome acessivel contextual: "Editar lançamento ..."
     const editDialog = page.getByRole("dialog", { name: "Editar lançamento" });
     await expect(editDialog).toBeVisible();
     await expect(editDialog.getByText("Tipo", { exact: true })).toBeVisible();

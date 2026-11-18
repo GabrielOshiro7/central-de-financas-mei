@@ -29,7 +29,10 @@ export function AppointmentActions({
   nextAppointmentHref,
   todayKey,
   receivedLabel,
+  subject,
 }: {
+  // Titulo/cliente do agendamento: entra no nome acessivel dos botoes da linha ("Concluir agendamento: X").
+  subject?: string;
   appointmentId: string;
   status: AppointmentStatus;
   saleId: string | null;
@@ -100,6 +103,7 @@ export function AppointmentActions({
           </Link>
         </div>
         <UndoCompletionAction
+          subject={subject}
           appointmentId={appointmentId}
           saleNumber={completedResult.saleNumber}
           saleActive
@@ -123,6 +127,7 @@ export function AppointmentActions({
         )}
         {/* Desfazer (Agenda A4): tambem nos concluidos do legado TIMED. */}
         <UndoCompletionAction
+          subject={subject}
           appointmentId={appointmentId}
           saleNumber={saleNumber}
           saleActive={Boolean(saleId) && saleStatus !== "CANCELLED"}
@@ -136,19 +141,20 @@ export function AppointmentActions({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">
         {status === "AGENDADO" && (
-          <button type="button" onClick={() => changeStatus("CONFIRMADO")} disabled={pendingAction !== null} className={secondaryButtonClass}>
+          <button type="button" onClick={() => changeStatus("CONFIRMADO")} aria-label={subject ? `Confirmar agendamento: ${subject}` : undefined} disabled={pendingAction !== null} className={secondaryButtonClass}>
             {pendingAction === "CONFIRMADO" ? "Confirmando..." : "Confirmar"}
           </button>
         )}
 
         {(status === "AGENDADO" || status === "CONFIRMADO") && (
           <>
-            <button type="button" onClick={() => setCompleting(true)} disabled={pendingAction !== null} className={primaryButtonClass}>
+            <button type="button" onClick={() => setCompleting(true)} aria-label={subject ? `Concluir agendamento: ${subject}` : undefined} disabled={pendingAction !== null} className={primaryButtonClass}>
               Concluir
             </button>
             <button
               type="button"
               onClick={() => setConfirming("FALTOU")}
+              aria-label={subject ? `Faltou agendamento: ${subject}` : undefined}
               disabled={pendingAction !== null}
               className={secondaryButtonClass}
             >
@@ -157,6 +163,7 @@ export function AppointmentActions({
             <button
               type="button"
               onClick={() => setConfirming("CANCELADO")}
+              aria-label={subject ? `Cancelar agendamento: ${subject}` : undefined}
               disabled={pendingAction !== null}
               className={dangerButtonClass}
             >
@@ -166,7 +173,7 @@ export function AppointmentActions({
         )}
 
         {(status === "CANCELADO" || status === "FALTOU") && (
-          <button type="button" onClick={() => changeStatus("AGENDADO")} disabled={pendingAction !== null} className={secondaryButtonClass}>
+          <button type="button" onClick={() => changeStatus("AGENDADO")} aria-label={subject ? `Reabrir agendamento: ${subject}` : undefined} disabled={pendingAction !== null} className={secondaryButtonClass}>
             {pendingAction === "AGENDADO" ? "Reabrindo..." : "Reabrir"}
           </button>
         )}

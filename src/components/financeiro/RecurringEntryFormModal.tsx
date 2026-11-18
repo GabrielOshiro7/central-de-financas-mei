@@ -10,6 +10,7 @@ import { ENTRY_TYPE_OPTIONS } from "@/lib/finance/options";
 import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance/recurring/options";
 import type { CategoryOption } from "@/components/financeiro/TransactionFormModal";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type RecurringEntryFormInitial = {
   id: string;
@@ -62,6 +63,9 @@ export function RecurringEntryFormModal({
 
   const categoriesForType = useMemo(() => categories.filter((c) => c.type === type), [categories, type]);
 
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : onClose);
+
   if (!open) return null;
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -104,6 +108,7 @@ export function RecurringEntryFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         role="dialog"
+        ref={dialogRef}
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}

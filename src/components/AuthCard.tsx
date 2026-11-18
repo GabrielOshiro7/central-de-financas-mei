@@ -11,7 +11,8 @@ export function AuthCard({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-neutral-950">
+    // <main>: regiao principal da pagina (WCAG 1.3.1 / 2.4.1 - leitores de tela pulam direto ao conteudo).
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-neutral-950">
       <div className="w-full max-w-sm">
       <div className="border border-gray-200 bg-white p-8 shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
         <h1 className="text-center text-xl font-semibold text-gray-900 dark:text-neutral-100">
@@ -26,6 +27,6 @@ export function AuthCard({
       </div>
       <LegalLinks className="mt-4 text-gray-500 dark:text-neutral-400" />
       </div>
-    </div>
+    </main>
   );
 }

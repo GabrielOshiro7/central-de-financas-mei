@@ -11,6 +11,9 @@ import { SaleDetailActions } from "@/components/vendas/SaleDetailActions";
 import { PAYMENT_STATUS_BADGE_STYLE } from "@/components/vendas/SaleTable";
 import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Venda" };
+
 export default async function SaleDetailPage(props: PageProps<"/vendas/[id]">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();

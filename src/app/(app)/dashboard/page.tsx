@@ -28,6 +28,9 @@ import { CommercialPanel } from "@/components/dashboard/CommercialPanel";
 import { InsightsSummaryPanel } from "@/components/dashboard/InsightsSummaryPanel";
 import { clockFor, formatInstant } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Dashboard" };
+
 // A Visao Geral tem lista propria de periodos (DASHBOARD_PERIOD_OPTIONS).
 const VALID_PERIODS = new Set<string>(DASHBOARD_PERIOD_OPTIONS.map((o) => o.value));
 

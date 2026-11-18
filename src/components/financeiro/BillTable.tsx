@@ -9,6 +9,7 @@ import { BillFormModal, type BillCategoryOption, type BillFormInitial } from "@/
 import { billStatusLabel, type BillDirection, type BillDisplayStatus } from "@/lib/finance/bills/status";
 import { BILL_DIRECTION_LABELS } from "@/lib/finance/bills/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type BillRow = {
   id: string;
@@ -63,6 +64,8 @@ export function BillTable({
   const [settling, setSettling] = useState<BillRow | null>(null);
   const [settleDate, setSettleDate] = useState(todayKey);
   const [settlePending, setSettlePending] = useState(false);
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(Boolean(settling), settlePending ? undefined : () => setSettling(null));
   const [settleError, setSettleError] = useState<string | null>(null);
   const [reverting, setReverting] = useState<BillRow | null>(null);
   const [revertPending, setRevertPending] = useState(false);
@@ -180,6 +183,7 @@ export function BillTable({
                       <button
                         type="button"
                         onClick={() => setEditing(row)}
+                        aria-label={`Editar conta ${row.description}`}
                         className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                       >
                         Editar
@@ -191,6 +195,7 @@ export function BillTable({
                           setSettleDate(todayKey);
                           setSettleError(null);
                         }}
+                        aria-label={`${directionLabels.action}: ${row.description}`}
                         className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
                       >
                         {directionLabels.action}
@@ -201,6 +206,7 @@ export function BillTable({
                           setCancelling(row);
                           setActionError(null);
                         }}
+                        aria-label={`Cancelar conta ${row.description}`}
                         className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
                       >
                         Cancelar
@@ -214,6 +220,7 @@ export function BillTable({
                         setReverting(row);
                         setActionError(null);
                       }}
+                      aria-label={`Reverter conta ${row.description}`}
                       className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                     >
                       Reverter
@@ -267,6 +274,7 @@ export function BillTable({
           <div
             {...enterNav}
             role="alertdialog"
+            ref={dialogRef}
             aria-modal="true"
             className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}

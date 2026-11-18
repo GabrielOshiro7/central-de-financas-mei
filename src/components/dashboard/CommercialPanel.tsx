@@ -20,7 +20,7 @@ export function CommercialPanel({ commercial, currency }: { commercial: Commerci
         </Link>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
           <dt className="text-xs text-gray-500 dark:text-neutral-400">Vendas no período</dt>
           <dd className="text-lg font-semibold text-gray-900 dark:text-neutral-100">{commercial.salesCount}</dd>
@@ -43,7 +43,7 @@ export function CommercialPanel({ commercial, currency }: { commercial: Commerci
             {formatMoney(commercial.totalReceived, currency)}
           </dd>
         </div>
-      </div>
+      </dl>
 
       {commercial.topClients.length > 0 && (
         <div className="mt-4">

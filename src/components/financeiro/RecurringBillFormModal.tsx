@@ -16,6 +16,7 @@ import {
 } from "@/lib/finance/bills/options";
 import type { BillCategoryOption } from "@/components/financeiro/BillFormModal";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type RecurringBillFormInitial = {
   id: string;
@@ -76,6 +77,9 @@ export function RecurringBillFormModal({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : onClose);
+
   if (!open) return null;
 
   const usesWeekday = frequency === "WEEKLY" || frequency === "BIWEEKLY";
@@ -128,6 +132,7 @@ export function RecurringBillFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         role="dialog"
+        ref={dialogRef}
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}

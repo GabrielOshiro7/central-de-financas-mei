@@ -113,6 +113,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
           )}
         </div>
         <DayAppointmentActions
+          subject={dayIdentity(item).primary}
           appointmentId={item.id}
           status={item.status}
           dayKey={item.dayKey}
@@ -150,6 +151,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
       </div>
 
       <AppointmentActions
+        subject={dayIdentity(item).primary}
         appointmentId={item.id}
         status={item.status}
         saleId={item.saleId}

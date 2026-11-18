@@ -3,6 +3,9 @@ import { listVisibleCategories } from "@/lib/finance/categories";
 import { ImportWizard } from "./ImportWizard";
 import { InfoTooltip } from "@/components/InfoTooltip";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Importar lançamentos" };
+
 export default async function ImportarPage() {
   const { business } = await requireOnboardedUser();
   const categories = await listVisibleCategories(business.id);

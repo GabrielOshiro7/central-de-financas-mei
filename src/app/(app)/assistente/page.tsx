@@ -1,6 +1,9 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { AssistantPanel } from "@/components/dashboard/AssistantPanel";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Assistente" };
+
 export default async function AssistentePage() {
   await requireOnboardedUser();
 

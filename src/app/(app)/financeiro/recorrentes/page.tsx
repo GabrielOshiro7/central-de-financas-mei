@@ -7,6 +7,9 @@ import { InfoTooltip } from "@/components/InfoTooltip";
 import { NewTransactionButton } from "@/components/financeiro/NewTransactionButton";
 import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Recorrentes" };
+
 export default async function RecurringEntriesPage() {
   const { business } = await requireOnboardedUser();
   // "Hoje" dos formularios no fuso da empresa (Etapa F4); as datas exibidas

@@ -108,6 +108,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href={`/clientes/${row.id}`}
+                    aria-label={`Ver cliente ${row.name}`}
                     className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                   >
                     Ver
@@ -115,6 +116,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                   <button
                     type="button"
                     onClick={() => setEditing(row)}
+                    aria-label={`Editar cliente ${row.name}`}
                     className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                   >
                     Editar
@@ -125,6 +127,7 @@ export function ClientTable({ rows }: { rows: ClientRow[] }) {
                       setTogglingActive(row);
                       setActionError(null);
                     }}
+                    aria-label={`${row.active ? "Inativar" : "Reativar"} cliente ${row.name}`}
                     className={`text-sm font-medium hover:underline ${
                       row.active ? "text-red-600 dark:text-red-400" : "text-gray-600 dark:text-neutral-400"
                     }`}

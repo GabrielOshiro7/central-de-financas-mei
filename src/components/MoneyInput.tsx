@@ -442,14 +442,17 @@ export function MoneyField({
   error,
   hint,
   id,
+  required,
   ...inputProps
-}: Omit<MoneyInputProps, "aria-invalid" | "aria-label"> & { label: string; error?: string; hint?: string; id: string }) {
+}: Omit<MoneyInputProps, "aria-invalid" | "aria-label"> & { label: string; error?: string; hint?: string; id: string; required?: boolean }) {
+  // Mesma convencao do FormField: sem "(opcional)" no rotulo, o campo e obrigatorio (aria-required, WCAG 3.3.2).
+  const isRequired = required ?? !/opcional/i.test(label);
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-neutral-300">
         {label}
       </label>
-      <MoneyInput id={id} {...inputProps} aria-invalid={Boolean(error)} className={`mt-1 ${inputProps.className ?? ""}`} />
+      <MoneyInput id={id} aria-required={isRequired} {...inputProps} aria-invalid={Boolean(error)} className={`mt-1 ${inputProps.className ?? ""}`} />
       {hint && <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">{hint}</p>}
       {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>

@@ -34,7 +34,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nome do Sistema",
+  // Cada pagina define o proprio titulo (WCAG 2.4.2); o template acrescenta o nome do servico.
+  title: { default: "OrganizAI", template: "%s · OrganizAI" },
   description: "Seu sistema de gestão empresarial",
 };
 
@@ -52,7 +53,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html
-      lang="en"
+      lang="pt-BR"
       data-theme={theme}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}

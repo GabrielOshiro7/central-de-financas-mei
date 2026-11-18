@@ -15,6 +15,9 @@ import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateBut
 import { clockFor, dbDateToKey, formatDateKey, todayKey } from "@/lib/time/zoned";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Vendas" };
+
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 function paramString(searchParams: SearchParams, key: string): string | undefined {

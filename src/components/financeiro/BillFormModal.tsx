@@ -15,6 +15,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
 } from "@/lib/finance/bills/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type BillCategoryOption = { id: string; name: string };
 
@@ -89,6 +90,9 @@ export function BillFormModal({
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [yearMonth, setYearMonth] = useState(0);
   const [endDate, setEndDate] = useState("");
+
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : handleClose);
 
   if (!open) return null;
 
@@ -191,6 +195,7 @@ export function BillFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={handleClose}>
       <div
         role="dialog"
+        ref={dialogRef}
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}

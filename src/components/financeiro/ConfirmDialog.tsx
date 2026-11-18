@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export function ConfirmDialog({
   open,
@@ -28,6 +29,11 @@ export function ConfirmDialog({
   // desfazer um atendimento, Agenda A4). Os dialogos existentes nao passam.
   children?: ReactNode;
 }) {
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const titleId = useId();
+  const messageId = useId();
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : onCancel);
+
   if (!open) return null;
 
   return (
@@ -37,12 +43,19 @@ export function ConfirmDialog({
     >
       <div
         role="alertdialog"
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
         aria-modal="true"
         className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">{title}</h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-neutral-400">{message}</p>
+        <h2 id={titleId} className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+          {title}
+        </h2>
+        <p id={messageId} className="mt-2 text-sm text-gray-600 dark:text-neutral-400">
+          {message}
+        </p>
         {children}
         <div className="mt-6 flex justify-end gap-3">
           <button

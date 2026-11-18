@@ -160,6 +160,7 @@ export function TransactionTable({
                     <button
                       type="button"
                       onClick={() => setEditing(row)}
+                      aria-label={`Editar lançamento ${row.description}`}
                       className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                     >
                       Editar
@@ -170,6 +171,7 @@ export function TransactionTable({
                         setDeleting(row);
                         setDeleteError(null);
                       }}
+                      aria-label={`Excluir lançamento ${row.description}`}
                       className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
                     >
                       Excluir

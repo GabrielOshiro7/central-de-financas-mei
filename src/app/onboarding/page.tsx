@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { OnboardingWizard } from "./OnboardingWizard";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Primeiros passos" };
+
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
   if (!user) {

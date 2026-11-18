@@ -10,6 +10,9 @@ import { AppointmentForm } from "@/components/agenda/AppointmentForm";
 import { DayAppointmentForm } from "@/components/agenda/DayAppointmentForm";
 import { clockFor, dbDateToKey, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Editar agendamento" };
+
 function NotEditable() {
   return (
     <div className="flex flex-col items-center justify-center gap-2 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">

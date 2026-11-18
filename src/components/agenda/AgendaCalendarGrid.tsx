@@ -218,7 +218,7 @@ export function AgendaCalendarGrid({
                     aria-label={label}
                     aria-current={isToday ? "date" : undefined}
                     aria-pressed={isSelected}
-                    className={`relative flex aspect-square w-full min-h-10 flex-col items-center justify-center rounded-full text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current ${
+                    className={`relative flex aspect-square w-full min-h-10 flex-col items-center justify-center rounded-full text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 dark:focus-visible:outline-neutral-100 ${
                       isSelected
                         ? "bg-gray-900 font-semibold text-white dark:bg-neutral-100 dark:text-neutral-900"
                         : isToday

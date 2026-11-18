@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 // Modal generico de reautenticacao (step-up/"sudo mode") - um componente
 // so, reaproveitado por qualquer acao sensivel (Etapa sessao-expiracao-
@@ -25,6 +26,9 @@ export function ReauthModal({
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : handleCancel);
 
   if (!open) return null;
 
@@ -73,6 +77,7 @@ export function ReauthModal({
     >
       <div
         role="alertdialog"
+        ref={dialogRef}
         aria-modal="true"
         aria-label="Confirme sua senha"
         className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"

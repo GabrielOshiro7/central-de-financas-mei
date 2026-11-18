@@ -144,6 +144,7 @@ export function RecurringBillTable({
                     <button
                       type="button"
                       onClick={() => setEditing(row)}
+                      aria-label={`Editar conta recorrente ${row.description}`}
                       className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                     >
                       Editar
@@ -152,6 +153,7 @@ export function RecurringBillTable({
                       type="button"
                       onClick={() => handleToggleActive(row)}
                       disabled={togglingId === row.id}
+                      aria-label={`${row.isActive ? "Pausar" : "Retomar"} conta recorrente ${row.description}`}
                       className="text-sm font-medium text-gray-600 hover:underline disabled:opacity-60 dark:text-neutral-400"
                     >
                       {togglingId === row.id ? "..." : row.isActive ? "Pausar" : "Retomar"}
@@ -162,6 +164,7 @@ export function RecurringBillTable({
                         setDeleting(row);
                         setDeleteError(null);
                       }}
+                      aria-label={`Excluir conta recorrente ${row.description}`}
                       className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
                     >
                       Excluir

@@ -9,6 +9,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
@@ -51,6 +52,8 @@ export function SaleDetailActions({
     { dueDateInput: saleDateInput, amount: total },
   ]);
   const [confirmPending, setConfirmPending] = useState(false);
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(confirming, confirmPending ? undefined : () => setConfirming(false));
   const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const [cancelling, setCancelling] = useState(false);
@@ -222,6 +225,7 @@ export function SaleDetailActions({
           <div
             {...enterNav}
             role="dialog"
+            ref={dialogRef}
             aria-modal="true"
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}

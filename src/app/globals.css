@@ -168,7 +168,40 @@ body {
  */
 @theme {
   --color-emerald-600: #04815a;
-  --color-rose-600: #db1c46;
+  --color-rose-600: #c71941;
+  --color-red-600: #cd000b;
+}
+
+/*
+ * Contraste de texto (WCAG 1.4.3, minimo 4,5:1) - achado pelo axe: vermelho/rosa de erro e de valor
+ * negativo ficava em 4,1-4,5:1 sobre o painel e o fundo creme (e sobre a linha em hover, #EBE4D6).
+ * Escurecidos o minimo necessario para 4,5:1 sobre #FAF7F1, #F3EEE3 e #EBE4D6:
+ *   red-600   #e7000b (4.12:1 sobre #F3EEE3) -> #cd000b (5.04:1)   [texto de erro, "Excluir"; fundo de botao]
+ *   rose-600  #db1c46 (4.25:1 sobre #F3EEE3) -> #c71941 (4.98:1)   [valor negativo]
+ * No escuro, red-400/rose-400 (3.82-4.37:1 sobre o painel #313338 e a linha em hover #3A3C42)
+ * foram clareados o minimo para 4,5:1 sobre #313338, #2B2D31, #35373C e #3A3C42:
+ *   red-400   #ff6467 -> #ff8083 (4.55:1 no pior caso)
+ *   rose-400  #ff637e -> #ff8096 (4.61:1 no pior caso)
+ */
+[data-theme="dark"] {
+  --color-red-400: #ff8083;
+  --color-rose-400: #ff8096;
+}
+
+/*
+ * Movimento (WCAG 2.2.2 / 2.3.3): quem pede menos movimento no sistema nao ve transicoes nem
+ * animacoes (inclui o esqueleto de carregamento, tooltips e o recolher da barra lateral). A
+ * animacao de entrada da landing (GSAP) ja tem o proprio tratamento (useHeroEntranceAnimation).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /*
@@ -221,8 +254,11 @@ body {
  * - Campos (input/select/textarea): fundo #FAF7F1 / #2B2D31.
  * - Rotulos de campo (label com a classe de rotulo): texto secundario.
  */
-[data-theme="dark"] .dark\:bg-neutral-100,
-[data-theme="dark"] .dark\:border-neutral-100 {
+/* So o FUNDO do botao principal (dark:bg-neutral-100). Antes esta regra tambem casava
+   .dark\:border-neutral-100 e pintava de claro o fundo de qualquer elemento que so usasse essa
+   borda (ex.: selo "Concluido", dark:bg-neutral-800), deixando texto claro sobre fundo claro
+   (contraste 1,25:1 - WCAG 1.4.3). */
+[data-theme="dark"] .dark\:bg-neutral-100 {
   background-color: #d9dadc;
 }
 

@@ -3,6 +3,9 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { AuthCard } from "@/components/AuthCard";
 import { LoginForm } from "./LoginForm";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Entrar" };
+
 const SESSION_MESSAGES: Record<string, string> = {
   inactivity: "Sua sessão expirou por inatividade. Faça login novamente.",
   expired: "Sua sessão expirou. Faça login novamente.",

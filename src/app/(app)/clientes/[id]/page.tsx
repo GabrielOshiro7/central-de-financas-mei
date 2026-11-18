@@ -14,6 +14,9 @@ import { NoValueBadge } from "@/components/agenda/NoValueBadge";
 import { clockFor, dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Cliente" };
+
 export default async function ClientProfilePage(props: PageProps<"/clientes/[id]">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();

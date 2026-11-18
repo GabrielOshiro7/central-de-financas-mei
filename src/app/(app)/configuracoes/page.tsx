@@ -4,6 +4,9 @@ import { ChangePasswordForm } from "./ChangePasswordForm";
 import { EmpresaSection } from "./EmpresaSection";
 import { LegalLinks } from "@/components/legal/LegalLinks";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Configurações" };
+
 export default async function ConfiguracoesPage() {
   const { user, business } = await requireOnboardedUser();
 

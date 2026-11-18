@@ -30,6 +30,9 @@ import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateBut
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { clockFor } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Agenda" };
+
 const tabButtonClass = (active: boolean) =>
   `px-3 py-1.5 text-sm font-medium transition ${
     active

@@ -13,14 +13,14 @@ export function LandingLogo() {
     <Link
       href="/"
       className="flex min-w-0 items-center gap-2.5 text-landing-foreground sm:gap-3"
-      aria-label="Página inicial"
     >
       <LogoMark className="h-9 w-9 sm:h-10 sm:w-10" />
       <span className="flex min-w-0 flex-col justify-center">
         <span className="truncate text-xl leading-tight font-bold tracking-tight whitespace-nowrap sm:text-2xl">
           OrganizAI
         </span>
-        <span className="text-[9px] leading-none font-semibold tracking-[0.3em] text-landing-foreground/60 sm:text-[10px]">
+        {/* Subtitulo decorativo repete o nome: fora da arvore de acessibilidade (o nome acessivel do link e "OrganizAI — Página inicial"). */}
+        <span aria-hidden="true" className="text-[9px] leading-none font-semibold tracking-[0.3em] text-landing-foreground/60 sm:text-[10px]">
           ORGANIZAI
         </span>
       </span>

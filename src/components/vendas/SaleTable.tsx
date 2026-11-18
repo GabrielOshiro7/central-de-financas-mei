@@ -82,7 +82,7 @@ export function SaleTable({
                 </span>
               </td>
               <td role="cell" className="px-4 py-3 rt-actions">
-                <Link href={`/vendas/${row.id}`} className="rt-stretch text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
+                <Link href={`/vendas/${row.id}`} aria-label={`Ver venda #${row.saleNumber}`} className="rt-stretch text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
                   Ver
                 </Link>
               </td>

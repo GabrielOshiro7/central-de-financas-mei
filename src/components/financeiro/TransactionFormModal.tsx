@@ -12,6 +12,7 @@ import { FREQUENCY_OPTIONS, WEEKDAY_OPTIONS, MONTH_OPTIONS } from "@/lib/finance
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 import { RECURRING_CREATED_EVENT } from "@/components/financeiro/RecurringCreatedNotice";
 import { isDateKey, parseDateKey, weekdayOf } from "@/lib/time/zoned";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type CategoryOption = { id: string; name: string; type: FinancialEntryType };
 
@@ -104,6 +105,9 @@ export function TransactionFormModal({
     () => localCategories.filter((c) => c.type === type),
     [localCategories, type]
   );
+
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : handleClose);
 
   if (!open) return null;
 
@@ -255,6 +259,7 @@ export function TransactionFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={handleClose}>
       <div
         role="dialog"
+        ref={dialogRef}
         aria-modal="true"
         aria-labelledby={titleId}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"

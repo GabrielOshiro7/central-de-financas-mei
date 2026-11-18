@@ -5,6 +5,9 @@ import { ClientTable, type ClientRow } from "@/components/clientes/ClientTable";
 import { NewClientButton } from "@/components/clientes/NewClientButton";
 import { dbDateToKey, formatDateKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Clientes" };
+
 type SearchParams = { [key: string]: string | string[] | undefined };
 
 function paramString(searchParams: SearchParams, key: string): string | undefined {

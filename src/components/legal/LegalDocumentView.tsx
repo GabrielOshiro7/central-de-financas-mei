@@ -3,6 +3,7 @@ import { LEGAL_DOCS_DRAFT, SERVICE_NAME } from "@/content/legal/meta";
 import { STORAGE_INVENTORY } from "@/content/legal/cookieInventory";
 import type { LegalBlock, LegalDocument } from "@/content/legal/types";
 import { LegalLinks } from "@/components/legal/LegalLinks";
+import { LangText } from "@/components/legal/LangText";
 
 const tableClass = "w-full border-collapse text-left text-sm";
 const thClass = "border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-neutral-800 dark:bg-neutral-800 dark:text-neutral-300";
@@ -11,19 +12,21 @@ const tdClass = "border border-gray-200 px-3 py-2 align-top text-gray-700 dark:b
 function Block({ block }: { block: LegalBlock }) {
   switch (block.type) {
     case "p":
-      return <p className="text-sm leading-relaxed text-gray-700 dark:text-neutral-300">{block.text}</p>;
+      return <p className="text-sm leading-relaxed text-gray-700 dark:text-neutral-300"><LangText text={block.text} /></p>;
     case "ul":
       return (
         <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-gray-700 dark:text-neutral-300">
           {block.items.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item}>
+              <LangText text={item} />
+            </li>
           ))}
         </ul>
       );
     case "note":
       return (
         <p className="border-l-2 border-ember bg-gray-50 px-3 py-2 text-sm leading-relaxed text-gray-700 dark:bg-neutral-800 dark:text-neutral-300">
-          {block.text}
+          <LangText text={block.text} />
         </p>
       );
     case "table":
@@ -137,7 +140,8 @@ export function LegalDocumentView({ doc }: { doc: LegalDocument }) {
           Rascunho — em revisão
         </div>
       )}
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      {/* <main>: regiao principal (WCAG 1.3.1 / 2.4.1). */}
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <Link href="/" className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
           ← {SERVICE_NAME}
         </Link>
@@ -149,13 +153,13 @@ export function LegalDocumentView({ doc }: { doc: LegalDocument }) {
           <p className="mt-2 text-xs text-gray-500 dark:text-neutral-400" data-testid="legal-version">
             Versão {doc.version} · Vigência: {doc.effectiveDate}
           </p>
-          {doc.intro && <p className="mt-4 text-sm leading-relaxed text-gray-700 dark:text-neutral-300">{doc.intro}</p>}
+          {doc.intro && <p className="mt-4 text-sm leading-relaxed text-gray-700 dark:text-neutral-300"><LangText text={doc.intro} /></p>}
 
           <div className="mt-8 flex flex-col gap-8">
             {doc.sections.map((section) => (
               <section key={section.id} aria-labelledby={`sec-${section.id}`} className="flex flex-col gap-3">
                 <h2 id={`sec-${section.id}`} className="text-base font-semibold text-gray-900 dark:text-neutral-100">
-                  {section.title}
+                  <LangText text={section.title} />
                 </h2>
                 {section.blocks.map((block, index) => (
                   <Block key={index} block={block} />
@@ -165,7 +169,7 @@ export function LegalDocumentView({ doc }: { doc: LegalDocument }) {
           </div>
         </article>
         <LegalLinks className="mt-6 text-gray-500 dark:text-neutral-400" />
-      </div>
+      </main>
     </div>
   );
 }

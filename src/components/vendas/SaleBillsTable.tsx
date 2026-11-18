@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { billStatusLabel, type BillDisplayStatus } from "@/lib/finance/bills/status";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type SaleBillRow = {
   id: string;
@@ -38,6 +39,8 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
   const [settling, setSettling] = useState<SaleBillRow | null>(null);
   const [settleDate, setSettleDate] = useState(todayKey);
   const [settlePending, setSettlePending] = useState(false);
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(Boolean(settling), settlePending ? undefined : () => setSettling(null));
   const [settleError, setSettleError] = useState<string | null>(null);
   const [reverting, setReverting] = useState<SaleBillRow | null>(null);
   const [revertPending, setRevertPending] = useState(false);
@@ -145,6 +148,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
                           setSettleDate(todayKey);
                           setSettleError(null);
                         }}
+                        aria-label={`Registrar recebimento da parcela com vencimento ${bill.dueDateDisplay}`}
                         className="text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"
                       >
                         Registrar recebimento
@@ -155,6 +159,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
                           setCancelling(bill);
                           setActionError(null);
                         }}
+                        aria-label={`Cancelar parcela com vencimento ${bill.dueDateDisplay}`}
                         className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
                       >
                         Cancelar parcela
@@ -168,6 +173,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
                         setReverting(bill);
                         setActionError(null);
                       }}
+                      aria-label={`Reverter recebimento da parcela com vencimento ${bill.dueDateDisplay}`}
                       className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
                     >
                       Reverter
@@ -194,6 +200,7 @@ export function SaleBillsTable({ bills, currency, todayKey }: { bills: SaleBillR
           <div
             {...enterNav}
             role="alertdialog"
+            ref={dialogRef}
             aria-modal="true"
             className="w-full max-w-sm bg-white p-6 shadow-lg dark:bg-neutral-900"
             onClick={(e) => e.stopPropagation()}

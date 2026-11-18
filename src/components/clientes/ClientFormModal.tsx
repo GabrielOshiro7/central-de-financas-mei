@@ -8,6 +8,7 @@ import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { SubmitButton } from "@/components/SubmitButton";
 import { CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
+import { useDialogFocus } from "@/components/useDialogFocus";
 
 export type ClientFormInitial = {
   id: string;
@@ -74,6 +75,9 @@ export function ClientFormModal({
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  // Foco do dialogo (WCAG 2.1.2 / 2.4.3): entra ao abrir, Tab preso, Esc fecha, volta ao botao de origem.
+  const dialogRef = useDialogFocus<HTMLDivElement>(open, pending ? undefined : handleClose);
 
   if (!open) return null;
 
@@ -151,6 +155,7 @@ export function ClientFormModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={handleClose}>
       <div
         role="dialog"
+        ref={dialogRef}
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}

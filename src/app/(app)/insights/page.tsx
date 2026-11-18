@@ -5,6 +5,9 @@ import { InsightCard } from "@/components/insights/InsightCard";
 import { RegenerateButton } from "@/components/insights/RegenerateButton";
 import { clockFor } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Insights" };
+
 export default async function InsightsPage() {
   const { user, business } = await requireOnboardedUser();
   const insights = await getInsightsForBusiness(business.id, clockFor(business));

@@ -9,6 +9,9 @@ import { SaleForm } from "@/components/vendas/SaleForm";
 import { SaleNotesForm } from "@/components/vendas/SaleNotesForm";
 import { clockFor, dbDateToKey, todayKey } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Editar venda" };
+
 export default async function EditarVendaPage(props: PageProps<"/vendas/[id]/editar">) {
   const { id } = await props.params;
   const { business } = await requireOnboardedUser();

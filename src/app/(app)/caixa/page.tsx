@@ -13,6 +13,9 @@ import { DEFAULT_CASH_PERIOD } from "@/components/caixa/constants";
 import { TrendMiniChart, type TrendPoint } from "@/components/dashboard/TrendMiniChart";
 import { clockFor } from "@/lib/time/zoned";
 
+// Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
+export const metadata = { title: "Caixa" };
+
 const VALID_PERIODS = new Set<string>(PERIOD_OPTIONS.map((o) => o.value));
 
 // Aba "Caixa" (Etapa 5.1): posicao de caixa acumulada, HISTORICA/REALIZADA -

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Info } from "lucide-react";
+import { InfoTooltip } from "@/components/InfoTooltip";
 
 export type MetricVariation = {
   text: string;
@@ -58,15 +58,9 @@ export function MetricCard({
           </span>
         )}
         <span>{label}</span>
-        {tooltip && (
-          <span
-            className="inline-flex cursor-help text-gray-400 dark:text-neutral-600"
-            title={tooltip}
-            aria-label={tooltip}
-          >
-            <Info size={14} strokeWidth={1.75} aria-hidden="true" />
-          </span>
-        )}
+        {/* Dica acessivel: botao focavel por teclado (o antigo <span title aria-label> nao tinha papel,
+            nao recebia foco e a dica so aparecia ao passar o mouse - WCAG 4.1.2, 2.1.1, 1.4.13). */}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </div>
       <div
         className={`mt-1 text-2xl font-semibold [overflow-wrap:anywhere] min-[480px]:max-md:text-xl ${
