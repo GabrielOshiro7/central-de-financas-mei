@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { confirmSaleSchema } from "@/lib/sales/schema";
 import { confirmSale } from "@/lib/sales/mutations";
 import { dayFromInput } from "@/lib/finance/entryDay";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // DRAFT -> CONFIRMED: so aqui (ou em POST /api/vendas ja confirmando direto)
 // as Bills sao materializadas.
@@ -12,6 +13,8 @@ export async function POST(request: Request, context: RouteContext<"/api/vendas/
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

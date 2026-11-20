@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { appointmentStatusChangeSchema } from "@/lib/agenda/schema";
 import { changeAppointmentStatus } from "@/lib/agenda/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Confirmar/cancelar/faltou/reabrir - toda transicao passa por
 // changeAppointmentStatus, que valida via canTransition (tabela exaustiva)
@@ -14,6 +15,8 @@ export async function POST(request: Request, context: RouteContext<"/api/agenda/
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

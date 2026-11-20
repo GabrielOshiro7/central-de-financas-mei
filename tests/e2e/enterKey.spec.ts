@@ -24,7 +24,7 @@ async function register(page: Page, name: string, email: string) {
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirmar senha").fill(PASSWORD);
-  await page.getByLabel(/Li e aceito/).check();
+  await page.getByLabel(/li e aceito/i).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
@@ -99,8 +99,8 @@ test.describe("Enter nos formulários", () => {
     await expect(page).toHaveURL(/\/register/); // nenhum Enter enviou o formulario
     // Aceite obrigatorio dos Termos (caixa): sem ele o Enter no botao so mostra o erro.
     await page.keyboard.press("Enter");
-    await expect(page.locator('p[role="alert"]')).toContainText("Aceite os Termos");
-    await page.getByLabel(/Li e aceito/).check();
+    await expect(page.locator('p[role="alert"]')).toContainText("aceite os Termos de Serviço");
+    await page.getByLabel(/li e aceito/i).check();
     await page.getByRole("button", { name: "Criar conta" }).focus();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/onboarding/);

@@ -3,6 +3,7 @@ import { z } from "@/lib/zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { setClientActive } from "@/lib/clients/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 const bodySchema = z.object({ active: z.boolean() });
 
@@ -11,6 +12,8 @@ export async function PATCH(request: Request, context: RouteContext<"/api/client
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

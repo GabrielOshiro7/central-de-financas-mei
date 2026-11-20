@@ -5,6 +5,7 @@ import { appointmentCompleteSchema } from "@/lib/agenda/schema";
 import { completeAppointment } from "@/lib/agenda/mutations";
 import { completeDayAppointment } from "@/lib/agenda/dayCompletion";
 import { clockFor } from "@/lib/time/zoned";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // O ponto mais critico da Agenda (ver comentario completo em
 // completeAppointment, src/lib/agenda/mutations.ts): cria Sale+itens+Bill(s)
@@ -16,6 +17,8 @@ export async function POST(request: Request, context: RouteContext<"/api/agenda/
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

@@ -36,7 +36,7 @@ test.describe("onboarding: perguntas só de perfil são opcionais", () => {
     await page.getByLabel("E-mail").fill(email);
     await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await page.getByLabel("Confirmar senha").fill(PASSWORD);
-    await page.getByLabel(/Li e aceito/).check();
+    await page.getByLabel(/li e aceito/i).check();
     await page.getByRole("button", { name: "Criar conta" }).click();
 
     // 1: tipo do negócio - pergunta opcional, com "Pular"
@@ -92,7 +92,7 @@ test.describe("onboarding: perguntas só de perfil são opcionais", () => {
     await page.getByLabel("E-mail").fill(email);
     await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await page.getByLabel("Confirmar senha").fill(PASSWORD);
-    await page.getByLabel(/Li e aceito/).check();
+    await page.getByLabel(/li e aceito/i).check();
     await page.getByRole("button", { name: "Criar conta" }).click();
     await page.getByRole("button", { name: "Pular" }).click();
     await page.getByRole("button", { name: "Pular" }).click();

@@ -38,6 +38,10 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       DISABLE_RATE_LIMIT: "1",
+      // Liga o reaceite dos documentos legais mesmo com LEGAL_DOCS_DRAFT = true (so em dev/teste; em
+      // producao a variavel e ignorada) - ver src/lib/legal/acceptance.ts. Por isso os usuarios criados
+      // direto no banco pelos specs levam o aceite vigente (currentAcceptanceData).
+      LEGAL_REACCEPT_FORCE: "1",
       // Explicitos: variaveis do processo vencem o .env que o `next dev` le.
       DATABASE_URL: process.env.DATABASE_URL!,
       APP_URL: BASE_URL,

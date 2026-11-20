@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { generateCsvTemplate, generateXlsxTemplate } from "@/lib/finance/templates";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const format = new URL(request.url).searchParams.get("format");
 

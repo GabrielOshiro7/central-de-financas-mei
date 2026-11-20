@@ -4,6 +4,7 @@ import { insightKey, listReadKeys } from "@/lib/insights/reads";
 import { InsightCard } from "@/components/insights/InsightCard";
 import { RegenerateButton } from "@/components/insights/RegenerateButton";
 import { clockFor } from "@/lib/time/zoned";
+import { InformationalNotice } from "@/components/legal/InformationalNotice";
 
 // Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
 export const metadata = { title: "Insights" };
@@ -36,6 +37,8 @@ export default async function InsightsPage() {
           ))}
         </div>
       )}
+
+      <InformationalNotice />
     </div>
   );
 }

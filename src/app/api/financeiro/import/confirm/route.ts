@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { confirmImport } from "@/lib/finance/importConfirm";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 const categoryDecisionSchema = z.discriminatedUnion("action", [
   z.object({ key: z.string().min(1), action: z.literal("create") }),
@@ -32,6 +33,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

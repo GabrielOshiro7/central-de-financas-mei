@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { productSchema } from "@/lib/products/schema";
 import { createProduct } from "@/lib/products/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // So POST - sem GET/list dedicado (a listagem para o autocomplete de item de
 // venda acontece server-side via listVisibleProducts, mesmo padrao de
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

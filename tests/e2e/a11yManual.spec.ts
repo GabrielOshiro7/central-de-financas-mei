@@ -5,6 +5,7 @@ import { createOnboardedUser, newTestPrisma } from "./helpers/session";
 import { seedA11yData, type A11yFixture } from "./helpers/a11yFixture";
 import { a11yPages } from "./helpers/a11yPages";
 import { hashPassword } from "@/lib/auth/password";
+import { currentAcceptanceData } from "@/lib/legal/acceptance";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 
 // ACESSIBILIDADE - CRITERIOS MANUAIS verificados por E2E (o que o axe nao cobre): idioma, titulo e
@@ -50,7 +51,7 @@ test.beforeAll(async ({ browser, baseURL }) => {
   await prisma.business.update({ where: { userId: freshUser.userId }, data: { onboardingCompleted: false } });
   // Usuario com senha real, para o login so com teclado.
   loginEmail = `a11y-teclado-${Date.now()}@example.com`;
-  const loginUser = await prisma.user.create({ data: { name: "Teclado A11y", email: loginEmail, passwordHash: await hashPassword(PASSWORD) } });
+  const loginUser = await prisma.user.create({ data: { name: "Teclado A11y", email: loginEmail, passwordHash: await hashPassword(PASSWORD), ...currentAcceptanceData() } });
   createdUserIds.push(loginUser.id);
   await prisma.business.create({ data: { userId: loginUser.id, name: "Empresa Teclado", onboardingCompleted: true } });
 });

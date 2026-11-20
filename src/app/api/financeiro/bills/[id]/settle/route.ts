@@ -4,6 +4,7 @@ import { dayFromInput } from "@/lib/finance/entryDay";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { settleBill } from "@/lib/finance/bills/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // strict (Etapa F6d, campo renomeado de "paidAt" para "paidOn"): um cliente
 // antigo que ainda mande "paidAt" recebe 400, em vez de ter a data ignorada
@@ -26,6 +27,8 @@ export async function POST(request: Request, context: RouteContext<"/api/finance
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

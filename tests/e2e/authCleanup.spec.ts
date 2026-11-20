@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import crypto from "crypto";
 import { hashPassword } from "@/lib/auth/password";
+import { currentAcceptanceData } from "@/lib/legal/acceptance";
 import { newTestPrisma } from "./helpers/session";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 
@@ -20,7 +21,7 @@ test.afterAll(async () => {
 
 test("login real: a resposta sai e, depois dela, after() apaga a sessão e o link vencidos (e só eles)", async ({ request }) => {
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
-  const user = await prisma.user.create({ data: { name: "Limpeza E2E", email: `limpeza-e2e-${stamp}@example.com`, passwordHash: await hashPassword(PASSWORD) } });
+  const user = await prisma.user.create({ data: { name: "Limpeza E2E", email: `limpeza-e2e-${stamp}@example.com`, passwordHash: await hashPassword(PASSWORD), ...currentAcceptanceData() } });
   createdUserIds.push(user.id);
 
   // Banco de teste: tira o lixo antigo que ja era apagavel (o lote e de 500 e a escolha nao e

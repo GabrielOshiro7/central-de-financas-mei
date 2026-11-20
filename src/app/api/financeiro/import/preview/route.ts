@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { previewImport } from "@/lib/finance/importPreview";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

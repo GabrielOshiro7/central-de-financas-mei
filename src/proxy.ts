@@ -32,6 +32,7 @@ const PROTECTED_PREFIXES = [
   "/caixa",
   "/assistente",
   "/configuracoes",
+  "/reaceite",
 ];
 
 function isProtectedPath(pathname: string): boolean {

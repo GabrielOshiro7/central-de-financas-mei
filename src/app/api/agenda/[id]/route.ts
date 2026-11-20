@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { appointmentInputSchema, dayAppointmentInputSchema } from "@/lib/agenda/schema";
 import { updateAppointment, updateDayAppointment } from "@/lib/agenda/mutations";
 import { parseAgendaDateTimeInput } from "@/lib/agenda/time";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Editar. Fluxo por dia (DAY, Agenda A3): so em AGENDADO. Fluxo com horario
 // (TIMED, legado): remarcar em AGENDADO/CONFIRMADO, exatamente como antes (ver
@@ -16,6 +17,8 @@ export async function PATCH(request: Request, context: RouteContext<"/api/agenda
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

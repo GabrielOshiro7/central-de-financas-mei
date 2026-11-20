@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
-import type { ThemePreference } from "@prisma/client";
 import {
   SESSION_COOKIE_NAME,
   createSession,
   invalidateSession,
   validateSessionToken,
   type SessionExpiryReason,
+  type SessionUser,
 } from "@/lib/auth/session";
 
 export async function createUserSession(userId: string, rememberMe: boolean) {
@@ -28,7 +28,7 @@ export async function createUserSession(userId: string, rememberMe: boolean) {
 }
 
 export type CurrentUserResult =
-  | { user: { id: string; name: string; email: string; themePreference: ThemePreference | null }; reason?: undefined }
+  | { user: SessionUser; reason?: undefined }
   | { user: null; reason?: SessionExpiryReason };
 
 // Variante que tambem devolve o motivo da expiracao (inatividade vs teto

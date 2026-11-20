@@ -4,12 +4,15 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { billSchema } from "@/lib/finance/bills/schema";
 import { createBill } from "@/lib/finance/bills/mutations";
 import { dayFromInput } from "@/lib/finance/entryDay";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

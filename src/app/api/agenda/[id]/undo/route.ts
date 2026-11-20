@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { undoCompletionSchema } from "@/lib/agenda/schema";
 import { undoAppointmentCompletion } from "@/lib/agenda/undoCompletion";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Desfazer a conclusao de um atendimento (Agenda A4), DAY ou TIMED - estorna
 // o dinheiro recebido e cancela a venda na mesma transacao (ver
@@ -13,6 +14,8 @@ export async function POST(request: Request, context: RouteContext<"/api/agenda/
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

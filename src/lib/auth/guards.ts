@@ -2,13 +2,15 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUserWithReason } from "@/lib/auth/cookies";
 import { isSessionElevated } from "@/lib/auth/session";
-import type { Business, User } from "@prisma/client";
+import { REACCEPT_PATH, needsReaccept } from "@/lib/legal/acceptance";
+import type { Business } from "@prisma/client";
+import type { SessionUser } from "@/lib/auth/session";
 
 // Usado pelo layout do route group (app): exige login E onboarding
 // concluido. E a validacao "de verdade" - o proxy.ts so faz a checagem
 // otimista de cookie antes disso.
 export async function requireOnboardedUser(): Promise<{
-  user: Pick<User, "id" | "name" | "email" | "themePreference">;
+  user: SessionUser;
   business: Business;
 }> {
   const { user, reason } = await getCurrentUserWithReason();
@@ -17,6 +19,10 @@ export async function requireOnboardedUser(): Promise<{
     if (reason === "absolute") redirect("/login?reason=expired");
     redirect("/login");
   }
+
+  // Reaceite dos documentos legais (so quando o mecanismo esta ligado - ver acceptance.ts): antes
+  // de qualquer tela do app. Fora do route group (app), a pagina /reaceite nao passa por aqui.
+  if (needsReaccept(user)) redirect(REACCEPT_PATH);
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business || !business.onboardingCompleted) {

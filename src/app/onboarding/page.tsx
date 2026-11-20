@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
+import { REACCEPT_PATH, needsReaccept } from "@/lib/legal/acceptance";
 import { OnboardingWizard } from "./OnboardingWizard";
 
 // Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
@@ -11,6 +12,8 @@ export default async function OnboardingPage() {
   if (!user) {
     redirect("/login");
   }
+  // Reaceite pendente (mecanismo ligado): antes do onboarding tambem.
+  if (needsReaccept(user)) redirect(REACCEPT_PATH);
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (business?.onboardingCompleted) {

@@ -11,7 +11,9 @@
     "test:e2e": "playwright test",
     "test:db:prepare": "tsx tests/scripts/test-db-prepare.ts",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "licenses:generate": "node scripts/licenses.mjs",
+    "licenses:check": "node scripts/licenses.mjs --check"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

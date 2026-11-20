@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { LegalAcceptanceFields } from "@/lib/legal/acceptance";
 import type { ThemePreference } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -42,10 +43,19 @@ export async function createSession(userId: string, rememberMe: boolean) {
 
 export type SessionExpiryReason = "inactivity" | "absolute";
 
+// Usuario da sessao. Inclui os campos de aceite dos documentos legais (reaceite, ver
+// src/lib/legal/acceptance.ts).
+export type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  themePreference: ThemePreference | null;
+} & LegalAcceptanceFields;
+
 export type SessionValidationResult =
   | {
       session: { id: string; expiresAt: Date; elevatedUntil: Date | null };
-      user: { id: string; name: string; email: string; themePreference: ThemePreference | null };
+      user: SessionUser;
       reason?: undefined;
     }
   | { session: null; user: null; reason?: SessionExpiryReason };
@@ -55,7 +65,11 @@ export async function validateSessionToken(token: string): Promise<SessionValida
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    include: { user: { select: { id: true, name: true, email: true, themePreference: true } } },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, themePreference: true, legalAcceptedAt: true, termsVersion: true, privacyVersion: true },
+      },
+    },
   });
 
   if (!session) {

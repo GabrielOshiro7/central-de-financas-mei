@@ -22,12 +22,13 @@ export default async function globalSetup(config: FullConfig) {
   // src/lib/db.ts criar a conexao.
   const { prisma } = await import("@/lib/db");
   const { createSession, SESSION_COOKIE_NAME } = await import("@/lib/auth/session");
+  const { currentAcceptanceData } = await import("@/lib/legal/acceptance");
 
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
   const userIds: string[] = [];
   async function sessionCookie(label: string, onboardingCompleted: boolean) {
     const user = await prisma.user.create({
-      data: { name: `Aquecimento ${label}`, email: `warmup-${label}-${stamp}@example.com`, passwordHash: "x" },
+      data: { name: `Aquecimento ${label}`, email: `warmup-${label}-${stamp}@example.com`, passwordHash: "x", ...currentAcceptanceData() },
     });
     userIds.push(user.id);
     await prisma.business.create({

@@ -5,6 +5,7 @@ import { dayAppointmentInputSchema } from "@/lib/agenda/schema";
 import { createDayAppointment } from "@/lib/agenda/mutations";
 import { listAppointmentsForRange } from "@/lib/agenda/queries";
 import { todayRange, agendaWeekRange } from "@/lib/agenda/time";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Listar por intervalo (hoje/semana, no fuso da empresa - ver time.ts). A
 // pagina /agenda (incremento 5) consulta listAppointmentsForRange direto
@@ -16,6 +17,8 @@ export async function GET(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {
@@ -39,6 +42,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

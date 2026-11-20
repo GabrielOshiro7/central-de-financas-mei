@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { setSaleCompleted } from "@/lib/sales/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // "Concluída" e so um marcador comercial manual (ex.: entrega concluida) -
 // nao tem nenhum efeito financeiro/sobre os Bills relacionados.
@@ -10,6 +11,8 @@ export async function POST(_request: Request, context: RouteContext<"/api/vendas
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

@@ -7,12 +7,15 @@ import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize
 import { firstOccurrence, toRecurrenceRule } from "@/lib/finance/recurring/occurrences";
 import { dbDateToKey } from "@/lib/time/zoned";
 import { dayFromInput } from "@/lib/finance/entryDay";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

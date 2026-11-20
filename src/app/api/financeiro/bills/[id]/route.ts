@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { billSchema } from "@/lib/finance/bills/schema";
 import { updateBill } from "@/lib/finance/bills/mutations";
 import { dayFromInput } from "@/lib/finance/entryDay";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Nao ha DELETE aqui de proposito (secao "EXCLUSAO" da Etapa 5: preservar
 // rastreabilidade financeira) - so PATCH (enquanto PENDING) e os endpoints
@@ -14,6 +15,8 @@ export async function PATCH(request: Request, context: RouteContext<"/api/financ
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

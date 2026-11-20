@@ -12,6 +12,7 @@ import {
   SKIPPABLE_STEPS,
   TOTAL_STEPS,
 } from "@/lib/onboarding/schema";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 const { Decimal } = Prisma;
 
@@ -35,6 +36,8 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const body = await request.json().catch(() => null);
   const step = Number((body as { step?: unknown } | null)?.step);

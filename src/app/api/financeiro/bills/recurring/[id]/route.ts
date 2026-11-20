@@ -6,12 +6,15 @@ import { updateRecurringBill, deleteRecurringBill } from "@/lib/finance/bills/mu
 import { dayFromInput } from "@/lib/finance/entryDay";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
 import { clockFor } from "@/lib/time/zoned";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/financeiro/bills/recurring/[id]">) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {
@@ -66,6 +69,8 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/fina
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

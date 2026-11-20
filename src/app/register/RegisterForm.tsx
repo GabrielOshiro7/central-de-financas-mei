@@ -7,7 +7,7 @@ import { FormField } from "@/components/FormField";
 import { SubmitButton } from "@/components/SubmitButton";
 import { registerSchema } from "@/lib/validation/auth";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
-import { LEGAL_PATHS } from "@/content/legal/meta";
+import { LEGAL_PATHS, REGISTER_ACCEPT_LEAD, REGISTER_ACCEPT_PRIVACY_LABEL, REGISTER_ACCEPT_TERMS_LABEL } from "@/content/legal/meta";
 
 export function RegisterForm() {
   const enterNav = useEnterToNextField<HTMLFormElement>();
@@ -98,13 +98,13 @@ export function RegisterForm() {
           className="mt-0.5 h-4 w-4 shrink-0 border-gray-300 dark:border-neutral-600"
         />
         <span>
-          Li e aceito os{" "}
+          {REGISTER_ACCEPT_LEAD}{" "}
           <Link href={LEGAL_PATHS.terms} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-900 underline dark:text-neutral-100">
-            Termos de Serviço
+            {REGISTER_ACCEPT_TERMS_LABEL}
           </Link>{" "}
           e a{" "}
           <Link href={LEGAL_PATHS.privacy} target="_blank" rel="noopener noreferrer" className="font-medium text-gray-900 underline dark:text-neutral-100">
-            Política de Privacidade
+            {REGISTER_ACCEPT_PRIVACY_LABEL}
           </Link>
         </span>
       </label>

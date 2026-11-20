@@ -1,5 +1,6 @@
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { AssistantPanel } from "@/components/dashboard/AssistantPanel";
+import { InformationalNotice } from "@/components/legal/InformationalNotice";
 
 // Titulo da aba/janela (WCAG 2.4.2): descreve a pagina; o sufixo vem do template do layout raiz.
 export const metadata = { title: "Assistente" };
@@ -17,6 +18,8 @@ export default async function AssistentePage() {
       </div>
 
       <AssistantPanel />
+
+      <InformationalNotice />
     </div>
   );
 }

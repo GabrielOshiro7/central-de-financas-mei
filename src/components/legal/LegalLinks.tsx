@@ -18,7 +18,7 @@ export function LegalLinks({
   const target = newTab ? { target: "_blank", rel: "noopener noreferrer" } : {};
   const link = `hover:underline ${linkClassName}`;
   return (
-    <nav aria-label="Documentos legais" className={`flex flex-wrap items-center ${align === "center" ? "justify-center" : "justify-start"} gap-x-4 gap-y-1 text-xs ${className}`}>
+    <nav aria-label="Documentos legais" className={`flex flex-wrap items-center ${align === "center" ? "justify-center" : "justify-start"} gap-x-4 gap-y-2 text-xs ${className}`}>
       <Link href={LEGAL_PATHS.privacy} className={link} {...target}>
         Privacidade
       </Link>
@@ -30,6 +30,9 @@ export function LegalLinks({
       </Link>
       <Link href={LEGAL_PATHS.tokushoho} lang="ja" className={link} {...target}>
         {TOKUSHOHO_LINK_LABEL}
+      </Link>
+      <Link href={LEGAL_PATHS.licenses} className={link} {...target}>
+        Avisos de terceiros
       </Link>
     </nav>
   );

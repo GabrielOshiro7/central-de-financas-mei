@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { openingBalanceSchema } from "@/lib/finance/cash/schema";
 import { updateOpeningBalance } from "@/lib/finance/cash/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Endpoint dedicado (Etapa 5.1), separado de PATCH /api/business - saldo
 // inicial e um conceito proprio (posicao de caixa), nao um campo de perfil
@@ -13,6 +14,8 @@ export async function PATCH(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

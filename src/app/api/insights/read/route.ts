@@ -3,6 +3,7 @@ import { z } from "@/lib/zod";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { INSIGHT_KEY_REGEX, setInsightRead } from "@/lib/insights/reads";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 const bodySchema = z.object({ insightKey: z.string().regex(INSIGHT_KEY_REGEX, "Insight inválido."), read: z.boolean() }).strict();
 
@@ -13,6 +14,8 @@ export async function PUT(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

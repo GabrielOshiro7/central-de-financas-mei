@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { businessTimeZoneSchema } from "@/lib/time/schema";
 import { updateBusinessTimeZone } from "@/lib/onboarding/businessMutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Pais + fuso da empresa (Etapa F7). Endpoint dedicado, como o de saldo
 // inicial (opening-balance), com a MESMA autorizacao de PATCH /api/business:
@@ -12,6 +13,8 @@ export async function PATCH(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const body = await request.json().catch(() => null);
   const parsed = businessTimeZoneSchema.safeParse(body);

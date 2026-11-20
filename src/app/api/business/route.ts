@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { businessEditSchema } from "@/lib/onboarding/schema";
 import { updateBusinessProfile } from "@/lib/onboarding/businessMutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Atualiza a empresa do usuario autenticado. O id da empresa nunca vem do
 // cliente - e sempre resolvido via where: { userId: user.id }, entao nao ha
@@ -11,6 +12,8 @@ export async function PATCH(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const body = await request.json().catch(() => null);
   const parsed = businessEditSchema.safeParse(body);

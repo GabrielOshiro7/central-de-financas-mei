@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
+import { MINIMUM_AGE, REGISTER_ACCEPT_TEXT } from "@/content/legal/meta";
 
 // Páginas legais públicas (rascunho), links, aviso de cookies e aceite no cadastro.
 loadTestEnv();
@@ -26,7 +27,7 @@ async function registerThroughForm(page: Page, mail: string, accept: boolean) {
   await page.getByLabel("E-mail").fill(mail);
   await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByLabel("Confirmar senha").fill(PASSWORD);
-  if (accept) await page.getByLabel(/Li e aceito/).check();
+  if (accept) await page.getByLabel(/li e aceito/i).check();
   await page.getByRole("button", { name: "Criar conta" }).click();
 }
 
@@ -54,7 +55,7 @@ test.describe("páginas legais (públicas, rascunho)", () => {
   test("/privacidade, /termos, /cookies e /tokushoho abrem sem login, com a faixa de rascunho, versão e seções", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
     const pages = [
-      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros", version: "0.2" },
+      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros", version: "0.4" },
       { path: "/termos", title: "Termos de Serviço", section: "6. Assinatura", version: "0.2" },
       { path: "/cookies", title: "Cookies", section: "2. O que usamos", version: "0.1" },
       { path: "/tokushoho", title: "特定商取引法に基づく表記", section: "表示事項 / Informações do vendedor", version: "0.1" },
@@ -265,13 +266,18 @@ test.describe("aceite dos Termos e da Política no cadastro", () => {
     const { context, page } = await freshPage(browser);
     const mail = email("legal-sem");
     await registerThroughForm(page, mail, false);
-    await expect(page.locator('p[role="alert"]')).toHaveText("Aceite os Termos de Serviço e a Política de Privacidade para criar a conta.");
+    await expect(page.locator('p[role="alert"]')).toHaveText(
+      `Declare ter ${MINIMUM_AGE} anos ou mais e aceite os Termos de Serviço e a Política de Privacidade para criar a conta.`
+    );
     await expect(page).toHaveURL(/\/register/);
     expect(await prisma.user.count({ where: { email: mail } })).toBe(0);
 
-    await expect(page.getByLabel(/Li e aceito/)).not.toBeChecked();
-    const terms = page.getByLabel(/Li e aceito/).locator("xpath=ancestor::label").getByRole("link", { name: "Termos de Serviço" });
-    const privacy = page.getByLabel(/Li e aceito/).locator("xpath=ancestor::label").getByRole("link", { name: "Política de Privacidade" });
+    // Maioridade: o texto da caixa e exatamente o combinado (a idade vem da constante MINIMUM_AGE).
+    expect(REGISTER_ACCEPT_TEXT).toBe("Declaro ter 18 anos ou mais e li e aceito os Termos de Serviço e a Política de Privacidade");
+    await expect(page.getByLabel(REGISTER_ACCEPT_TEXT)).toBeVisible();
+    await expect(page.getByLabel(/li e aceito/i)).not.toBeChecked();
+    const terms = page.getByLabel(/li e aceito/i).locator("xpath=ancestor::label").getByRole("link", { name: "Termos de Serviço" });
+    const privacy = page.getByLabel(/li e aceito/i).locator("xpath=ancestor::label").getByRole("link", { name: "Política de Privacidade" });
     for (const link of [terms, privacy]) {
       await expect(link).toHaveAttribute("target", "_blank");
       await expect(link).toHaveAttribute("rel", /noopener/);
@@ -291,7 +297,7 @@ test.describe("aceite dos Termos e da Política no cadastro", () => {
     await registerThroughForm(page, mail, true);
     await expect(page).toHaveURL(/\/onboarding|\/dashboard/);
     const user = await prisma.user.findUniqueOrThrow({ where: { email: mail } });
-    expect([user.termsVersion, user.privacyVersion]).toEqual(["0.2", "0.2"]);
+    expect([user.termsVersion, user.privacyVersion]).toEqual(["0.2", "0.4"]);
     expect(user.legalAcceptedAt).not.toBeNull();
     expect(user.legalAcceptedAt!.getTime()).toBeGreaterThanOrEqual(before - 5000);
     await context.close();

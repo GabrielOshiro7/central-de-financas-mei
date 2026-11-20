@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { THEME_COOKIE, themeCookieOptions, themeFromPreference, themePreferenceSchema } from "@/lib/theme";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Preferencia de tema do usuario LOGADO (claro/escuro). Sempre do usuario da
 // sessao - nunca um id vindo da requisicao. Visitante nao chama esta rota (so cookie).
@@ -10,6 +11,8 @@ export async function PUT(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const body = await request.json().catch(() => null);
   const parsed = themePreferenceSchema.safeParse(body);

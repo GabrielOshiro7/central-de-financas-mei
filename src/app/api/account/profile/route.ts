@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { profileSchema, normalizeEmail } from "@/lib/validation/auth";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const body = await request.json().catch(() => null);
   const parsed = profileSchema.safeParse(body);

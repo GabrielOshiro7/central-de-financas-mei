@@ -46,6 +46,7 @@ let scans = 0;
 let fixture: A11yFixture;
 let appUser: Awaited<ReturnType<typeof createOnboardedUser>>;
 let freshUser: Awaited<ReturnType<typeof createOnboardedUser>>;
+let reacceptUser: Awaited<ReturnType<typeof createOnboardedUser>>;
 
 async function newContext(browser: Browser, baseURL: string, theme: Theme, opts: { signedIn: boolean; user?: typeof appUser; noticeVisible?: boolean; collapsedSidebar?: boolean; viewport?: { width: number; height: number } }) {
   const context = await browser.newContext(opts.viewport ? { viewport: opts.viewport } : {});
@@ -90,6 +91,10 @@ test.beforeAll(async ({ browser, baseURL }) => {
   freshUser = await createOnboardedUser(prisma, "a11y-novo");
   createdUserIds.push(freshUser.userId);
   await prisma.business.update({ where: { userId: freshUser.userId }, data: { onboardingCompleted: false } });
+  // Terceiro usuario, com o aceite dos documentos legais desatualizado, para a tela /reaceite.
+  reacceptUser = await createOnboardedUser(prisma, "a11y-reaceite");
+  createdUserIds.push(reacceptUser.userId);
+  await prisma.user.update({ where: { id: reacceptUser.userId }, data: { termsVersion: "0.1", privacyVersion: "0.1" } });
 });
 
 test.afterAll(async () => {
@@ -131,11 +136,20 @@ for (const theme of THEMES) {
       await context.close();
     });
 
+    test("reaceite dos documentos legais (aceite desatualizado)", async ({ browser, baseURL }) => {
+      const context = await newContext(browser, baseURL!, theme, { signedIn: true, user: reacceptUser });
+      const page = await context.newPage();
+      await gotoHydrated(page, "/reaceite");
+      await expect(page.getByRole("heading", { name: "Documentos atualizados", level: 1 })).toBeVisible();
+      await scan(page, theme, "/reaceite", "aceite desatualizado");
+      await context.close();
+    });
+
     test("telas do app logado (com dados)", async ({ browser, baseURL }) => {
       test.setTimeout(480_000);
       const context = await newContext(browser, baseURL!, theme, { signedIn: true });
       const page = await context.newPage();
-      for (const target of pageTargets().filter((t) => t.authenticated && t.url !== "/onboarding")) {
+      for (const target of pageTargets().filter((t) => t.authenticated && t.url !== "/onboarding" && t.url !== "/reaceite")) {
         const url = appUrl(target.url);
         await gotoHydrated(page, url);
         await settle(page);

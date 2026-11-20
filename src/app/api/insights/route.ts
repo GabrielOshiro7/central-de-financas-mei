@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/cookies";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import { clockFor } from "@/lib/time/zoned";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Unico caminho de leitura (secao "Decisoes" da Etapa 7): getInsightsForBusiness
 // nunca chama IA, mesmo quando precisa regenerar por dado desatualizado -
@@ -12,6 +13,8 @@ export async function GET() {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

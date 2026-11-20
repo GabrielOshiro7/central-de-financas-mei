@@ -5,12 +5,15 @@ import { getCurrentUser, getCurrentUserWithSession } from "@/lib/auth/cookies";
 import { requireElevatedSession } from "@/lib/auth/guards";
 import { transactionSchema } from "@/lib/finance/schema";
 import { updateTransaction, deleteTransaction } from "@/lib/finance/mutations";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 export async function PATCH(request: Request, context: RouteContext<"/api/financeiro/transactions/[id]">) {
   const user = await getCurrentUser();
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {
@@ -52,6 +55,8 @@ export async function DELETE(_request: Request, context: RouteContext<"/api/fina
   if (!current) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(current.user);
+  if (legalBlock) return legalBlock;
 
   // Excluir um lancamento financeiro e irreversivel e apaga historico ja
   // refletido nos calculos do sistema - exige reautenticacao recente

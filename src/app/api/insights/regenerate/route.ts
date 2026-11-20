@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/cookies";
 import { generateInsightsForBusiness } from "@/lib/insights/mutations";
 import { getInsightsForBusiness } from "@/lib/insights/queries";
 import { clockFor } from "@/lib/time/zoned";
+import { legalReacceptBlock } from "@/lib/legal/apiGate";
 
 // Botao manual de "atualizar" (secao 27 do prompt da Etapa 7) - o UNICO
 // caminho que chama IA (withAI: true), incondicionalmente, ignorando o
@@ -13,6 +14,8 @@ export async function POST() {
   if (!user) {
     return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
+  const legalBlock = legalReacceptBlock(user);
+  if (legalBlock) return legalBlock;
 
   const business = await prisma.business.findUnique({ where: { userId: user.id } });
   if (!business) {

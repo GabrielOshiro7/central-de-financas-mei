@@ -1,4 +1,9 @@
 import { z } from "@/lib/zod";
+import { MINIMUM_AGE } from "@/content/legal/meta";
+
+// Mensagem de recusa da caixa de aceite (cadastro e reaceite): a idade vem de MINIMUM_AGE.
+const acceptRequiredMessage = (goal: string) =>
+  `Declare ter ${MINIMUM_AGE} anos ou mais e aceite os Termos de Serviço e a Política de Privacidade para ${goal}.`;
 
 export const registerSchema = z
   .object({
@@ -6,9 +11,10 @@ export const registerSchema = z
     email: z.string().trim().min(1, "Digite seu e-mail.").email("Digite um e-mail valido."),
     password: z.string().min(10, "A senha precisa ter pelo menos 10 caracteres."),
     confirmPassword: z.string().min(1, "Confirme sua senha."),
-    // Aceite obrigatorio dos Termos de Servico e da Politica de Privacidade. O servidor
-    // grava a data/hora e as VERSOES vigentes (nunca versoes enviadas pelo cliente).
-    acceptTerms: z.literal(true, { message: "Aceite os Termos de Serviço e a Política de Privacidade para criar a conta." }),
+    // Aceite obrigatorio dos Termos de Servico e da Politica de Privacidade, junto com a declaracao
+    // de maioridade (uma unica caixa; a idade vem de MINIMUM_AGE). O servidor grava a data/hora e as
+    // VERSOES vigentes (nunca versoes enviadas pelo cliente).
+    acceptTerms: z.literal(true, { message: acceptRequiredMessage("criar a conta") }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "As senhas não são iguais.",
@@ -16,6 +22,12 @@ export const registerSchema = z
   });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+// Reaceite dos documentos legais (pagina /reaceite): a MESMA caixa do cadastro, com a declaracao de
+// ter MINIMUM_AGE anos ou mais. O servidor (POST /api/legal/accept) valida com este schema.
+export const legalAcceptSchema = z.object({
+  acceptTerms: z.literal(true, { message: acceptRequiredMessage("continuar") }),
+});
 
 export const loginSchema = z.object({
   email: z.string().trim().min(1, "Digite seu e-mail.").email("Digite um e-mail valido."),

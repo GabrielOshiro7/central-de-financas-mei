@@ -5,7 +5,7 @@ import {
   STEP_UP_GRACE_MINUTES,
 } from "@/lib/auth/sessionPolicy";
 import { RESET_TOKEN_DURATION_MS } from "@/lib/auth/resetToken";
-import { LEGAL_EFFECTIVE_DATE, PRIVACY_POLICY_VERSION, SERVICE_NAME } from "@/content/legal/meta";
+import { LEGAL_EFFECTIVE_DATE, MINIMUM_AGE, PRIVACY_POLICY_VERSION, SERVICE_NAME } from "@/content/legal/meta";
 import type { LegalDocument } from "@/content/legal/types";
 
 // RASCUNHO para revisao juridica. Estruturada para a Lei de Protecao de Informacoes
@@ -46,7 +46,7 @@ export const PRIVACY_POLICY: LegalDocument = {
             "Cadastro e perfil: nome, e-mail e senha (a senha nunca é guardada em texto: só um hash bcrypt).",
             "Empresa informada no primeiro acesso e em Configurações: nome da empresa, tipo de negócio, modelo de receita, tempo de atuação, número de pessoas, moeda, faturamento médio mensal, saldo inicial, país e fuso horário.",
             "Preferências: tema escolhido (claro ou escuro).",
-            "Aceite destes documentos: data e hora e as versões dos Termos de Serviço e desta Política aceitas no cadastro (somente para contas criadas depois dessa função existir).",
+            "Aceite destes documentos: data e hora e as versões dos Termos de Serviço e desta Política aceitas no cadastro e, quando os documentos forem atualizados, no novo aceite (somente para contas criadas depois dessa função existir, ou que já tenham aceitado de novo). No cadastro e no novo aceite dos documentos, a mesma caixa de aceite registra a declaração de ter a idade mínima.",
             "Dados de sessão: identificador da sessão (guardado só como hash), datas de criação, expiração e última atividade.",
             "Assinatura (o Serviço é pago): apenas o necessário para a assinatura — status, plano, datas e o identificador do cliente no provedor de cobrança. [PREENCHER: confirmar a lista exata quando a cobrança for implementada; hoje o aplicativo ainda não guarda dados de assinatura]",
           ],
@@ -196,7 +196,8 @@ export const PRIVACY_POLICY: LegalDocument = {
             "Hoje o Serviço não oferece exclusão de conta pelo próprio aplicativo: para excluir a conta, peça pelo contato da seção 8. Excluída a conta, apagaremos os dados ligados a ela (empresa, clientes, vendas, lançamentos e demais registros); o prazo para atender o pedido é [PREENCHER: prazo] e o procedimento técnico de exclusão é [PREENCHER: confirmar como a exclusão completa é feita, pois hoje ela não é uma função do aplicativo].",
             "Clientes cadastrados podem ser desativados (não excluídos) pelo aplicativo; lançamentos podem ser excluídos (com confirmação de senha). Contas a pagar/receber e vendas são canceladas em vez de excluídas, para preservar o histórico.",
             "Cópias de segurança guardam dados antigos até o fim do prazo de retenção dos backups: [PREENCHER: prazo].",
-            "Sessões expiradas e links de recuperação de senha usados ou vencidos perdem a validade; [PREENCHER: confirmar se e quando são removidos do banco].",
+            "Sessões: perdem a validade com 60 minutos sem atividade ou no limite de 7 dias (30 dias se você marcou “lembrar de mim”). Links de recuperação de senha: valem 45 minutos e só podem ser usados uma vez.",
+            "Remoção do banco de dados: sessões e links de recuperação vencidos (ou já usados) são apagados quando passam mais de 24 horas do vencimento ou do uso. A limpeza roda sozinha, em segundo plano, depois de cada login concluído e de cada pedido de recuperação de senha de um e-mail cadastrado, em lotes de até 500 registros de cada tipo por vez. Não há rotina agendada: se ninguém entrar nem pedir recuperação de senha, a limpeza espera o próximo desses eventos. Sessões que você mesmo encerra (sair, trocar ou redefinir a senha) são apagadas na hora, e uma sessão vencida também é apagada quando alguém tenta usá-la.",
           ],
         },
       ],
@@ -253,6 +254,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       title: "9. Menores de idade",
       blocks: [
         { type: "p", text: "O Serviço é destinado a maiores de [PREENCHER: idade mínima — sugestão 18] anos. Não coletamos intencionalmente informações de quem não tem essa idade." },
+        { type: "p", text: `Para criar a conta, a pessoa precisa marcar a caixa em que declara ter ${MINIMUM_AGE} anos ou mais e aceita os Termos de Serviço e esta Política. O novo aceite dos documentos, quando eles são atualizados, pede a mesma declaração. O Serviço não confere a idade por nenhum outro meio.` },
       ],
     },
     {

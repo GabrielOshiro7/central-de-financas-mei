@@ -19,6 +19,7 @@ import { TopCategoriesPanel } from "@/components/dashboard/TopCategoriesPanel";
 import { ManagementSummaryPanel } from "@/components/dashboard/ManagementSummaryPanel";
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
 import { AssistantPanel } from "@/components/dashboard/AssistantPanel";
+import { InformationalNotice } from "@/components/legal/InformationalNotice";
 import { HealthBadge } from "@/components/financeiro/HealthBadge";
 import { AlertsPanel } from "@/components/financeiro/AlertsPanel";
 import { IndicatorsPanel, type IndicatorItem } from "@/components/financeiro/IndicatorsPanel";
@@ -111,6 +112,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <DashboardFilters />
         <DashboardEmptyState />
         <AssistantPanel />
+        <InformationalNotice />
       </div>
     );
   }
@@ -273,6 +275,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       </div>
 
       <AssistantPanel hasFinancialData />
+
+      <InformationalNotice />
     </div>
   );
 }
