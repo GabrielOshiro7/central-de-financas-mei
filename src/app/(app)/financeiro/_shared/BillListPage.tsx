@@ -73,7 +73,7 @@ export async function BillListPage({
     pageSize: 100,
   };
 
-  const categoryType = direction === "PAYABLE" ? undefined : "REVENUE";
+  const categoryType = direction === "PAYABLE" ? "EXPENSE" : "REVENUE";
   const paidRange = resolvePeriodRange("THIS_MONTH", clock);
 
   const [{ items }, hasAnyEver, summary, recurringBills, allCategories] = await Promise.all([
@@ -81,11 +81,7 @@ export async function BillListPage({
     hasAnyBillsEver(business.id, direction),
     getBillSummary(business.id, direction, paidRange, clock),
     listRecurringBills(business.id, direction),
-    direction === "PAYABLE"
-      ? Promise.all([listVisibleCategories(business.id, "COST"), listVisibleCategories(business.id, "EXPENSE")]).then(
-          ([cost, expense]) => [...cost, ...expense]
-        )
-      : listVisibleCategories(business.id, categoryType),
+    listVisibleCategories(business.id, categoryType),
   ]);
 
   const categories = allCategories.map((c) => ({ id: c.id, name: c.name }));

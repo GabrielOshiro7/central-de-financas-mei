@@ -3,7 +3,7 @@ import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { businessToday, businessTodayDayOfMonth } from "./helpers/businessDate";
 
-// Criação contextual no Financeiro: cada aba de tipo (Receitas/Custos/
+// Criação contextual no Financeiro: cada aba de tipo (Receitas/
 // Despesas) tem o próprio botão, que abre o modal com o tipo fixo; Recorrentes
 // tem "Novo lançamento recorrente" (seletor de tipo visível, recorrência
 // travada). O "+ Novo lançamento" global da barra de abas não existe mais.
@@ -50,13 +50,11 @@ async function registerAndOnboard(page: Page, name: string) {
 
 const TYPE_TABS = [
   { path: "/financeiro/receitas", label: "Nova receita", typeLabel: "Receita", category: "Venda de produtos" },
-  { path: "/financeiro/custos", label: "Novo custo", typeLabel: "Custo", category: "Mercadoria" },
   { path: "/financeiro/despesas", label: "Nova despesa", typeLabel: "Despesa", category: "Aluguel" },
 ] as const;
 
 const ALL_TABS = [
   "/financeiro/receitas",
-  "/financeiro/custos",
   "/financeiro/despesas",
   "/financeiro/pagar",
   "/financeiro/receber",
@@ -68,9 +66,9 @@ function tabBar(page: Page) {
   return page.getByRole("navigation", { name: "Seções do Financeiro" }).locator("..");
 }
 
-// O seletor de tipo do modal são três botões Receita/Custo/Despesa.
+// O seletor de tipo do modal são dois botões Receita/Despesa.
 async function expectTypeSelector(dialog: Locator, visible: boolean) {
-  for (const name of ["Receita", "Custo", "Despesa"]) {
+  for (const name of ["Receita", "Despesa"]) {
     const button = dialog.getByRole("button", { name, exact: true });
     if (visible) await expect(button).toBeVisible();
     else await expect(button).toHaveCount(0);
@@ -212,7 +210,7 @@ test.describe("Financeiro - criação contextual por aba", () => {
     const entryRow = page.getByRole("row", { name: new RegExp(description) });
     await expect(entryRow).toHaveCount(1);
     await expect(entryRow.getByText("Recorrente", { exact: true })).toBeVisible();
-    for (const other of ["/financeiro/receitas", "/financeiro/custos"]) {
+    for (const other of ["/financeiro/receitas"]) {
       await gotoHydrated(page, other);
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(page.getByText(description)).toHaveCount(0);

@@ -75,7 +75,6 @@ enum Currency {
 
 enum FinancialEntryType {
   REVENUE
-  COST
   EXPENSE
 
   @@map("financial_entry_type")
@@ -406,7 +405,7 @@ model RecurringEntry {
 }
 
 // Conta a pagar/receber (Etapa 5). Um unico modelo para as duas direcoes - a
-// direcao (pagar vs receber) e derivada de category.type (COST/EXPENSE =
+// direcao (pagar vs receber) e derivada de category.type (EXPENSE =
 // pagar, REVENUE = receber), o mesmo discriminador que FinancialEntry/
 // RecurringEntry ja usam, em vez de duas tabelas paralelas (ver ADENDO da
 // Etapa 5).

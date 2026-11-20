@@ -6,7 +6,7 @@ const { Decimal } = Prisma;
 
 // Etapa F6a-2: o caixa compara DIAS de calendario (occurredOn) com o dia do
 // saldo inicial - os mesmos dias de antes, agora como DateKey.
-function entry(type: "REVENUE" | "COST" | "EXPENSE", amount: number, occurredOn: string): CashEntryLike {
+function entry(type: "REVENUE" | "EXPENSE", amount: number, occurredOn: string): CashEntryLike {
   return { type, amount: new Decimal(amount), occurredOn };
 }
 
@@ -15,7 +15,7 @@ describe("calculateAccumulatedBalance - APROXIMACAO baseada em lancamentos, nunc
     const openingBalanceDate = "2026-01-01";
     const entries = [
       entry("REVENUE", 1000, "2026-01-05"),
-      entry("COST", 200, "2026-01-10"),
+      entry("EXPENSE", 200, "2026-01-10"),
       entry("EXPENSE", 100, "2026-01-15"),
     ];
     // netProfit = 1000 - 200 - 100 = 700; saldo = 500 (inicial) + 700 = 1200

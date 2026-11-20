@@ -33,15 +33,6 @@ export function generateAlerts(
       });
     }
 
-    const costsVariation = calculateVariationPercent(current.costs, previous.costs);
-    const revenueVariation = calculateVariationPercent(current.revenue, previous.revenue);
-    if (costsVariation !== null && revenueVariation !== null && costsVariation.gt(revenueVariation)) {
-      alerts.push({
-        id: "costs_outpacing_revenue",
-        message: `Seus custos cresceram mais rápido (${formatPercent(costsVariation)}) do que o faturamento (${formatPercent(revenueVariation)}) no período.`,
-      });
-    }
-
     const marginDrop = marginPointsDelta(previous.netMargin, current.netMargin);
     if (marginDrop !== null && marginDrop.gte(MARGIN_DROP_THRESHOLD_POINTS)) {
       alerts.push({
@@ -133,7 +124,7 @@ export const HEALTH_ICON_COLOR: Record<FinancialHealth, string> = {
 // futura de IA podera ler os mesmos FinancialSummary/alertas e substituir ou
 // expandir este texto. E uma leitura QUALITATIVA do periodo (fechou no lucro
 // ou no prejuizo, o que pesou mais) - de proposito nao repete nenhum valor:
-// faturamento, custos, despesas, lucro e margens ja estao nos cards da mesma
+// faturamento, despesas, lucro e margem ja estao nos cards da mesma
 // tela.
 export function generateSummaryText(params: {
   periodLabel: string;
@@ -149,37 +140,17 @@ export function generateSummaryText(params: {
   const sentences: string[] = [];
 
   if (!summary.hasRevenueEntries) {
-    sentences.push(`Em "${periodLabel}" sua empresa não registrou faturamento, só gastos.`);
+    sentences.push(`Em "${periodLabel}" sua empresa não registrou faturamento, só despesas.`);
   } else if (summary.netProfit.isZero()) {
     sentences.push(
-      `Em "${periodLabel}" sua empresa fechou no zero a zero: o faturamento foi igual à soma de custos e despesas.`
+      `Em "${periodLabel}" sua empresa fechou no zero a zero: o faturamento foi igual ao total de despesas.`
     );
   } else if (summary.netProfit.isPositive()) {
-    sentences.push(`Em "${periodLabel}" sua empresa fechou no lucro: o faturamento cobriu todos os custos e despesas.`);
+    sentences.push(`Em "${periodLabel}" sua empresa fechou no lucro: o faturamento cobriu todas as despesas.`);
   } else {
     sentences.push(
-      `Em "${periodLabel}" sua empresa fechou no prejuízo: custos e despesas somados passaram do faturamento.`
+      `Em "${periodLabel}" sua empresa fechou no prejuízo: as despesas passaram do faturamento.`
     );
-  }
-
-  if (summary.hasRevenueEntries && summary.costs.greaterThan(summary.revenue)) {
-    sentences.push("Só os custos já passaram do faturamento, antes mesmo das despesas.");
-  }
-
-  if (summary.hasCostEntries && summary.hasExpenseEntries) {
-    if (summary.costs.greaterThan(summary.expenses)) {
-      sentences.push("Os custos pesaram mais que as despesas.");
-    } else if (summary.expenses.greaterThan(summary.costs)) {
-      sentences.push("As despesas pesaram mais que os custos.");
-    } else {
-      sentences.push("Custos e despesas pesaram igual.");
-    }
-  } else if (summary.hasCostEntries) {
-    sentences.push("Todo o gasto veio de custos; não há despesas lançadas.");
-  } else if (summary.hasExpenseEntries) {
-    sentences.push("Todo o gasto veio de despesas; não há custos lançados.");
-  } else {
-    sentences.push("Não há custos nem despesas lançados.");
   }
 
   return sentences.join(" ");

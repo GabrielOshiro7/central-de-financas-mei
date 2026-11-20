@@ -466,7 +466,7 @@ test("nomes acessíveis: ações de linha dizem DO QUE (sem 'Editar'/'Ver' repet
   const context = await newContext(browser, baseURL!, "light", { signedIn: true });
   const page = await context.newPage();
   const problems: string[] = [];
-  const listPages = ["/clientes", "/vendas", "/financeiro/receitas", "/financeiro/despesas", "/financeiro/custos", "/financeiro/pagar", "/financeiro/receber", "/financeiro/recorrentes", `/agenda?view=day&day=${fixture.today}`, `/vendas/${fixture.saleId}`, `/clientes/${fixture.clientId}`, "/dashboard", "/caixa"];
+  const listPages = ["/clientes", "/vendas", "/financeiro/receitas", "/financeiro/despesas", "/financeiro/pagar", "/financeiro/receber", "/financeiro/recorrentes", `/agenda?view=day&day=${fixture.today}`, `/vendas/${fixture.saleId}`, `/clientes/${fixture.clientId}`, "/dashboard", "/caixa"];
   for (const path of listPages) {
     await gotoHydrated(page, path);
     const { named, unnamed } = namesOf(await page.locator("body").ariaSnapshot());

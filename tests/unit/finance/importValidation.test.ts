@@ -21,7 +21,7 @@ function makeCategory(overrides: Partial<Category>): Category {
 
 const categories: Category[] = [
   makeCategory({ id: "rev-1", name: "Venda de produtos", type: "REVENUE" }),
-  makeCategory({ id: "cost-1", name: "Mercadoria", type: "COST" }),
+  makeCategory({ id: "cost-1", name: "Mercadoria", type: "EXPENSE" }),
   makeCategory({ id: "exp-1", name: "Aluguel", type: "EXPENSE" }),
   makeCategory({ id: "exp-2", name: "Água", type: "EXPENSE" }),
 ];

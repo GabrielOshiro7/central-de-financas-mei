@@ -2,7 +2,7 @@ import { z } from "@/lib/zod";
 import { isIntegerCurrency } from "@/lib/money";
 import type { Currency } from "@prisma/client";
 
-const entryTypeValues = ["REVENUE", "COST", "EXPENSE"] as const;
+const entryTypeValues = ["REVENUE", "EXPENSE"] as const;
 const frequencyValues = ["WEEKLY", "MONTHLY", "YEARLY"] as const;
 
 // Schema do molde de lancamento recorrente (Etapa 4.1). `currency` so entra

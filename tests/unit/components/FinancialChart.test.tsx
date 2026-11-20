@@ -14,7 +14,6 @@ afterEach(() => cleanup());
 function point(overrides: Partial<EvolutionPoint> & { key: string; label: string }): EvolutionPoint {
   return {
     revenue: 0,
-    costs: 0,
     expenses: 0,
     netProfit: 0,
     hasAnyEntries: true,
@@ -28,8 +27,8 @@ function point(overrides: Partial<EvolutionPoint> & { key: string; label: string
 // fronteira - ver comentario em evolutionPoints.ts sobre o bug real que isso
 // causou (so aparecia em runtime no navegador, nao neste teste nem no tsc).
 const series: EvolutionPoint[] = [
-  point({ key: "day1", label: "05/09", revenue: 1000, costs: 300, expenses: 150, netProfit: 550 }),
-  point({ key: "day2", label: "06/09", revenue: 2000, costs: 700, expenses: 250, netProfit: 1050 }),
+  point({ key: "day1", label: "05/09", revenue: 1000, expenses: 150, netProfit: 850 }),
+  point({ key: "day2", label: "06/09", revenue: 2000, expenses: 250, netProfit: 1750 }),
 ];
 
 describe("FinancialChart - tooltip", () => {
@@ -38,7 +37,7 @@ describe("FinancialChart - tooltip", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
-  it("mostra os valores corretos do dia sob o mouse, sem trocar Custos por Despesas", () => {
+  it("mostra os valores corretos do dia sob o mouse, sem trocar Despesas por Lucro", () => {
     render(<FinancialChart series={series} currency="BRL" />);
 
     const triggers = screen.getAllByRole("button");
@@ -48,18 +47,17 @@ describe("FinancialChart - tooltip", () => {
     expect(tooltip).toHaveTextContent("06/09");
 
     // Cada linha (label + valor) verificada isoladamente - pega um bug de
-    // Custos/Despesas trocadas mesmo que os dois valores apareçam em algum
-    // lugar do tooltip (o que um simples toHaveTextContent global não pegaria).
+    // series trocadas mesmo que os valores apareçam em algum lugar do tooltip (o que um simples toHaveTextContent global não pegaria).
     expect(within(tooltip).getByText("Faturamento").closest("div")).toHaveTextContent(
       textMoney(2000, "BRL")
     );
-    expect(within(tooltip).getByText("Custos").closest("div")).toHaveTextContent(textMoney(700, "BRL"));
+    expect(within(tooltip).queryByText("Custos")).not.toBeInTheDocument(); // o tipo Custo foi removido
     expect(within(tooltip).getByText("Despesas").closest("div")).toHaveTextContent(textMoney(250, "BRL"));
-    expect(within(tooltip).getByText("Lucro").closest("div")).toHaveTextContent(textMoney(1050, "BRL"));
+    expect(within(tooltip).getByText("Lucro").closest("div")).toHaveTextContent(textMoney(1750, "BRL"));
 
     // Valores do OUTRO dia não devem aparecer no tooltip.
     expect(tooltip).not.toHaveTextContent(textMoney(1000, "BRL"));
-    expect(tooltip).not.toHaveTextContent(textMoney(300, "BRL"));
+    expect(tooltip).not.toHaveTextContent(textMoney(150, "BRL"));
   });
 
   it("hover em pontos diferentes mostra valores diferentes (sem índice preso)", () => {
@@ -97,7 +95,8 @@ describe("FinancialChart - tooltip", () => {
     const triggers = screen.getAllByRole("button");
     const label = triggers[1].getAttribute("aria-label");
     expect(label).toContain("06/09");
-    expect(label).toContain(formatMoney(700, "BRL"));
+    expect(label).toContain(formatMoney(1750, "BRL"));
     expect(label).toContain(formatMoney(250, "BRL"));
+    expect(label).not.toContain("Custos");
   });
 });

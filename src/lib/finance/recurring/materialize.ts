@@ -5,7 +5,7 @@ import { getBusinessClock } from "@/lib/time/businessClock";
 import { dateKeyToDbDate, todayKey } from "@/lib/time/zoned";
 
 // Materializacao preguicosa (secao "MATERIALIZACAO" da Etapa 4.1): chamada a
-// cada leitura de dados financeiros (Receitas/Custos/Despesas, Caixa,
+// cada leitura de dados financeiros (Receitas/Despesas, Caixa,
 // dashboard), nunca por cron/job em background. Gera FinancialEntry
 // REAIS pras ocorrencias entre a primeira ocorrencia valida de cada molde
 // ativo e o dia de `now` no fuso da empresa (nunca alem de "agora" - o

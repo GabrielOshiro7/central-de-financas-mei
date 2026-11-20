@@ -18,7 +18,7 @@ export const TERMS_OF_SERVICE: LegalDocument = {
       blocks: [
         {
           type: "p",
-          text: `O ${SERVICE_NAME} é um sistema online de gestão para pequenos negócios: lançamentos financeiros (receitas, custos e despesas), contas a pagar e a receber, vendas, cadastro de clientes, produtos e serviços, agenda, caixa, painel de indicadores e "insights" calculados a partir dos dados que você registra.`,
+          text: `O ${SERVICE_NAME} é um sistema online de gestão para pequenos negócios: lançamentos financeiros (receitas e despesas), contas a pagar e a receber, vendas, cadastro de clientes, produtos e serviços, agenda, caixa, painel de indicadores e "insights" calculados a partir dos dados que você registra.`,
         },
         { type: "p", text: "Operador do Serviço: [PREENCHER: nome/razão social, endereço e contato do operador]." },
       ],

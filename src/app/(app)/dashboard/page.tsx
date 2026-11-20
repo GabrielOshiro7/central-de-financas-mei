@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Calculator, DollarSign, FileMinus, PiggyBank } from "lucide-react";
+import { DollarSign, FileMinus, PiggyBank } from "lucide-react";
 import { requireOnboardedUser } from "@/lib/auth/guards";
 import { materializeRecurringEntries } from "@/lib/finance/recurring/materialize";
 import { materializeRecurringBills } from "@/lib/finance/bills/materialize";
@@ -124,14 +124,6 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const revenueVariation: MetricVariation | null = comparisonActive
     ? { text: formatVariation(data.revenueGrowth), direction: directionFor(data.revenueGrowth), description: comparisonDescription }
     : null;
-  const costsVariation: MetricVariation | null = comparisonActive
-    ? {
-        text: formatVariation(data.costsGrowth),
-        direction: directionFor(data.costsGrowth),
-        description: comparisonDescription,
-        favorableDirection: "down",
-      }
-    : null;
   const expensesVariation: MetricVariation | null = comparisonActive
     ? {
         text: formatVariation(data.expensesGrowth),
@@ -161,22 +153,17 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
     : null;
 
   const revenueDisplay = summary.hasRevenueEntries ? formatMoney(summary.revenue, currency) : null;
-  const costsDisplay = summary.hasCostEntries ? formatMoney(summary.costs, currency) : null;
   const expensesDisplay = summary.hasExpenseEntries ? formatMoney(summary.expenses, currency) : null;
   const profitDisplay = summary.hasAnyEntries ? formatMoney(summary.netProfit, currency) : null;
 
-  const breakEvenDisplay =
-    data.breakEven.status === "ok" ? formatMoney(data.breakEven.breakEvenRevenue, currency) : data.breakEven.reason;
   const averageTicketDisplay =
     data.averageTicket.status === "ok" ? formatMoney(data.averageTicket.amount, currency) : "—";
 
   // So o que os MetricCards do topo NAO mostram - crescimento de faturamento/
-  // lucro e as duas margens ja estao la, com o mesmo valor.
+  // lucro e a margem liquida ja estao la, com o mesmo valor.
   const indicators: IndicatorItem[] = [
-    { label: "Participação dos custos", value: formatPercent(data.costShare) },
     { label: "Participação das despesas", value: formatPercent(data.expenseShare) },
     { label: "Ticket médio", value: averageTicketDisplay },
-    { label: "Ponto de equilíbrio", value: breakEvenDisplay },
   ];
 
   return (
@@ -189,7 +176,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
       />
       <DashboardFilters />
 
-      <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Faturamento"
           value={revenueDisplay}
@@ -198,35 +185,23 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
           variation={revenueVariation}
         />
         <MetricCard
-          label="Custos"
-          value={costsDisplay}
-          icon={<Calculator size={16} strokeWidth={1.75} aria-hidden="true" />}
-          tooltip="Gastos diretamente relacionados à produção ou operação do produto/serviço."
-          variation={costsVariation}
-        />
-        <MetricCard
           label="Despesas"
           value={expensesDisplay}
           icon={<FileMinus size={16} strokeWidth={1.75} aria-hidden="true" />}
-          tooltip="Gastos necessários para manter a operação da empresa."
+          tooltip="Total de gastos da empresa no período."
           variation={expensesVariation}
         />
         <MetricCard
           label="Lucro"
           value={profitDisplay}
           icon={<PiggyBank size={16} strokeWidth={1.75} aria-hidden="true" />}
-          tooltip="Receita menos custos e despesas."
+          tooltip="Receita menos despesas."
           variation={profitVariation}
-        />
-        <MetricCard
-          label="Margem bruta"
-          value={summary.hasAnyEntries ? formatPercent(summary.grossMargin) : null}
-          tooltip="Percentual da receita que sobra depois de descontar apenas os custos."
         />
         <MetricCard
           label="Margem líquida"
           value={summary.hasAnyEntries ? formatPercent(summary.netMargin) : null}
-          tooltip="Percentual da receita que sobra depois de descontar custos e despesas."
+          tooltip="Percentual da receita que sobra depois de descontar as despesas."
           variation={netMarginVariation}
         />
       </div>
@@ -269,10 +244,7 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
 
       <InsightsSummaryPanel insights={data.insights} />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <CategoryBreakdownChart title="Distribuição de custos" entries={data.costBreakdown} currency={currency} />
-        <CategoryBreakdownChart title="Distribuição de despesas" entries={data.expenseBreakdown} currency={currency} />
-      </div>
+      <CategoryBreakdownChart title="Distribuição de despesas" entries={data.expenseBreakdown} currency={currency} />
 
       <AssistantPanel hasFinancialData />
 

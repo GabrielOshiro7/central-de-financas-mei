@@ -2,10 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Prisma } from "@prisma/client";
 import {
   describeSignedGrowth,
-  calculateBreakEven,
   calculateAverageTicket,
   buildTopCategoriesRanking,
-  summarizeEntries,
 } from "@/lib/finance/calculations";
 import { formatSignedGrowthText } from "@/lib/finance/insights";
 import { formatMoney } from "@/lib/money";
@@ -53,38 +51,6 @@ describe("describeSignedGrowth", () => {
   it("chegar exatamente em zero não é tratado como troca de sinal (usa variação percentual normal)", () => {
     const result = describeSignedGrowth(new Decimal(0), new Decimal(-500));
     expect(result.kind).toBe("percent");
-  });
-});
-
-describe("calculateBreakEven", () => {
-  it("calcula a receita de equilíbrio quando há margem de contribuição positiva", () => {
-    // receita 1000, custos variáveis (COST) 400, despesas fixas (EXPENSE) 300
-    const summary = summarizeEntries([
-      { type: "REVENUE", amount: new Decimal(1000) },
-      { type: "COST", amount: new Decimal(400) },
-      { type: "EXPENSE", amount: new Decimal(300) },
-    ]);
-    const result = calculateBreakEven(summary);
-    expect(result.status).toBe("ok");
-    if (result.status === "ok") {
-      expect(result.contributionMarginRatio.toNumber()).toBeCloseTo(0.6); // (1000-400)/1000
-      expect(result.breakEvenRevenue.toNumber()).toBeCloseTo(500); // 300 / 0.6
-    }
-  });
-
-  it("sem faturamento no período -> dados insuficientes", () => {
-    const summary = summarizeEntries([{ type: "EXPENSE", amount: new Decimal(100) }]);
-    const result = calculateBreakEven(summary);
-    expect(result.status).toBe("insufficient");
-  });
-
-  it("custos variáveis (COST) >= receita -> margem de contribuição não positiva -> dados insuficientes", () => {
-    const summary = summarizeEntries([
-      { type: "REVENUE", amount: new Decimal(100) },
-      { type: "COST", amount: new Decimal(150) },
-    ]);
-    const result = calculateBreakEven(summary);
-    expect(result.status).toBe("insufficient");
   });
 });
 

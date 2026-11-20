@@ -6,8 +6,8 @@ const { Decimal } = Prisma;
 type Decimal = Prisma.Decimal;
 
 // Posicao de caixa (Etapa 5.1) = APROXIMACAO baseada nos lancamentos
-// registrados (Receita - Custo - Despesa), NUNCA o saldo bancario real - ela
-// diverge sempre que houver dinheiro que nao e receita/custo/despesa (aporte
+// registrados (Receita - Despesa), NUNCA o saldo bancario real - ela
+// diverge sempre que houver dinheiro que nao e receita/despesa (aporte
 // de capital, retirada de socio, emprestimo). Ver o aviso permanente na UI
 // (CashBalanceCard) - este calculo NUNCA deve ser exibido sem esse aviso ao
 // lado.

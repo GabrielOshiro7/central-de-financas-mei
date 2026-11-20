@@ -20,12 +20,11 @@ type Detail = FutureDetail | PastDetail;
 
 const LABEL: Record<FinancialEntryType, { noun: string; created: string }> = {
   REVENUE: { noun: "Receita", created: "criada" },
-  COST: { noun: "Custo", created: "criado" },
   EXPENSE: { noun: "Despesa", created: "criada" },
 };
 
 // Aviso discreto (neutro, sem cor da paleta de status) na aba de Receitas/
-// Custos/Despesas:
+// Despesas:
 // - primeira ocorrencia futura: "Receita recorrente criada. A primeira entra em
 //   DD/MM/AAAA." + "Ver em Recorrentes";
 // - primeira ocorrencia antes do mes corrente (fora do periodo mostrado):

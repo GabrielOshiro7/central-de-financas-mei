@@ -12,15 +12,10 @@ export const DEFAULT_CATEGORY_NAMES: Record<FinancialEntryType, string[]> = {
     "Assinaturas",
     "Outras receitas",
   ],
-  COST: [
-    "Mercadoria",
-    "Matéria-prima",
-    "Insumos",
-    "Embalagens",
-    "Frete",
-    "Comissões",
-    "Outros custos",
-  ],
+  // As categorias que eram do tipo Custo (removido; migracao 20261120120000_remove_cost_type) agora sao
+  // despesas: Mercadoria ... Comissoes (ao final da lista). "Outros custos" NAO entra aqui para empresas
+  // novas: "Outras despesas" ja cobre o mesmo papel. (Empresas existentes mantem a categoria "Outros custos"
+  // que ja tinham - dados do banco nao foram alterados.)
   EXPENSE: [
     "Aluguel",
     "Salários",
@@ -34,5 +29,11 @@ export const DEFAULT_CATEGORY_NAMES: Record<FinancialEntryType, string[]> = {
     "Manutenção",
     "Impostos",
     "Outras despesas",
+    "Mercadoria",
+    "Matéria-prima",
+    "Insumos",
+    "Embalagens",
+    "Frete",
+    "Comissões",
   ],
 };

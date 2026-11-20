@@ -22,7 +22,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
   beforeAll(async () => {
     const [revenueCategory, costCategory, expenseCategory] = await Promise.all([
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE" } }),
-      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "COST" } }),
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE", name: "Mercadoria" } }),
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE" } }),
     ]);
     revenueCategoryId = revenueCategory.id;
@@ -79,7 +79,7 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
         {
           businessId: businessAId,
           userId: userAId,
-          type: "COST",
+          type: "EXPENSE",
           categoryId: costCategoryId,
           description: "Mercadoria A",
           amount: "400",
@@ -108,25 +108,22 @@ describe("getDashboardData - consistência cruzada e isolamento (Etapa 4)", () =
     });
   });
 
-  it("os totais do dashboard batem exatamente com a soma de listTransactions (Receitas/Custos/Despesas) no mesmo período - ADENDO da Etapa 4", async () => {
+  it("os totais do dashboard batem exatamente com a soma de listTransactions (Receitas/Despesas) no mesmo período - ADENDO da Etapa 4", async () => {
     const data = await getDashboardData(businessAId, "BRL", "Este mês", {
       period: "THIS_MONTH",
     }, processClock());
 
-    const [revenueTx, costTx, expenseTx] = await Promise.all([
+    const [revenueTx, expenseTx] = await Promise.all([
       // data.range foi resolvido no fuso do relogio (processClock); o filtro
       // de periodo exige o mesmo fuso (F6b-2).
       listTransactions(businessAId, { type: "REVENUE", range: data.range, pageSize: 100 }, PROCESS_TZ),
-      listTransactions(businessAId, { type: "COST", range: data.range, pageSize: 100 }, PROCESS_TZ),
       listTransactions(businessAId, { type: "EXPENSE", range: data.range, pageSize: 100 }, PROCESS_TZ),
     ]);
 
     expect(data.summary.revenue.toNumber()).toBe(sumAmounts(revenueTx.items));
-    expect(data.summary.costs.toNumber()).toBe(sumAmounts(costTx.items));
     expect(data.summary.expenses.toNumber()).toBe(sumAmounts(expenseTx.items));
     expect(data.summary.revenue.toNumber()).toBe(1500);
-    expect(data.summary.costs.toNumber()).toBe(400);
-    expect(data.summary.expenses.toNumber()).toBe(200);
+    expect(data.summary.expenses.toNumber()).toBe(600); // 400 (ex-custo) + 200
   });
 
   it("dashboard da empresa A nunca inclui lançamentos da empresa B (isolamento)", async () => {

@@ -36,16 +36,9 @@ describe("generateAlerts - limiares (secao 20)", () => {
     expect(alerts.some((a) => a.id === "expenses_increase")).toBe(false);
   });
 
-  it("dispara quando custos crescem mais que o faturamento", () => {
-    const previous = summary([entry("REVENUE", 1000), entry("COST", 100)]);
-    const current = summary([entry("REVENUE", 1020), entry("COST", 105)]); // +2% receita, +5% custo
-    const alerts = generateAlerts(current, previous, []);
-    expect(alerts.some((a) => a.id === "costs_outpacing_revenue")).toBe(true);
-  });
-
-  it("não dispara quando custos e faturamento crescem no mesmo ritmo", () => {
-    const previous = summary([entry("REVENUE", 1000), entry("COST", 100)]);
-    const current = summary([entry("REVENUE", 1100), entry("COST", 110)]); // +10% ambos
+  it("a regra costs_outpacing_revenue (custos × faturamento) foi removida junto com o tipo Custo", () => {
+    const previous = summary([entry("REVENUE", 1000), entry("EXPENSE", 100)]);
+    const current = summary([entry("REVENUE", 1020), entry("EXPENSE", 105)]);
     const alerts = generateAlerts(current, previous, []);
     expect(alerts.some((a) => a.id === "costs_outpacing_revenue")).toBe(false);
   });

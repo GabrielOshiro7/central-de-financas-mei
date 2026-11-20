@@ -31,7 +31,12 @@ const nextConfig: NextConfig = {
     return [{ source: "/:path*", headers: staticSecurityHeaders({ isProduction: process.env.NODE_ENV === "production" }) }];
   },
   async redirects() {
-    return [{ source: "/financeiro", destination: "/financeiro/receitas", permanent: false }];
+    return [
+      { source: "/financeiro", destination: "/financeiro/receitas", permanent: false },
+      // A aba "Custos" foi removida (tudo e Despesa agora): links/favoritos antigos caem em Despesas.
+      // Temporario (307) pelo mesmo motivo acima.
+      { source: "/financeiro/custos", destination: "/financeiro/despesas", permanent: false },
+    ];
   },
 };
 

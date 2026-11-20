@@ -17,13 +17,11 @@ import {
 import {
   calculateVariationPercent,
   describeSignedGrowth,
-  calculateBreakEven,
   calculateAverageTicket,
   buildTopCategoriesRanking,
   type FinancialSummary,
   type CategoryBreakdownEntry,
   type SignedGrowth,
-  type BreakEvenResult,
   type AverageTicketResult,
   type TopCategoriesRanking,
 } from "@/lib/finance/calculations";
@@ -75,18 +73,14 @@ export type DashboardData = {
   comparisonRange: { start: Date; end: Date };
   summary: FinancialSummary;
   previousSummary: FinancialSummary | null;
-  // receita/custos/despesas sao sempre >= 0 (soma de lancamentos), entao
+  // receita/despesas sao sempre >= 0 (soma de lancamentos), entao
   // calculateVariationPercent (sem tratamento de troca de sinal) e correto
   // aqui. Lucro pode ser negativo - ver profitGrowth abaixo.
   revenueGrowth: Decimal | null;
-  costsGrowth: Decimal | null;
   expensesGrowth: Decimal | null;
   profitGrowth: SignedGrowth;
-  costShare: Decimal | null; // custos / receita * 100
   expenseShare: Decimal | null; // despesas / receita * 100
-  breakEven: BreakEvenResult;
   averageTicket: AverageTicketResult;
-  costBreakdown: CategoryBreakdownEntry[];
   expenseBreakdown: CategoryBreakdownEntry[];
   topCategories: TopCategoriesRanking;
   evolutionSeries: EvolutionPoint[];
@@ -141,7 +135,6 @@ export async function getDashboardData(
   const [
     summary,
     series,
-    costBreakdown,
     expenseBreakdown,
     hasAnyEntriesEver,
     previousSummaryRaw,
@@ -155,7 +148,6 @@ export async function getDashboardData(
   ] = await Promise.all([
     getFinancialSummaryForRange(businessId, range, timeZone),
     fetchSeries(range),
-    getCategoryBreakdown(businessId, range, "COST", timeZone),
     getCategoryBreakdown(businessId, range, "EXPENSE", timeZone),
     hasAnyFinancialEntriesEver(businessId),
     getFinancialSummaryForRange(businessId, comparisonRange, timeZone),
@@ -193,7 +185,6 @@ export async function getDashboardData(
   const previousSummary = previousSummaryRaw && previousSummaryRaw.hasAnyEntries ? previousSummaryRaw : null;
 
   const revenueGrowth = previousSummary ? calculateVariationPercent(summary.revenue, previousSummary.revenue) : null;
-  const costsGrowth = previousSummary ? calculateVariationPercent(summary.costs, previousSummary.costs) : null;
   const expensesGrowth = previousSummary
     ? calculateVariationPercent(summary.expenses, previousSummary.expenses)
     : null;
@@ -201,16 +192,14 @@ export async function getDashboardData(
     ? describeSignedGrowth(summary.netProfit, previousSummary.netProfit)
     : { kind: "no_base" };
 
-  const costShare = summary.revenue.isZero() ? null : summary.costs.dividedBy(summary.revenue).times(100);
   const expenseShare = summary.revenue.isZero() ? null : summary.expenses.dividedBy(summary.revenue).times(100);
 
-  const breakEven = calculateBreakEven(summary);
   // Nao ha contagem de vendas em FinancialEntry nem na importacao (Etapa 4,
   // secao 20/28) - sempre "N/D" hoje.
   const averageTicket = calculateAverageTicket(summary.revenue, null);
 
   const topCategories = buildTopCategoriesRanking(
-    [...costBreakdown, ...expenseBreakdown].map((e) => ({
+    expenseBreakdown.map((e) => ({
       categoryId: e.categoryId,
       categoryName: e.categoryName,
       amount: e.amount,
@@ -227,14 +216,10 @@ export async function getDashboardData(
     summary,
     previousSummary,
     revenueGrowth,
-    costsGrowth,
     expensesGrowth,
     profitGrowth,
-    costShare,
     expenseShare,
-    breakEven,
     averageTicket,
-    costBreakdown,
     expenseBreakdown,
     topCategories,
     evolutionSeries: toEvolutionPoints(series),

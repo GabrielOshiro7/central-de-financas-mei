@@ -30,7 +30,7 @@ function paramString(searchParams: SearchParams, key: string): string | undefine
   return typeof value === "string" ? value : undefined;
 }
 
-// Helper compartilhado pelas paginas Receitas/Custos/Despesas (secao 2 do
+// Helper compartilhado pelas paginas Receitas/Despesas (secao 2 do
 // prompt: mesma listagem, so pre-filtrada por tipo) - evita triplicar a
 // logica de filtros/query/mapeamento em cada uma.
 export async function TransactionListPage({

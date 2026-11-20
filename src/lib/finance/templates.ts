@@ -4,7 +4,7 @@ import { SENSITIVE_DATA_NOTICE } from "@/lib/privacy/sensitiveDataNotice";
 
 const EXAMPLE_ROWS: [string, string, string, string, string, string][] = [
   ["2026-09-01", "receita", "Venda de produtos", "Venda balcão", "50000", "Cliente X"],
-  ["2026-09-02", "custo", "Mercadoria", "Compra fornecedor", "20000", "Fornecedor X"],
+  ["2026-09-02", "despesa", "Mercadoria", "Compra fornecedor", "20000", "Fornecedor X"],
   ["2026-09-03", "despesa", "Aluguel", "Aluguel mensal", "100000", "Setembro"],
 ];
 
@@ -36,7 +36,7 @@ export async function generateXlsxTemplate(): Promise<ExcelJS.Buffer> {
   const instructions = [
     "",
     "data: no formato AAAA-MM-DD (ex.: 2026-09-01) ou DD/MM/AAAA.",
-    "tipo: receita, custo ou despesa.",
+    "tipo: receita ou despesa.",
     "categoria: o nome de uma categoria já cadastrada (maiúsculas/minúsculas e espaços não importam).",
     "descricao: um texto curto descrevendo o lançamento.",
     "valor: número maior que zero (ex.: 50000 ou 50000.00). Para moeda em iene, não use casas decimais.",

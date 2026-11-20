@@ -10,7 +10,6 @@ export type { EvolutionPoint } from "@/components/dashboard/evolutionPoints";
 
 const SERIES_STYLE = [
   { key: "revenue", label: "Faturamento", className: "bg-emerald-500" },
-  { key: "costs", label: "Custos", className: "bg-amber-500" },
   { key: "expenses", label: "Despesas", className: "bg-rose-500" },
   { key: "netProfit", label: "Lucro", className: "bg-blue-500" },
 ] as const;

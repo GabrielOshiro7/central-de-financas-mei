@@ -192,12 +192,12 @@ export async function hasFinancialEntriesBefore(businessId: string, date: Date, 
   return first !== null;
 }
 
-// Distribuicao por categoria de um unico tipo (custo ou despesa) no periodo -
+// Distribuicao por categoria de um unico tipo (despesa) no periodo -
 // alimenta os graficos 2/3 e o alerta de categoria concentrada (secao 20).
 export async function getCategoryBreakdown(
   businessId: string,
   range: { start: Date; end: Date },
-  type: Extract<FinancialEntryType, "COST" | "EXPENSE">,
+  type: Extract<FinancialEntryType, "EXPENSE">,
   timeZone: TimeZone
 ): Promise<CategoryBreakdownEntry[]> {
   const entries = await prisma.financialEntry.findMany({

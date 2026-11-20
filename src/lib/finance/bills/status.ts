@@ -4,14 +4,13 @@ import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/ti
 // Direcao de uma Bill: nunca armazenada - sempre derivada de category.type,
 // o mesmo discriminador que FinancialEntry/RecurringEntry ja usam (Etapa 5,
 // ADENDO "Regras obrigatorias para a integracao conta -> lancamento
-// financeiro", item 1). REVENUE = a receber, COST/EXPENSE = a pagar.
+// financeiro", item 1). REVENUE = a receber, EXPENSE = a pagar.
 export type BillDirection = "PAYABLE" | "RECEIVABLE";
 
 export function billDirectionForType(type: FinancialEntryType): BillDirection {
   switch (type) {
     case "REVENUE":
       return "RECEIVABLE";
-    case "COST":
     case "EXPENSE":
       return "PAYABLE";
     default: {

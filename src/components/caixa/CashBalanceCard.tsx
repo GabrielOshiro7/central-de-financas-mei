@@ -6,9 +6,9 @@ import type { CashBalance } from "@/lib/finance/cash/queries";
 import { formatDateKey } from "@/lib/time/zoned";
 
 // Regra fundamental da Etapa 5.1: este numero e uma APROXIMACAO baseada nos
-// lancamentos registrados (Receita - Custo - Despesa), NUNCA o saldo
+// lancamentos registrados (Receita - Despesa), NUNCA o saldo
 // bancario real - diverge sempre que houver dinheiro que nao e receita/
-// custo/despesa (aporte de capital, retirada de socio, emprestimo). O aviso
+// despesa (aporte de capital, retirada de socio, emprestimo). O aviso
 // abaixo e permanente (texto sempre visivel, nao um icone de tooltip) e
 // nunca deve ser removido nem reduzido a um ⓘ escondido - e o requisito mais
 // importante desta etapa.

@@ -10,15 +10,11 @@ export type FinancialEntryLike = {
 
 export type FinancialSummary = {
   revenue: Decimal;
-  costs: Decimal;
   expenses: Decimal;
-  grossProfit: Decimal;
   netProfit: Decimal;
   // null quando faturamento = 0 (nao da pra calcular margem, e nao e um erro).
-  grossMargin: Decimal | null;
   netMargin: Decimal | null;
   hasRevenueEntries: boolean;
-  hasCostEntries: boolean;
   hasExpenseEntries: boolean;
   hasAnyEntries: boolean;
 };
@@ -31,27 +27,20 @@ function sumByType(entries: FinancialEntryLike[], type: FinancialEntryType): Dec
 
 export function summarizeEntries(entries: FinancialEntryLike[]): FinancialSummary {
   const revenue = sumByType(entries, "REVENUE");
-  const costs = sumByType(entries, "COST");
   const expenses = sumByType(entries, "EXPENSE");
 
-  // Margem bruta = (Faturamento - Custos) / Faturamento (secao 17).
-  const grossProfit = revenue.minus(costs);
-  // Lucro liquido = Faturamento - Custos - Despesas (secao 15/18); margem
-  // liquida = Lucro liquido / Faturamento.
-  const netProfit = grossProfit.minus(expenses);
-  const grossMargin = revenue.isZero() ? null : grossProfit.dividedBy(revenue).times(100);
+  // Lucro liquido = Faturamento - Despesas; margem liquida = Lucro liquido / Faturamento.
+  // (O tipo "Custo" deixou de existir: o que era custo agora e despesa. Ver migracao
+  // 20261120120000_remove_cost_type.)
+  const netProfit = revenue.minus(expenses);
   const netMargin = revenue.isZero() ? null : netProfit.dividedBy(revenue).times(100);
 
   return {
     revenue,
-    costs,
     expenses,
-    grossProfit,
     netProfit,
-    grossMargin,
     netMargin,
     hasRevenueEntries: entries.some((e) => e.type === "REVENUE"),
-    hasCostEntries: entries.some((e) => e.type === "COST"),
     hasExpenseEntries: entries.some((e) => e.type === "EXPENSE"),
     hasAnyEntries: entries.length > 0,
   };
@@ -64,11 +53,11 @@ export type CategoryAmount = {
 };
 
 export type CategoryBreakdownEntry = CategoryAmount & {
-  // null quando o total do tipo (custos ou despesas) no periodo e zero.
+  // null quando o total do tipo (despesas) no periodo e zero.
   percentage: Decimal | null;
 };
 
-// Agrupa lancamentos de um unico tipo (custo ou despesa) por categoria e
+// Agrupa lancamentos de um unico tipo (despesa) por categoria e
 // calcula a fatia percentual de cada uma sobre o total do periodo. Usado nos
 // graficos 2/3 (distribuicao) e no alerta de categoria concentrada (secao 20).
 export function summarizeByCategory(
@@ -129,7 +118,7 @@ export function marginPointsDelta(current: Decimal | null, previous: Decimal | n
 }
 
 // Crescimento entre dois valores que podem trocar de sinal (lucro bruto/
-// liquido - diferente de receita/custos/despesas, que sao sempre >= 0).
+// liquido - diferente de receita/despesas, que sao sempre >= 0).
 // calculateVariationPercent (acima) e usado pelos alertas/indicadores ja
 // testados e continua exatamente como esta; esta funcao e so para os
 // lugares que precisam soletrar explicitamente uma troca de sinal (prejuizo
@@ -158,30 +147,6 @@ export function describeSignedGrowth(current: Decimal, previous: Decimal): Signe
   return value === null ? { kind: "no_base" } : { kind: "percent", value };
 }
 
-export type BreakEvenResult =
-  | { status: "insufficient"; reason: string }
-  | { status: "ok"; breakEvenRevenue: Decimal; contributionMarginRatio: Decimal };
-
-// Ponto de equilibrio (secao 21 da Etapa 4). ATENCAO a nomenclatura deste
-// projeto, que e o INVERSO do que "custo fixo" normalmente sugere: EXPENSE
-// (Despesas) = custo fixo da formula classica; COST (Custos) = custo
-// variavel. Nao inverter.
-//   margem de contribuicao = (receita - custos variaveis) / receita
-//   receita de equilibrio = despesas fixas / margem de contribuicao
-export function calculateBreakEven(summary: FinancialSummary): BreakEvenResult {
-  if (summary.revenue.isZero()) {
-    return { status: "insufficient", reason: "Sem faturamento no período para calcular." };
-  }
-
-  const contributionMarginRatio = summary.revenue.minus(summary.costs).dividedBy(summary.revenue);
-  if (contributionMarginRatio.lte(0)) {
-    return { status: "insufficient", reason: "Margem de contribuição não é positiva neste período." };
-  }
-
-  const breakEvenRevenue = summary.expenses.dividedBy(contributionMarginRatio);
-  return { status: "ok", breakEvenRevenue, contributionMarginRatio };
-}
-
 export type AverageTicketResult =
   | { status: "unavailable"; reason: string }
   | { status: "ok"; amount: Decimal };
@@ -205,13 +170,9 @@ export type TopCategoriesRanking = {
   grandTotal: Decimal;
 };
 
-// Ranking unico "Principais gastos" (secao 19 da Etapa 4) combinando Custos
-// (COST) e Despesas (EXPENSE) num so top N + "Outros". Deliberadamente
-// separado dos graficos de distribuicao por tipo das secoes 17/18
-// (CategoryBreakdownChart, que continua mostrando cada tipo isoladamente) -
-// os dois recortes coexistem, nao se substituem. Categoria e sempre de um
-// unico tipo (Category.type), entao nao ha risco de um mesmo categoryId
-// aparecer nos dois lados da uniao abaixo.
+// Ranking unico "Principais gastos" (secao 19 da Etapa 4): top N + "Outros" das despesas por
+// categoria. Deliberadamente separado do grafico de distribuicao por categoria
+// (CategoryBreakdownChart): os dois recortes coexistem, nao se substituem.
 export function buildTopCategoriesRanking(
   entries: { categoryId: string; categoryName: string; amount: Decimal }[],
   limit = 5

@@ -7,7 +7,7 @@ import { businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 import { addMonthsClamped, dbDateToKey, formatDateKey } from "../../src/lib/time/zoned";
 
-// Lancamento RECORRENTE criado a partir das abas Receitas/Custos/Despesas: o
+// Lancamento RECORRENTE criado a partir das abas Receitas/Despesas: o
 // usuario FICA na aba; ocorrencias ja devidas aparecem na lista com o selo
 // "Recorrente"; primeira ocorrencia futura => aviso na propria aba.
 loadTestEnv();
@@ -151,17 +151,6 @@ test.describe("recorrente criado a partir das abas", () => {
     await page.getByTestId("recurring-created-notice").getByRole("link", { name: "Ver em Recorrentes" }).click();
     await expect(page).toHaveURL(/\/financeiro\/recorrentes/);
     await expect(page.getByText("Aluguel Futuro E2E")).toBeVisible();
-  });
-
-  test("Custos (a) início hoje: fica em Custos com a ocorrência e o selo", async ({ page }) => {
-    test.setTimeout(90_000);
-    const mail = email("rec-custos");
-    await registerAndOnboard(page, mail);
-    await createRecurring(page, "custos", "Novo custo", "Insumo Custos E2E", businessToday());
-    await expect(page).toHaveURL(/\/financeiro\/custos/);
-    const row = page.getByRole("row", { name: /Insumo Custos E2E/ });
-    await expect(row.getByText("Recorrente", { exact: true })).toBeVisible();
-    expect((await entriesOf(mail)).entries.map((e) => [e.type, e.source])).toEqual([["COST", "RECURRING"]]);
   });
 
   test("Despesas (a) início hoje, e (c) futuro com a mensagem de Despesa", async ({ page }) => {

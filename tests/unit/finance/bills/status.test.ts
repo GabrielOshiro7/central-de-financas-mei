@@ -10,9 +10,6 @@ describe("billDirectionForType - direção derivada de category.type, nunca arma
   it("REVENUE -> RECEIVABLE", () => {
     expect(billDirectionForType("REVENUE")).toBe("RECEIVABLE");
   });
-  it("COST -> PAYABLE", () => {
-    expect(billDirectionForType("COST")).toBe("PAYABLE");
-  });
   it("EXPENSE -> PAYABLE", () => {
     expect(billDirectionForType("EXPENSE")).toBe("PAYABLE");
   });

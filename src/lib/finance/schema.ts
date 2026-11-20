@@ -2,7 +2,7 @@ import { z } from "@/lib/zod";
 import { isIntegerCurrency } from "@/lib/money";
 import type { Currency } from "@prisma/client";
 
-const entryTypeValues = ["REVENUE", "COST", "EXPENSE"] as const;
+const entryTypeValues = ["REVENUE", "EXPENSE"] as const;
 
 // Schema base do lancamento manual/edicao. `currency` nao e persistido no
 // lancamento (secao 6) - so entra aqui para validar a regra "sem casas

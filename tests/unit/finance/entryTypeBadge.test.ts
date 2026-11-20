@@ -3,9 +3,9 @@ import type { FinancialEntryType } from "@prisma/client";
 import { ENTRY_TYPE_BADGE_STYLE, ENTRY_TYPE_LABELS } from "@/lib/finance/options";
 import { expectNoBrandStatusColor, expectOnlyNeutralColors } from "../helpers/brandStatusPalette";
 
-const ALL_TYPES: FinancialEntryType[] = ["REVENUE", "COST", "EXPENSE"];
+const ALL_TYPES: FinancialEntryType[] = ["REVENUE", "EXPENSE"];
 
-// Tipo de lançamento (Receita/Custo/Despesa) não é um dos 4 usos da paleta
+// Tipo de lançamento (Receita/Despesa) não é um dos 4 usos da paleta
 // Musgo/Âmbar/Terracota - com verde/âmbar/rosa, os tipos liam como
 // "bom/atenção/crítico".
 describe("entry type badge - selo neutro, diferenciado por texto/borda", () => {

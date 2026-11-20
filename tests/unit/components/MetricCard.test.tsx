@@ -23,7 +23,7 @@ describe("MetricCard - cor da variação", () => {
     expect(variationLine({ text: "-10.0%", direction: "down" })).toHaveClass(BAD);
   });
 
-  it('favorableDirection "down" inverte a cor: subir é ruim, cair é bom (ex.: Custos, Despesas)', () => {
+  it('favorableDirection "down" inverte a cor: subir é ruim, cair é bom (ex.: Despesas)', () => {
     expect(variationLine({ text: "+10.0%", direction: "up", favorableDirection: "down" })).toHaveClass(BAD);
     cleanup();
     expect(variationLine({ text: "-10.0%", direction: "down", favorableDirection: "down" })).toHaveClass(GOOD);

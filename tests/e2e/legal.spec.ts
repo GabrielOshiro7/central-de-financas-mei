@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
-import { MINIMUM_AGE, REGISTER_ACCEPT_TEXT } from "@/content/legal/meta";
+import { COOKIES_VERSION, MINIMUM_AGE, PRIVACY_POLICY_VERSION, REGISTER_ACCEPT_TEXT, TERMS_VERSION, TOKUSHOHO_VERSION } from "@/content/legal/meta";
 
 // Páginas legais públicas (rascunho), links, aviso de cookies e aceite no cadastro.
 loadTestEnv();
@@ -55,10 +55,10 @@ test.describe("páginas legais (públicas, rascunho)", () => {
   test("/privacidade, /termos, /cookies e /tokushoho abrem sem login, com a faixa de rascunho, versão e seções", async ({ browser }) => {
     const { context, page } = await freshPage(browser);
     const pages = [
-      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros", version: "0.4" },
-      { path: "/termos", title: "Termos de Serviço", section: "6. Assinatura", version: "0.2" },
-      { path: "/cookies", title: "Cookies", section: "2. O que usamos", version: "0.1" },
-      { path: "/tokushoho", title: "特定商取引法に基づく表記", section: "表示事項 / Informações do vendedor", version: "0.1" },
+      { path: "/privacidade", title: "Política de Privacidade", section: "4. Compartilhamento e envio a terceiros", version: PRIVACY_POLICY_VERSION },
+      { path: "/termos", title: "Termos de Serviço", section: "6. Assinatura", version: TERMS_VERSION },
+      { path: "/cookies", title: "Cookies", section: "2. O que usamos", version: COOKIES_VERSION },
+      { path: "/tokushoho", title: "特定商取引法に基づく表記", section: "表示事項 / Informações do vendedor", version: TOKUSHOHO_VERSION },
     ];
     for (const p of pages) {
       const res = await gotoHydrated(page, p.path);
@@ -297,7 +297,7 @@ test.describe("aceite dos Termos e da Política no cadastro", () => {
     await registerThroughForm(page, mail, true);
     await expect(page).toHaveURL(/\/onboarding|\/dashboard/);
     const user = await prisma.user.findUniqueOrThrow({ where: { email: mail } });
-    expect([user.termsVersion, user.privacyVersion]).toEqual(["0.2", "0.4"]);
+    expect([user.termsVersion, user.privacyVersion]).toEqual([TERMS_VERSION, PRIVACY_POLICY_VERSION]);
     expect(user.legalAcceptedAt).not.toBeNull();
     expect(user.legalAcceptedAt!.getTime()).toBeGreaterThanOrEqual(before - 5000);
     await context.close();

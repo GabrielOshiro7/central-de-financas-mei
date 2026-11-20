@@ -2,21 +2,18 @@ import type { EntrySource, FinancialEntryType } from "@prisma/client";
 
 export const ENTRY_TYPE_OPTIONS: { value: FinancialEntryType; label: string }[] = [
   { value: "REVENUE", label: "Receita" },
-  { value: "COST", label: "Custo" },
   { value: "EXPENSE", label: "Despesa" },
 ];
 
 export const ENTRY_TYPE_LABELS: Record<FinancialEntryType, string> = {
   REVENUE: "Receita",
-  COST: "Custo",
   EXPENSE: "Despesa",
 };
 
-// Texto do botão de criação de cada aba (Receitas/Custos/Despesas) e título
+// Texto do botão de criação de cada aba (Receitas/Despesas) e título
 // do modal aberto por ele, com o tipo já fixo. Gênero concorda com o tipo.
 export const NEW_ENTRY_LABELS: Record<FinancialEntryType, string> = {
   REVENUE: "Nova receita",
-  COST: "Novo custo",
   EXPENSE: "Nova despesa",
 };
 
@@ -24,14 +21,12 @@ export const NEW_ENTRY_LABELS: Record<FinancialEntryType, string> = {
 // da venda (src/lib/sales/options.ts) e da Agenda. Tipo de lançamento não é
 // um dos 4 usos da paleta Musgo/Âmbar/Terracota (KPI, selo de status de
 // pagamento, selo de prioridade de insight, linha de gráfico) - com ela,
-// Receita/Custo/Despesa liam como "bom/atenção/crítico". Diferenciação por
-// texto + borda/fundo, com o mesmo peso de texto nos três (nenhum tipo é mais
-// importante que outro): receita com borda simples, custo preenchido, despesa
-// tracejada. Compartilhado por TransactionTable e RecurringEntryTable; coberto
+// Receita/Despesa liam como "bom/crítico". Diferenciação por
+// texto + borda, com o mesmo peso de texto nos dois (nenhum tipo é mais
+// importante que outro): receita com borda simples, despesa tracejada. Compartilhado por TransactionTable e RecurringEntryTable; coberto
 // por tests/unit/finance/entryTypeBadge.test.ts.
 export const ENTRY_TYPE_BADGE_STYLE: Record<FinancialEntryType, string> = {
   REVENUE: "border border-gray-300 text-gray-700 dark:border-neutral-600 dark:text-neutral-300",
-  COST: "border border-gray-300 bg-gray-100 text-gray-700 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300",
   EXPENSE: "border border-dashed border-gray-400 text-gray-700 dark:border-neutral-500 dark:text-neutral-300",
 };
 
@@ -53,14 +48,17 @@ export const SOURCE_OPTIONS: { value: EntrySource; label: string }[] = [
 
 // Aceita variacoes comuns de como o tipo pode vir escrito em uma planilha
 // (acentuado ou nao, maiuscula/minuscula, singular). Usado so na importacao -
-// o formulario manual sempre envia o enum direto (REVENUE/COST/EXPENSE).
+// o formulario manual sempre envia o enum direto (REVENUE/EXPENSE).
+// "custo"/"custos"/"cost" sao APELIDOS LEGADOS de despesa: o tipo Custo foi removido (migracao
+// 20261120120000_remove_cost_type), mas planilhas antigas ainda trazem essa palavra na coluna "tipo".
+// Nao sao um tipo: viram despesa. Nenhum outro valor novo e aceito.
 const IMPORT_TYPE_ALIASES: Record<string, FinancialEntryType> = {
   receita: "REVENUE",
   receitas: "REVENUE",
   revenue: "REVENUE",
-  custo: "COST",
-  custos: "COST",
-  cost: "COST",
+  custo: "EXPENSE",
+  custos: "EXPENSE",
+  cost: "EXPENSE",
   despesa: "EXPENSE",
   despesas: "EXPENSE",
   expense: "EXPENSE",

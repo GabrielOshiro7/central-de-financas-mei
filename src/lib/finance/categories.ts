@@ -12,7 +12,7 @@ type Db = Pick<typeof prisma, "category">;
 
 // Categorias visiveis para uma empresa: as padrao do sistema (business_id
 // nulo) + as proprias dela, sempre so as ativas. Opcionalmente filtradas por
-// tipo (receita/custo/despesa).
+// tipo (receita/despesa).
 export async function listVisibleCategories(
   businessId: string,
   type?: FinancialEntryType

@@ -24,7 +24,6 @@ export type A11yFixture = {
 export async function seedA11yData(request: APIRequestContext): Promise<A11yFixture> {
   const today = businessToday();
   const revenue = idOf(await ok(await request.post("/api/financeiro/categories", { data: { type: "REVENUE", name: "Vendas A11y" } }), "categoria receita"), "category");
-  const cost = idOf(await ok(await request.post("/api/financeiro/categories", { data: { type: "COST", name: "Custos A11y" } }), "categoria custo"), "category");
   const expense = idOf(await ok(await request.post("/api/financeiro/categories", { data: { type: "EXPENSE", name: "Despesas A11y" } }), "categoria despesa"), "category");
 
   const client = await ok(
@@ -61,7 +60,6 @@ export async function seedA11yData(request: APIRequestContext): Promise<A11yFixt
   for (const [type, categoryId, description, amount] of [
     ["REVENUE", revenue, "Receita A11y", 500],
     ["REVENUE", revenue, "Outra receita A11y", 320],
-    ["COST", cost, "Custo A11y", 150],
     ["EXPENSE", expense, "Despesa A11y", 90],
     ["EXPENSE", expense, "Outra despesa A11y", 45],
   ] as const) {
@@ -71,7 +69,7 @@ export async function seedA11yData(request: APIRequestContext): Promise<A11yFixt
   for (const [i, direction] of (["PAYABLE", "PAYABLE", "RECEIVABLE", "RECEIVABLE"] as const).entries()) {
     const bill = await ok(
       await request.post("/api/financeiro/bills", {
-        data: { direction, categoryId: direction === "PAYABLE" ? cost : revenue, description: `Conta A11y ${i + 1}`, amount: 100 + i * 10, dueDate: businessToday(i + 2), counterpartyName: `Contraparte ${i + 1}` },
+        data: { direction, categoryId: direction === "PAYABLE" ? expense : revenue, description: `Conta A11y ${i + 1}`, amount: 100 + i * 10, dueDate: businessToday(i + 2), counterpartyName: `Contraparte ${i + 1}` },
       }),
       `conta ${i + 1}`
     );
@@ -80,7 +78,7 @@ export async function seedA11yData(request: APIRequestContext): Promise<A11yFixt
 
   await ok(await request.post("/api/financeiro/recurring", { data: { type: "EXPENSE", categoryId: expense, description: "Assinatura A11y", amount: 50, frequency: "MONTHLY", dayOfMonth: 28, startDate: businessToday(40) } }), "recorrente");
   await ok(
-    await request.post("/api/financeiro/bills/recurring", { data: { direction: "PAYABLE", categoryId: cost, description: "Aluguel A11y", amount: 900, frequency: "MONTHLY", dayOfMonth: 5, startDate: businessToday(40) } }),
+    await request.post("/api/financeiro/bills/recurring", { data: { direction: "PAYABLE", categoryId: expense, description: "Aluguel A11y", amount: 900, frequency: "MONTHLY", dayOfMonth: 5, startDate: businessToday(40) } }),
     "conta recorrente"
   );
 

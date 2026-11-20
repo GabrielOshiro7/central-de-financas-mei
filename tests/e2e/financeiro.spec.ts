@@ -9,7 +9,7 @@ function uniqueEmail(prefix = "fin") {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.com`;
 }
 
-// Receitas/Custos/Despesas filtram por "Este mês" por padrão - usar uma data
+// Receitas/Despesas filtram por "Este mês" por padrão - usar uma data
 // do mês corrente evita que o lançamento criado no teste fique escondido
 // pelo filtro padrão.
 // Dia de hoje no fuso da empresa de teste (antes: dia UTC via toISOString,
@@ -231,7 +231,8 @@ test.describe("financeiro - importação", () => {
     await expect(page.getByText(/1 lançamento importado com sucesso/)).toBeVisible();
     await expect(page.getByText(/1 categoria\(s\) nova\(s\) criada\(s\)/)).toBeVisible();
 
-    await gotoHydrated(page, "/financeiro/custos");
+    // "custo" na planilha (apelido legado) vira DESPESA: a linha aparece em Despesas.
+    await gotoHydrated(page, "/financeiro/despesas");
     const newRow = page.getByRole("row", { name: /Compra com categoria nova/ });
     await expect(newRow).toBeVisible();
     await expect(newRow.getByText(novaCategoria)).toBeVisible();

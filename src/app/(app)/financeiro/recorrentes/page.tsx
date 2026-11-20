@@ -16,14 +16,13 @@ export default async function RecurringEntriesPage() {
   // sao os dias gravados (F6c).
   const clock = clockFor(business);
 
-  const [entries, revenueCategories, costCategories, expenseCategories] = await Promise.all([
+  const [entries, revenueCategories, expenseCategories] = await Promise.all([
     listRecurringEntries(business.id),
     listVisibleCategories(business.id, "REVENUE"),
-    listVisibleCategories(business.id, "COST"),
     listVisibleCategories(business.id, "EXPENSE"),
   ]);
 
-  const categories = [...revenueCategories, ...costCategories, ...expenseCategories].map((c) => ({
+  const categories = [...revenueCategories, ...expenseCategories].map((c) => ({
     id: c.id,
     name: c.name,
     type: c.type,
@@ -72,7 +71,7 @@ export default async function RecurringEntriesPage() {
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-neutral-400">
           Para criar um, use o botão &quot;Novo lançamento recorrente&quot; - ou marque &quot;Recorrente&quot; ao adicionar
-          um lançamento em Receitas, Custos ou Despesas.
+          um lançamento em Receitas ou Despesas.
         </p>
       </div>
       {rows.length > 0 && <div className="flex justify-end">{newButton}</div>}

@@ -65,7 +65,7 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-async function category(businessId: string, type: "REVENUE" | "COST" | "EXPENSE") {
+async function category(businessId: string, type: "REVENUE" | "EXPENSE") {
   const found = await prisma.category.findFirst({
     where: { type, active: true, OR: [{ businessId }, { businessId: null }] },
     orderBy: { name: "asc" },
@@ -83,7 +83,7 @@ async function seedTokyoEarlyMorning(email: string, today: string) {
 
   const tokyoMidnight = startOfDayInstant(today, E2E_BUSINESS_TZ); // 00:00 JST = 15:00 UTC de ontem
   const minutes = (n: number) => new Date(tokyoMidnight.getTime() + n * 60_000);
-  const [revenue, cost] = await Promise.all([category(business.id, "REVENUE"), category(business.id, "COST")]);
+  const [revenue, cost] = await Promise.all([category(business.id, "REVENUE"), category(business.id, "EXPENSE")]);
 
   await prisma.financialEntry.create({
     data: {

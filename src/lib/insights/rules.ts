@@ -68,7 +68,7 @@ function evaluateRevenueGrowth(snapshot: IndicatorSnapshot): RawInsightDraft | n
     description: `O faturamento de ${snapshot.periodLabel} foi ${currentFmt}, uma variação de ${variationFmt} em relação a ${previousFmt} no período anterior.`,
     recommendation: grew
       ? null
-      : "Revise o que mudou nas vendas deste período (menos clientes, tickets menores ou sazonalidade) antes de cortar custos.",
+      : "Revise o que mudou nas vendas deste período (menos clientes, tickets menores ou sazonalidade) antes de cortar despesas.",
     currentValue: snapshot.revenue.current,
     previousValue: snapshot.revenue.previous,
     variationAbsolute: snapshot.revenue.current.minus(snapshot.revenue.previous),
@@ -96,7 +96,7 @@ function evaluateMarginChange(snapshot: IndicatorSnapshot): RawInsightDraft | nu
     description: `A margem líquida foi de ${previousFmt} para ${currentFmt} (${deltaFmt}) em relação ao período anterior.`,
     recommendation: improved
       ? null
-      : "Verifique se custos ou despesas cresceram mais rápido que o faturamento neste período.",
+      : "Verifique se as despesas cresceram mais rápido que o faturamento neste período.",
     currentValue: snapshot.margin.current,
     previousValue: snapshot.margin.previous,
     variationAbsolute: delta,

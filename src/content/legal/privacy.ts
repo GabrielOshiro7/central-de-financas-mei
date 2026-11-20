@@ -55,7 +55,7 @@ export const PRIVACY_POLICY: LegalDocument = {
         {
           type: "ul",
           items: [
-            "Lançamentos de receitas, custos e despesas, categorias, recorrências, contas a pagar e a receber.",
+            "Lançamentos de receitas e despesas, categorias, recorrências, contas a pagar e a receber.",
             "Vendas e itens, produtos e serviços, agenda (agendamentos, títulos e observações).",
             'Indicadores e "insights" calculados a partir desses dados, e o seu estado de leitura (lido/não lido).',
           ],

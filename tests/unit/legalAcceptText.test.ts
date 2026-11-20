@@ -14,6 +14,7 @@ import {
 import { registerSchema, legalAcceptSchema } from "@/lib/validation/auth";
 import { CURRENT_VERSIONS, PRIVACY_CHANGES, TERMS_CHANGES, changesSince, summarizeChanges } from "@/content/legal/changes";
 import { PRIVACY_POLICY } from "@/content/legal";
+import { compareVersions } from "@/lib/legal/acceptance";
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
@@ -87,6 +88,11 @@ describe("maioridade: caixa de aceite do cadastro", () => {
   });
 });
 
+// Versões de um histórico posteriores a "accepted" (o que o reaceite deve mostrar) - calculado a partir das
+// próprias listas, sem números de versão escritos à mão (os aceites "0.1"/"0.2" abaixo são ENTRADAS do passado).
+const versionsAfter = (changes: { version: string }[], accepted: string) =>
+  changes.map((c) => c.version).filter((v) => compareVersions(v, accepted) > 0);
+
 describe("resumo do que mudou (reaceite)", () => {
   it("toda versão vigente dos Termos e da Política tem resumo", () => {
     expect(CURRENT_VERSIONS).toEqual({ terms: TERMS_VERSION, privacy: PRIVACY_POLICY_VERSION });
@@ -97,16 +103,17 @@ describe("resumo do que mudou (reaceite)", () => {
 
   it("changesSince devolve só o que é maior que a versão aceita (tudo se nunca aceitou)", () => {
     expect(changesSince(PRIVACY_CHANGES, null).map((c) => c.version)).toEqual(PRIVACY_CHANGES.map((c) => c.version));
-    expect(changesSince(PRIVACY_CHANGES, "0.1").map((c) => c.version)).toEqual(["0.2", "0.3", "0.4"]);
-    expect(changesSince(PRIVACY_CHANGES, "0.4")).toEqual([]);
+    expect(changesSince(PRIVACY_CHANGES, "0.1").map((c) => c.version)).toEqual(versionsAfter(PRIVACY_CHANGES, "0.1"));
+    expect(changesSince(PRIVACY_CHANGES, "0.1").length).toBeGreaterThan(0);
+    expect(changesSince(PRIVACY_CHANGES, PRIVACY_POLICY_VERSION)).toEqual([]);
   });
 
   it("summarizeChanges marca o primeiro aceite quando não há data", () => {
     expect(summarizeChanges({ legalAcceptedAt: null, termsVersion: null, privacyVersion: null }).firstAcceptance).toBe(true);
     const s = summarizeChanges({ legalAcceptedAt: new Date(), termsVersion: "0.2", privacyVersion: "0.2" });
     expect(s.firstAcceptance).toBe(false);
-    expect(s.terms).toEqual([]);
-    expect(s.privacy.map((c) => c.version)).toEqual(["0.3", "0.4"]);
+    expect(s.terms.map((c) => c.version)).toEqual(versionsAfter(TERMS_CHANGES, "0.2"));
+    expect(s.privacy.map((c) => c.version)).toEqual(versionsAfter(PRIVACY_CHANGES, "0.2"));
   });
 
   it("a versão da Política no documento é a vigente", () => {

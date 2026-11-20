@@ -44,7 +44,7 @@ async function setupBusiness(page: Page, label: string) {
   for (const [step, data] of answers) await ok(await request.post("/api/onboarding/answer", { data: { step, data } }), `answer ${step}`);
   await ok(await request.post("/api/onboarding/complete"), "complete");
 
-  const category = async (type: "REVENUE" | "COST" | "EXPENSE", name: string): Promise<string> => {
+  const category = async (type: "REVENUE" | "EXPENSE", name: string): Promise<string> => {
     const json = await ok(await request.post("/api/financeiro/categories", { data: { type, name } }), `categoria ${name}`);
     return json.category?.id ?? json.id;
   };
@@ -126,7 +126,7 @@ test.describe("tabelas em tela estreita (390px)", () => {
 
   test("2 e 3. contas a pagar e contas recorrentes: Marcar como pago e Pausar", async ({ page }) => {
     const { request, category } = await setupBusiness(page, "bill");
-    const cost = await category("COST", "Custo Mobile Cat");
+    const cost = await category("EXPENSE", "Despesa Conta Mobile Cat");
     await ok(
       await request.post("/api/financeiro/bills", {
         data: {

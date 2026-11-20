@@ -45,8 +45,8 @@ export function TransactionFormModal({
   categories: CategoryOption[];
   currency: Currency | null;
   defaultType?: FinancialEntryType;
-  // Criação a partir de uma aba de tipo (Receitas/Custos/Despesas): o tipo é
-  // o defaultType e o seletor Receita/Custo/Despesa não aparece. O payload
+  // Criação a partir de uma aba de tipo (Receitas/Despesas): o tipo é
+  // o defaultType e o seletor Receita/Despesa não aparece. O payload
   // continua levando `type`, igual a quando o usuário escolhe no seletor.
   lockType?: boolean;
   // Criação a partir da aba Recorrentes: a recorrência é obrigatória - o
@@ -85,7 +85,7 @@ export function TransactionFormModal({
   // "MUDANCA DE VALOR" do prompt da Etapa 4.1).
   const [isRecurring, setIsRecurring] = useState(recurringLocked);
   const [frequency, setFrequency] = useState<RecurrenceFrequency>("MONTHLY");
-  // Criando a partir de uma aba de tipo (Receitas/Custos/Despesas), o dia da
+  // Criando a partir de uma aba de tipo (Receitas/Despesas), o dia da
   // recorrencia (dia da semana / do mes / mes) SEGUE a data de inicio ate o
   // usuario mexer nele - senao o padrao "dia 1" faz um inicio "hoje" (dia 10)
   // so gerar a primeira ocorrencia no mes seguinte, sem nada na lista. Na aba
@@ -226,7 +226,7 @@ export function TransactionFormModal({
         setError(result.error ?? "Não foi possível salvar o lançamento.");
         return;
       }
-      // Recorrente criado a partir de uma aba (Receitas/Custos/Despesas): o usuario
+      // Recorrente criado a partir de uma aba (Receitas/Despesas): o usuario
       // FICA na aba e o periodo do filtro NAO muda. Ocorrencias ja devidas foram
       // materializadas no POST. Avisos na propria aba (RecurringCreatedNotice):
       // primeira ocorrencia futura => "a primeira entra em ..."; primeira

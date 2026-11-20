@@ -3,16 +3,16 @@ import type { TopCategoriesRanking } from "@/lib/finance/calculations";
 import { formatMoney } from "@/lib/money";
 import { formatPercent } from "@/lib/finance/format";
 
-// "Principais gastos" (secao 19 da Etapa 4) - ranking combinado de Custos +
-// Despesas (buildTopCategoriesRanking em calculations.ts), separado dos
-// graficos de distribuicao por tipo das secoes 17/18 (CategoryBreakdownChart).
+// "Principais gastos" (secao 19 da Etapa 4) - ranking das Despesas
+// por categoria (buildTopCategoriesRanking em calculations.ts), separado do
+// grafico de distribuicao (CategoryBreakdownChart).
 export function TopCategoriesPanel({ ranking, currency }: { ranking: TopCategoriesRanking; currency: Currency }) {
   const hasData = ranking.entries.length > 0;
 
   return (
     <div className="border border-gray-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">Principais gastos</h2>
-      <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">Custos e despesas combinados no período.</p>
+      <p className="mt-1 text-xs text-gray-500 dark:text-neutral-400">Despesas por categoria no período.</p>
 
       {!hasData ? (
         <p className="mt-3 text-sm text-gray-500 dark:text-neutral-400">Sem gastos registrados neste período.</p>

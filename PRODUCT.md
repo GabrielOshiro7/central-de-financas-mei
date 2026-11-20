@@ -16,7 +16,7 @@ usuário nem a múltiplos usuários por empresa.
 
 ## Product Purpose
 
-Sistema de gestão financeira para pequenos negócios: acompanhar receitas, custos e despesas,
+Sistema de gestão financeira para pequenos negócios: acompanhar receitas e despesas,
 contas a pagar/receber, posição de caixa, vendas e clientes em um único painel, com uma camada de
 insights que interpreta automaticamente os números já lançados (sem duplicar cálculo nem inventar
 dado). É um produto SaaS comercial — a intenção é lançar/vender, não uma ferramenta interna ou um

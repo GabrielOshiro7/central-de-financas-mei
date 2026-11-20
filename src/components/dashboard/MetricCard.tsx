@@ -7,7 +7,7 @@ export type MetricVariation = {
   description?: string;
   // Para qual lado o movimento e bom pro negocio - decide a cor, nao a seta
   // (a seta segue sempre o numero). Default "up" (Faturamento, Lucro,
-  // Margem); Custos e Despesas passam "down": subir ali e ruim.
+  // Margem); Despesas passa "down": subir ali e ruim.
   favorableDirection?: "up" | "down";
 };
 

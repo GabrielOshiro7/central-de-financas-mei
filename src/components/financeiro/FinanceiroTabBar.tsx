@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 
 export const FINANCEIRO_TABS = [
   { href: "/financeiro/receitas", label: "Receitas" },
-  { href: "/financeiro/custos", label: "Custos" },
   { href: "/financeiro/despesas", label: "Despesas" },
   { href: "/financeiro/pagar", label: "Contas a pagar" },
   { href: "/financeiro/receber", label: "Contas a receber" },

@@ -12,8 +12,8 @@ export type MutationResult<T> = { ok: true; value: T } | { ok: false; error: str
 // essa empresa (padrao do sistema OU propria) - igual a assertCategoryMatches
 // (finance/mutations.ts), so que a checagem final e "a direcao da categoria
 // (billDirectionForType) bate com a direcao da conta" em vez de "o type bate
-// exatamente", ja que uma unica direcao (PAYABLE) cobre duas categorias de
-// tipo (COST e EXPENSE). Nunca confia so na validacao do formulario.
+// exatamente", ja que cada direcao corresponde a um tipo de categoria
+// (PAYABLE = EXPENSE, RECEIVABLE = REVENUE). Nunca confia so na validacao do formulario.
 async function assertCategoryMatchesDirection(
   businessId: string,
   categoryId: string,
@@ -138,7 +138,7 @@ export type SettleBillResult =
   | { ok: false; error: string };
 
 // "Marcar como pago/recebido" (Etapa 5). Regras obrigatorias do ADENDO:
-// - type do lancamento gerado = category.type (nunca assume COST/REVENUE).
+// - type do lancamento gerado = category.type (nunca assume o tipo).
 // - o dia do lancamento = o dia do PAGAMENTO, nunca o vencimento.
 // - idempotente: no maximo UM FinancialEntry por conta, mesmo com duplo
 //   clique ou requisicoes concorrentes.
@@ -393,7 +393,7 @@ export async function listRecurringBills(businessId: string, direction?: BillDir
   return prisma.recurringBill.findMany({
     where: {
       businessId,
-      ...(direction ? { category: { type: direction === "PAYABLE" ? { in: ["COST", "EXPENSE"] } : "REVENUE" } } : {}),
+      ...(direction ? { category: { type: direction === "PAYABLE" ? "EXPENSE" : "REVENUE" } } : {}),
     },
     include: { category: { select: { id: true, name: true, type: true } } },
     orderBy: [{ isActive: "desc" }, { createdAt: "desc" }],

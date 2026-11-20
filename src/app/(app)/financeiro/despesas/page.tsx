@@ -9,7 +9,7 @@ export default async function DespesasPage(props: PageProps<"/financeiro/despesa
     <TransactionListPage
       type="EXPENSE"
       title="Despesas"
-      helpText="Gastos fixos do negócio, que existem mesmo se você vender mais ou menos — como aluguel, internet ou salário fixo."
+      helpText="Tudo o que a empresa gasta — por exemplo aluguel, internet, salário, material ou comissão."
       searchParams={searchParams}
     />
   );

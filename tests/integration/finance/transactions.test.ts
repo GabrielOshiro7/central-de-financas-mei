@@ -27,7 +27,7 @@ describe("mutações de lançamentos financeiros", () => {
 
     const [revenueCategory, costCategory, expenseCategory] = await Promise.all([
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE" } }),
-      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "COST" } }),
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE", name: "Mercadoria" } }),
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE" } }),
     ]);
     revenueCategoryId = revenueCategory.id;
@@ -35,7 +35,7 @@ describe("mutações de lançamentos financeiros", () => {
     expenseCategoryId = expenseCategory.id;
   });
 
-  // Testes 1-3: criar receita/custo/despesa.
+  // Testes 1-3: criar receita/despesa (a 2a despesa usa a categoria 'Mercadoria', antes de custo).
   it("cria um lançamento de receita", async () => {
     const result = await createTransaction(businessId, userId, {
       type: "REVENUE",
@@ -53,9 +53,9 @@ describe("mutações de lançamentos financeiros", () => {
     }
   });
 
-  it("cria um lançamento de custo", async () => {
+  it("cria um lançamento de despesa de mercadoria (categoria que era de custo)", async () => {
     const result = await createTransaction(businessId, userId, {
-      type: "COST",
+      type: "EXPENSE",
       occurredOn: new Date(),
       description: "Compra de mercadoria",
       categoryId: costCategoryId,
@@ -115,7 +115,7 @@ describe("mutações de lançamentos financeiros", () => {
   // Teste 7: excluir lançamento.
   it("exclui um lançamento existente", async () => {
     const created = await createTransaction(businessId, userId, {
-      type: "COST",
+      type: "EXPENSE",
       occurredOn: new Date(),
       description: "Para excluir",
       categoryId: costCategoryId,

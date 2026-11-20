@@ -14,7 +14,7 @@ function baseDraft(overrides: Partial<InsightDraft> = {}): InsightDraft {
     priority: "ATTENTION",
     title: "Faturamento em queda",
     description: "O faturamento de setembro de 2026 foi $880.00, uma variação de -12.0% em relação a $1,000.00 no período anterior.",
-    recommendation: "Revise o que mudou nas vendas deste período antes de cortar custos.",
+    recommendation: "Revise o que mudou nas vendas deste período antes de cortar despesas.",
     currentValue: new Decimal(880),
     previousValue: new Decimal(1000),
     variationAbsolute: new Decimal(-120),

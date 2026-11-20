@@ -15,7 +15,7 @@ import type { MonthlyPoint, DailyPoint } from "@/lib/finance/queries";
 // (bug real encontrado e corrigido nesta etapa - so pega em runtime, nao no
 // build nem no tsc, porque e uma regra do bundler RSC, nao de tipos).
 //
-// Os 4 campos monetarios sao `number` (nao Prisma.Decimal): FinancialChart
+// Os 3 campos monetarios sao `number` (nao Prisma.Decimal): FinancialChart
 // virou Client Component pra suportar hover/tooltip, e um `Decimal`
 // (instancia de classe) nao pode atravessar a fronteira servidor->cliente
 // (mesma regra ja documentada no CLAUDE.md pra EmpresaForm/Business) - o
@@ -26,7 +26,6 @@ export type EvolutionPoint = {
   key: string;
   label: string;
   revenue: number;
-  costs: number;
   expenses: number;
   netProfit: number;
   hasAnyEntries: boolean;
@@ -37,7 +36,6 @@ export function toEvolutionPoints(points: (MonthlyPoint | DailyPoint)[]): Evolut
     key: "month" in p ? `${p.year}-${p.month}` : p.date.toISOString(),
     label: p.label,
     revenue: p.revenue.toNumber(),
-    costs: p.costs.toNumber(),
     expenses: p.expenses.toNumber(),
     netProfit: p.netProfit.toNumber(),
     hasAnyEntries: p.hasAnyEntries,

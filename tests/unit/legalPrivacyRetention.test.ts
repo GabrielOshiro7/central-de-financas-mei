@@ -55,9 +55,9 @@ describe("Política de Privacidade: remoção de sessões e links vencidos", () 
     }
   });
 
-  it("a mudança subiu a versão da Política para 0.4, com resumo para o reaceite", () => {
-    expect(PRIVACY_POLICY_VERSION).toBe("0.4");
-    expect(PRIVACY_POLICY.version).toBe("0.4");
+  it("a Política vigente tem resumo e a mudança sobre sessões e links vencidos tem o seu (entrada histórica 0.4)", () => {
+    expect(PRIVACY_POLICY.version).toBe(PRIVACY_POLICY_VERSION);
+    expect(PRIVACY_CHANGES.map((c) => c.version)).toContain(PRIVACY_POLICY_VERSION);
     const change = PRIVACY_CHANGES.find((c) => c.version === "0.4");
     expect(change?.summary.join(" ")).toMatch(/sessões e links de recuperação de senha vencidos/i);
   });

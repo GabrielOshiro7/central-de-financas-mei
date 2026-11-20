@@ -145,8 +145,9 @@ describe("importação de lançamentos financeiros", () => {
     expect(result.categoriesCreated).toBe(1);
     expect(result.failed).toHaveLength(0);
 
+    // "custo" na planilha e apelido legado de despesa: a categoria nova nasce como DESPESA.
     const category = await prisma.category.findFirst({
-      where: { businessId, type: "COST", normalizedName: normalizeCategoryName(categoryName) },
+      where: { businessId, type: "EXPENSE", normalizedName: normalizeCategoryName(categoryName) },
     });
     expect(category).not.toBeNull();
 
@@ -201,7 +202,7 @@ describe("importação de lançamentos financeiros", () => {
     expect(result.categoriesCreated).toBe(1);
 
     const matchingCategories = await prisma.category.findMany({
-      where: { businessId, type: "COST", normalizedName: normalizeCategoryName(categoryName) },
+      where: { businessId, type: "EXPENSE", normalizedName: normalizeCategoryName(categoryName) },
     });
     expect(matchingCategories).toHaveLength(1);
 

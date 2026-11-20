@@ -28,7 +28,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
   beforeAll(async () => {
     const [revenueCategory, costCategory, expenseCategory] = await Promise.all([
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "REVENUE" } }),
-      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "COST" } }),
+      prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE", name: "Mercadoria" } }),
       prisma.category.findFirstOrThrow({ where: { businessId: null, type: "EXPENSE" } }),
     ]);
     revenueCategoryId = revenueCategory.id;
@@ -72,7 +72,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
   it("rejeita categoryId com type diferente do type do molde", async () => {
     const result = await createRecurringEntry(businessId, {
       type: "EXPENSE",
-      categoryId: costCategoryId, // categoria de COST, molde de EXPENSE
+      categoryId: revenueCategoryId, // categoria de REVENUE, molde de EXPENSE
       description: "Categoria incompatível",
       amount: 100,
       frequency: "MONTHLY",
@@ -349,7 +349,7 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
       startOn: "2026-01-05",
     });
     const yearly = await createRecurringEntry(businessId, {
-      type: "COST",
+      type: "EXPENSE",
       categoryId: costCategoryId,
       description: "Licença anual",
       amount: 1200,
@@ -366,21 +366,19 @@ describe("lançamentos recorrentes (Etapa 4.1)", () => {
     const range = { start: new Date(2026, 0, 1), end: new Date(2026, 3, 1) }; // jan-mar/2026
     const summary = await getFinancialSummaryForRange(businessId, range, PROCESS_TZ);
 
-    const [revenueTx, costTx, expenseTx] = await Promise.all([
+    const [revenueTx, expenseTx] = await Promise.all([
       listTransactions(businessId, { type: "REVENUE", range, pageSize: 100 }, PROCESS_TZ),
-      listTransactions(businessId, { type: "COST", range, pageSize: 100 }, PROCESS_TZ),
       listTransactions(businessId, { type: "EXPENSE", range, pageSize: 100 }, PROCESS_TZ),
     ]);
 
     expect(summary.revenue.toNumber()).toBe(sumAmounts(revenueTx.items));
-    expect(summary.costs.toNumber()).toBe(sumAmounts(costTx.items));
     expect(summary.expenses.toNumber()).toBe(sumAmounts(expenseTx.items));
 
     // Confere os valores absolutos tambem, nao so a consistencia entre os
     // dois caminhos de leitura (poderiam concordar e ainda assim estar
     // ambos errados).
-    expect(summary.expenses.toNumber()).toBe(500 * 3); // Jan1, Fev1, Mar1
-    expect(summary.costs.toNumber()).toBe(1200); // so 15/jan/2026 cai no range
+    // Jan1, Fev1, Mar1 (500 cada) + a licenca anual de 1.200 (so 15/jan/2026 cai no range)
+    expect(summary.expenses.toNumber()).toBe(500 * 3 + 1200);
     // Segundas-feiras de 05/jan a 30/mar/2026 (start 05/jan, passo de 7 dias,
     // ultima <= uptoDate 31/mar): (89-5)/7 + 1 = 13 ocorrencias.
     expect(revenueTx.items).toHaveLength(13);

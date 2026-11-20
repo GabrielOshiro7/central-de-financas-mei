@@ -17,8 +17,10 @@ export const LEGAL_DOCS_DRAFT = true;
 // 0.4 (so a Politica): texto fiel ao codigo sobre quando sessoes e links de recuperacao vencidos sao
 // apagados (limpeza oportunista apos login e pedido de recuperacao, 24 h apos o vencimento) e o novo
 // aceite dos documentos tambem traz a declaracao de maioridade.
-export const PRIVACY_POLICY_VERSION = "0.4";
-export const TERMS_VERSION = "0.2";
+// 0.5 (Politica) e 0.3 (Termos): o tipo de lancamento "Custo" deixou de existir; os textos passam a
+// citar so "receitas e despesas".
+export const PRIVACY_POLICY_VERSION = "0.5";
+export const TERMS_VERSION = "0.3";
 export const COOKIES_VERSION = "0.1";
 export const TOKUSHOHO_VERSION = "0.1";
 

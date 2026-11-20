@@ -20,7 +20,7 @@ const { Decimal } = Prisma;
 
 function directionWhere(direction: BillDirection): Prisma.BillWhereInput {
   return direction === "PAYABLE"
-    ? { category: { type: { in: ["COST", "EXPENSE"] } } }
+    ? { category: { type: "EXPENSE" } }
     : { category: { type: "REVENUE" } };
 }
 

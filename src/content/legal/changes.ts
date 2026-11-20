@@ -13,6 +13,10 @@ export const TERMS_CHANGES: VersionChange[] = [
     version: "0.2",
     summary: ["Nova seção sobre a assinatura do serviço pago (planos, cobrança, renovação e cancelamento) e ligação com a página exigida pela lei japonesa de transações comerciais."],
   },
+  {
+    version: "0.3",
+    summary: ["O sistema deixou de ter o tipo de lançamento \"Custo\": a descrição passa a falar só em receitas e despesas."],
+  },
 ];
 
 export const PRIVACY_CHANGES: VersionChange[] = [
@@ -28,6 +32,10 @@ export const PRIVACY_CHANGES: VersionChange[] = [
       "Passa a dizer quando sessões e links de recuperação de senha vencidos são apagados do banco de dados (24 horas depois do vencimento, por uma limpeza que roda após logins e pedidos de recuperação de senha).",
       "O novo aceite dos documentos também traz a declaração de ter a idade mínima.",
     ],
+  },
+  {
+    version: "0.5",
+    summary: ["O sistema deixou de ter o tipo de lançamento \"Custo\": os dados tratados passam a ser descritos como lançamentos de receitas e despesas."],
   },
 ];
 
