@@ -20,13 +20,21 @@ const ICON_SHA256 = {
 } as const;
 
 let appUser: Awaited<ReturnType<typeof createOnboardedUser>>;
+let reacceptUser: Awaited<ReturnType<typeof createOnboardedUser>>;
+let onboardingUser: Awaited<ReturnType<typeof createOnboardedUser>>;
 
 test.beforeAll(async () => {
   appUser = await createOnboardedUser(prisma, "brand");
+  // Aceite dos documentos desatualizado: o app leva este usuario a /reaceite (o servidor de teste liga o mecanismo).
+  reacceptUser = await createOnboardedUser(prisma, "brand-reaceite");
+  await prisma.user.update({ where: { id: reacceptUser.userId }, data: { termsVersion: "0.1", privacyVersion: "0.1" } });
+  // Usuario SEM onboarding concluido, para a tela /onboarding.
+  onboardingUser = await createOnboardedUser(prisma, "brand-onboarding");
+  await prisma.business.update({ where: { userId: onboardingUser.userId }, data: { onboardingCompleted: false } });
 });
 
 test.afterAll(async () => {
-  await prisma.user.deleteMany({ where: { id: appUser.userId } });
+  await prisma.user.deleteMany({ where: { id: { in: [appUser.userId, reacceptUser.userId, onboardingUser.userId] } } });
   await prisma.$disconnect();
 });
 
@@ -34,14 +42,14 @@ async function newContext(
   browser: Browser,
   baseURL: string,
   theme: Theme,
-  opts: { signedIn?: boolean; collapsed?: boolean; viewport?: { width: number; height: number } } = {}
+  opts: { signedIn?: boolean; user?: typeof appUser; collapsed?: boolean; viewport?: { width: number; height: number } } = {}
 ): Promise<BrowserContext> {
   const context = await browser.newContext(opts.viewport ? { viewport: opts.viewport } : {});
   await context.addCookies([
     { name: "theme", value: theme, url: baseURL },
     { name: "cookie-notice", value: "1", url: baseURL },
   ]);
-  if (opts.signedIn) await appUser.signIn(context, baseURL);
+  if (opts.signedIn) await (opts.user ?? appUser).signIn(context, baseURL);
   if (opts.collapsed) await context.addInitScript(() => localStorage.setItem("sidebar-collapsed", "true"));
   return context;
 }
@@ -205,6 +213,129 @@ for (const theme of THEMES) {
     });
   });
 }
+
+test.describe("barra lateral expandida: logo de 32 px", () => {
+  for (const theme of THEMES) {
+    test(`altura de 32 px, cabe na barra sem quebrar nem cortar — tema ${theme}`, async ({ browser, baseURL }) => {
+      const context = await newContext(browser, baseURL!, theme, { signedIn: true });
+      const page = await context.newPage();
+      await gotoHydrated(page, "/dashboard");
+      const logo = page.locator('aside [data-brand="logo"]');
+      await expect(logo).toBeVisible();
+      const box = (await logo.boundingBox())!;
+      const aside = (await page.locator("aside").boundingBox())!;
+      const header = (await page.locator("aside .sidebar-header").boundingBox())!;
+      expect(box.height).toBeCloseTo(32, 0);
+      expect(box.width).toBeCloseTo(32 * (386 / 75), 0); // proporção original da logo
+      // Dentro da barra, com folga dos dois lados (o cabeçalho tem 16 px de margem interna) e dentro da altura do cabeçalho.
+      expect(box.x).toBeGreaterThanOrEqual(aside.x + 8);
+      expect(box.x + box.width).toBeLessThanOrEqual(aside.x + aside.width - 8);
+      expect(box.y).toBeGreaterThanOrEqual(header.y);
+      expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height);
+      // Sem quebra nem corte: o cabeçalho não tem conteúdo transbordando e o link tem a altura da logo.
+      expect(await page.locator("aside .sidebar-header").evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
+      expect(await page.locator("aside .sidebar-header a").evaluate((el) => el.getBoundingClientRect().height)).toBeCloseTo(32, 0);
+      await context.close();
+    });
+  }
+
+  test("barra recolhida (símbolo de 32 px) e trilho do celular não mudaram", async ({ browser, baseURL }) => {
+    const context = await newContext(browser, baseURL!, "light", { signedIn: true, collapsed: true });
+    const page = await context.newPage();
+    await gotoHydrated(page, "/dashboard");
+    const symbol = (await page.locator('aside [data-brand="symbol"]').boundingBox())!;
+    expect([Math.round(symbol.width), Math.round(symbol.height)]).toEqual([32, 32]);
+    expect((await page.locator("aside").boundingBox())!.width).toBeLessThanOrEqual(73);
+    await context.close();
+  });
+});
+
+// Telas de autenticação: login, cadastro, esqueci a senha, redefinir senha (com link) e /reaceite (sem link).
+const AUTH_SCREENS = [
+  { path: "/login", link: true },
+  { path: "/register", link: true },
+  { path: "/forgot-password", link: true },
+  { path: "/reset-password/brand-teste", link: true },
+  { path: "/reaceite", link: false },
+  { path: "/onboarding", link: false },
+] as const;
+
+async function openAuthScreen(browser: Browser, baseURL: string, screen: (typeof AUTH_SCREENS)[number], theme: Theme, viewport?: { width: number; height: number }) {
+  const loggedUser = screen.path === "/reaceite" ? reacceptUser : screen.path === "/onboarding" ? onboardingUser : undefined;
+  const context = await newContext(browser, baseURL, theme, loggedUser ? { signedIn: true, user: loggedUser, viewport } : { viewport });
+  const page = await context.newPage();
+  await gotoHydrated(page, screen.path);
+  await expect(page).toHaveURL(new RegExp(`${screen.path}$`)); // sem redirecionamento: a tela pedida
+  await expect(page.locator("main [data-brand=logo]")).toBeVisible();
+  return { context, page };
+}
+
+for (const theme of THEMES) {
+  test.describe(`logo nas telas de autenticação — tema ${theme}`, () => {
+    for (const screen of AUTH_SCREENS) {
+      test(`${screen.path}: logo com o nome 'MyWallet', ${screen.link ? "link para /" : "SEM link"}, 36 px, centralizada acima do cartão, h1 intacto`, async ({ browser, baseURL }) => {
+        const { context, page } = await openAuthScreen(browser, baseURL!, screen, theme);
+        const logo = page.locator("main [data-brand=logo]");
+        await expect(logo).toHaveCount(1);
+        await expect(logo).toHaveAttribute("aria-label", BRAND_NAME);
+
+        if (screen.link) {
+          const link = page.getByRole("link", { name: BRAND_NAME });
+          await expect(link).toHaveCount(1);
+          await expect(link).toHaveAttribute("href", "/");
+          await expect(link.locator("[data-brand=logo]")).toBeVisible();
+        } else {
+          // /reaceite: a logo é só imagem com nome; nada a leva a "/" (sair dali só pelos botões da tela).
+          await expect(page.getByRole("img", { name: BRAND_NAME })).toBeVisible();
+          await expect(page.getByRole("link", { name: BRAND_NAME })).toHaveCount(0);
+          await expect(page.locator("main a:has([data-brand])")).toHaveCount(0);
+          await expect(page.locator('a[href="/"]')).toHaveCount(0); // nenhum link para "/" na tela
+        }
+
+        // A logo não é título: o h1 continua sendo o da tela, e nenhum título contém a logo.
+        const h1 = page.getByRole("heading", { level: 1 });
+        await expect(h1).toHaveCount(1);
+        await expect(h1).not.toHaveText(BRAND_NAME);
+        await expect(page.locator("h1 [data-brand], h2 [data-brand], h3 [data-brand]")).toHaveCount(0);
+
+        // 36 px de altura, centralizada e a 24 px (mb-6) acima do cartão.
+        const logoBox = (await logo.boundingBox())!;
+        const cardBox = (await h1.locator("xpath=ancestor::div[contains(@class,'border')][1]").boundingBox())!;
+        expect(logoBox.height).toBeCloseTo(36, 0);
+        expect(logoBox.width).toBeCloseTo(36 * (386 / 75), 0);
+        expect(Math.abs(logoBox.x + logoBox.width / 2 - (cardBox.x + cardBox.width / 2))).toBeLessThanOrEqual(1);
+        expect(cardBox.y - (logoBox.y + logoBox.height)).toBeCloseTo(24, 0);
+
+        // Cor: parte escura herda o texto principal (#111111 no claro, #D9DADC no escuro) e contrasta com o fundo.
+        const colors = await logoColors(page, "main [data-brand=logo]");
+        expect(colors.color, JSON.stringify(colors)).toEqual(theme === "light" ? [17, 17, 17] : [217, 218, 220]);
+        expect(colors.contrast, JSON.stringify(colors)).toBeGreaterThanOrEqual(3);
+        expect((await accentColors(page, "main [data-brand=logo]")).stroke).toBe("rgb(217, 84, 30)");
+        expect(await duplicateIds(page)).toEqual([]);
+        await context.close();
+      });
+    }
+  });
+}
+
+test.describe("logo nas telas de autenticação no celular", () => {
+  for (const width of [320, 390]) {
+    test(`${width}px: as 5 telas mostram a logo completa de 36 px, sem rolagem horizontal`, async ({ browser, baseURL }) => {
+      test.setTimeout(120_000);
+      for (const screen of AUTH_SCREENS) {
+        const { context, page } = await openAuthScreen(browser, baseURL!, screen, "light", { width, height: 800 });
+        const logo = page.locator("main [data-brand=logo]");
+        const box = (await logo.boundingBox())!;
+        expect(box.height, screen.path).toBeCloseTo(36, 0); // cabe a 36 px: não precisou do tamanho menor
+        expect(box.x, screen.path).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, screen.path).toBeLessThanOrEqual(width);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${screen.path} sem rolagem horizontal`).toBe(true);
+        expect(await duplicateIds(page), screen.path).toEqual([]);
+        await context.close();
+      }
+    });
+  }
+});
 
 test.describe("logo no celular (390px)", () => {
   const viewport = { width: 390, height: 844 };

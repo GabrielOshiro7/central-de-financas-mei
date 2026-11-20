@@ -39,7 +39,7 @@ export default async function ReacceptPage() {
   const summary = summarizeChanges(user);
 
   return (
-    <AuthCard title="Documentos atualizados" subtitle="Aceite para continuar usando o serviço">
+    <AuthCard title="Documentos atualizados" subtitle="Aceite para continuar usando o serviço" brand="static">
       <p className="text-sm text-gray-700 dark:text-neutral-300">
         {summary.firstAcceptance
           ? "Ainda não temos o registro do seu aceite dos Termos de Serviço e da Política de Privacidade. Leia os documentos e aceite para continuar."

@@ -192,7 +192,7 @@ export function OnboardingWizard({
         <LogoutButton />
       </div>
 
-      <AuthCard title={stepTitle(step)}>
+      <AuthCard title={stepTitle(step)} brand="static">
         {step <= TOTAL_ONBOARDING_STEPS && (
           <ProgressIndicator current={step} total={TOTAL_ONBOARDING_STEPS} />
         )}

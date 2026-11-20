@@ -123,7 +123,7 @@ export function Sidebar({ businessName, unreadInsights = 0 }: { businessName: st
             sobre o fundo escuro da barra); o nome acessivel do link vem da logo visivel (BRAND_NAME). */}
         <Link href="/dashboard" title={BRAND_NAME} className="flex items-center text-sidebar-fg-active">
           <span className="sidebar-label">
-            <BrandLogo height={28} className="block" />
+            <BrandLogo height={32} className="block" />
           </span>
           <span className="sidebar-symbol">
             <BrandSymbol height={32} className="block" />
