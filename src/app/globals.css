@@ -351,6 +351,15 @@ body:has([data-app-shell]) .cookie-notice {
   display: inline-block;
 }
 
+/* Simbolo da marca no topo da barra: so existe recolhida (ou no celular); expandida aparece a logo completa. */
+.sidebar-symbol {
+  display: none;
+}
+
+[data-sidebar-collapsed="true"] .sidebar-symbol {
+  display: block;
+}
+
 [data-sidebar-collapsed="true"] .sidebar-header,
 [data-sidebar-collapsed="true"] .sidebar-nav-link {
   justify-content: center;
@@ -398,7 +407,7 @@ body:has([data-app-shell]) .cookie-notice {
  * cima), mas todas as regras de aparência do modo recolhido dependiam só do
  * atributo [data-sidebar-collapsed="true"] - que reflete a PREFERÊNCIA salva,
  * não a tela. Com a preferência "expandida" (o padrão), o celular recebia a
- * largura de 72px com os rótulos ainda visíveis: "OrganizAI", o nome da
+ * largura de 72px com os rótulos ainda visíveis: a logo completa, o nome da
  * empresa e "Sair" vazavam por cima do conteúdo. Aqui a tela estreita aplica
  * o mesmo visual recolhido, independente do atributo. Desktop não muda: nada
  * fora deste @media foi tocado.
@@ -410,6 +419,10 @@ body:has([data-app-shell]) .cookie-notice {
 
   .sidebar-badge-collapsed {
     display: inline-block;
+  }
+
+  .sidebar-symbol {
+    display: block;
   }
 
   .sidebar-header,

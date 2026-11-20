@@ -2,6 +2,7 @@ import { test, expect, type APIRequestContext, type Locator, type Page } from "@
 import { gotoHydrated } from "./helpers/hydration";
 import { businessToday } from "./helpers/businessDate";
 import { expectCards } from "./helpers/responsiveTable";
+import { BRAND_NAME } from "@/lib/brand";
 
 // Lote 3 do audit de UX: abaixo de 768px cada linha de tabela vira um card
 // (CSS puro em .rtable, src/app/globals.css). Os specs de desktop continuam
@@ -93,7 +94,10 @@ test.describe("tabelas em tela estreita (390px)", () => {
     await setupBusiness(page, "sidebar");
     await gotoHydrated(page, "/dashboard");
     const aside = page.locator("aside");
-    await expect(aside.getByText("OrganizAI", { exact: true })).toBeHidden();
+    // Marca: no celular a barra mostra só o símbolo (a logo completa fica escondida) e o link da marca mantém o nome.
+    await expect(aside.locator('[data-brand="logo"]')).toBeHidden();
+    await expect(aside.locator('[data-brand="symbol"]')).toBeVisible();
+    await expect(aside.getByRole("link", { name: BRAND_NAME })).toBeVisible();
     await expect(aside.getByText("Sair", { exact: true })).toBeHidden();
     await expect(aside.getByText("Empresa Mobile E2E")).toBeHidden();
     expect((await aside.boundingBox())!.width).toBeLessThanOrEqual(73);

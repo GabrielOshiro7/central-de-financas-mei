@@ -1,29 +1,21 @@
 import Link from "next/link";
-import { LogoMark } from "@/components/Logo";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandSymbol } from "@/components/brand/BrandSymbol";
+import { BRAND_NAME } from "@/lib/brand";
 
 /**
- * Logo "OrganizAI" da landing (ícone + wordmark + subtítulo). O wordmark usa
- * a fonte padrão do site (Geist, já carregada em layout.tsx) com
- * currentColor via herança de cor do <Link>, não SVG <text> — isso já
- * inverte preto/branco entre light/dark e já tem a transição de 0.2s global
- * de `color` de graça, sem precisar de filter.
+ * Logo da marca no cabecalho da landing. A cor escura da logo herda a cor de texto do <Link>
+ * (text-landing-foreground), entao inverte sozinha entre claro e escuro (e ganha a transicao global de
+ * `color`); o laranja e o token de acento. No celular (abaixo de sm) so o simbolo, para caber com os
+ * botoes do cabecalho sem estourar a largura; de sm para cima, a logo completa. So um dos dois aparece
+ * por vez (o outro fica com display:none, fora da arvore de acessibilidade): o nome acessivel do link e
+ * BRAND_NAME.
  */
 export function LandingLogo() {
   return (
-    <Link
-      href="/"
-      className="flex min-w-0 items-center gap-2.5 text-landing-foreground sm:gap-3"
-    >
-      <LogoMark className="h-9 w-9 sm:h-10 sm:w-10" />
-      <span className="flex min-w-0 flex-col justify-center">
-        <span className="truncate text-xl leading-tight font-bold tracking-tight whitespace-nowrap sm:text-2xl">
-          OrganizAI
-        </span>
-        {/* Subtitulo decorativo repete o nome: fora da arvore de acessibilidade (o nome acessivel do link e "OrganizAI — Página inicial"). */}
-        <span aria-hidden="true" className="text-[9px] leading-none font-semibold tracking-[0.3em] text-landing-foreground/60 sm:text-[10px]">
-          ORGANIZAI
-        </span>
-      </span>
+    <Link href="/" title={BRAND_NAME} className="flex min-w-0 shrink-0 items-center text-landing-foreground">
+      <BrandSymbol height={32} className="block sm:hidden" />
+      <BrandLogo height={40} className="hidden h-10 w-auto sm:block" />
     </Link>
   );
 }

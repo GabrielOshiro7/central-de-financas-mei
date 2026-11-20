@@ -4,6 +4,7 @@ import Script from "next/script";
 import { cookies, headers } from "next/headers";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { COOKIE_NOTICE_COOKIE } from "@/content/legal/meta";
+import { BRAND_NAME } from "@/lib/brand";
 import { CookieNotice } from "@/components/legal/CookieNotice";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { HydrationMarker } from "@/components/HydrationMarker";
@@ -35,7 +36,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   // Cada pagina define o proprio titulo (WCAG 2.4.2); o template acrescenta o nome do servico.
-  title: { default: "OrganizAI", template: "%s · OrganizAI" },
+  title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` },
+  applicationName: BRAND_NAME,
   description: "Seu sistema de gestão empresarial",
 };
 

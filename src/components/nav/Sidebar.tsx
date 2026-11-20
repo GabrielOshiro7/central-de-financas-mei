@@ -17,7 +17,9 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { LogoMark } from "@/components/Logo";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandSymbol } from "@/components/brand/BrandSymbol";
+import { BRAND_NAME } from "@/lib/brand";
 import { LogoutButton } from "@/components/LogoutButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -116,14 +118,15 @@ export function Sidebar({ businessName, unreadInsights = 0 }: { businessName: st
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-(--sidebar-w) flex-col border-r border-sidebar-line bg-sidebar text-sidebar-fg transition-[width,background-color,border-color,color] duration-250 ease-in-out">
       <div className="sidebar-header flex h-16 shrink-0 items-center gap-2.5 border-b border-sidebar-line px-4">
-        <Link
-          href="/dashboard"
-          title="OrganizAI"
-          className="flex items-center gap-2.5 text-sidebar-fg-active"
-        >
-          <LogoMark className="h-8 w-8" />
-          <span className="sidebar-label truncate text-lg font-bold tracking-tight whitespace-nowrap">
-            OrganizAI
+        {/* Expandida: logo completa (some com a barra recolhida ou no celular - .sidebar-label). Recolhida:
+            so o simbolo (.sidebar-symbol, o inverso). A cor escura da logo herda text-sidebar-fg-active (clara
+            sobre o fundo escuro da barra); o nome acessivel do link vem da logo visivel (BRAND_NAME). */}
+        <Link href="/dashboard" title={BRAND_NAME} className="flex items-center text-sidebar-fg-active">
+          <span className="sidebar-label">
+            <BrandLogo height={28} className="block" />
+          </span>
+          <span className="sidebar-symbol">
+            <BrandSymbol height={32} className="block" />
           </span>
         </Link>
       </div>

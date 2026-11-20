@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="59.5 20.5 108.5 108.5" width="108.5" height="108.5">
+<title>MyWallet</title><style>@media (prefers-color-scheme: dark){.mw-d{stroke:#D9DADC}}</style>
+<defs>
+<clipPath id="mw-a"><polygon points="0,0 201.65,0 0,201.65"/></clipPath>
+<clipPath id="mw-b"><polygon points="201.65,0 499,0 499,193 0,193 0,201.65"/></clipPath>
+</defs>
+<g fill="none" stroke-width="9.3" stroke-linecap="round" stroke-linejoin="round">
+<path class="mw-d" clip-path="url(#mw-a)" stroke="#111111" d="M105.113,64.777 L82.913,45.349 A11.15,11.15 0 0 0 64.420,53.740 L64.420,95.260 A11.1,11.1 0 0 0 82.830,103.613 L150.500,44.394 A7.35,7.35 0 0 1 162.690,49.925 L162.690,99.075 A7.3,7.3 0 0 1 150.583,104.569 L130.406,86.912"/>
+<path clip-path="url(#mw-b)" stroke="#D9541E" d="M105.113,64.777 L82.913,45.349 A11.15,11.15 0 0 0 64.420,53.740 L64.420,95.260 A11.1,11.1 0 0 0 82.830,103.613 L150.500,44.394 A7.35,7.35 0 0 1 162.690,49.925 L162.690,99.075 A7.3,7.3 0 0 1 150.583,104.569 L130.406,86.912"/>
+</g>
+
+</svg>

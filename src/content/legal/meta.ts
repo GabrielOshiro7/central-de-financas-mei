@@ -4,6 +4,8 @@
 // revisao". So pode virar false quando NENHUM marcador [PREENCHER: ...] /
 // [VERIFICAR COM ADVOGADO: ...] restar nos textos (um teste garante isso:
 // tests/unit/legalMarkers.test.ts).
+import { BRAND_NAME } from "@/lib/brand";
+
 export const LEGAL_DOCS_DRAFT = true;
 
 // Versoes gravadas no cadastro (users.terms_version / users.privacy_version) junto com
@@ -40,8 +42,8 @@ export const REGISTER_ACCEPT_TEXT = `${REGISTER_ACCEPT_LEAD} ${REGISTER_ACCEPT_T
 export const INFORMATIONAL_NOTICE =
   "As informações e análises são geradas automaticamente a partir dos seus lançamentos, têm caráter informativo e não substituem orientação contábil, fiscal ou financeira profissional.";
 
-// Nome do servico como aparece no app (landing e barra lateral).
-export const SERVICE_NAME = "OrganizAI";
+// Nome do servico como aparece nas paginas legais: e o nome da marca (src/lib/brand.ts).
+export const SERVICE_NAME = BRAND_NAME;
 
 // Nome do cookie que registra que o aviso de cookies foi dispensado ("Entendi").
 export const COOKIE_NOTICE_COOKIE = "cookie-notice";
