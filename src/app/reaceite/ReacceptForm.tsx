@@ -21,6 +21,7 @@ export function ReacceptForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     const parsed = legalAcceptSchema.safeParse({ acceptTerms });
@@ -39,13 +40,16 @@ export function ReacceptForm() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Não foi possível registrar o aceite.");
+        setPending(false);
         return;
       }
+      // Sucesso: o formulario navega para outra tela. O pending NAO volta a false aqui (o botao fica travado
+      // ate a tela trocar): um Enter/clique nesse intervalo nao manda um segundo envio. So os caminhos de
+      // erro (resposta nao-ok, excecao) destravam o botao.
       router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Erro de conexão. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

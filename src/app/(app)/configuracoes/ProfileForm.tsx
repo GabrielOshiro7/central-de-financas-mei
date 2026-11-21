@@ -18,6 +18,7 @@ export function ProfileForm({ user }: { user: { name: string; email: string } })
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
     setMessage(null);
 

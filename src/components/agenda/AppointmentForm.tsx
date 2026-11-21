@@ -1,7 +1,7 @@
 "use client";
 
 import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
 import { MoneyInput } from "@/components/MoneyInput";
@@ -140,6 +140,13 @@ export function AppointmentForm({
     setSelectedServiceIds((prev) => prev.filter((s) => s !== id));
   }
 
+  // O botao principal e type="submit": Enter no ultimo campo (ou clique) dispara este onSubmit, uma vez.
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return; // guarda contra envio duplo
+    void submit(false);
+  }
+
   async function submit(allowOverlap: boolean) {
     setError(null);
     if (!clientId) return setError("Selecione um cliente.");
@@ -182,7 +189,7 @@ export function AppointmentForm({
   }
 
   return (
-    <form {...enterNav} onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-6" noValidate>
+    <form {...enterNav} onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
       <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} />
 
       <section className="border border-gray-200 p-6 dark:border-neutral-800">
@@ -324,7 +331,7 @@ export function AppointmentForm({
       )}
 
       <div className="flex gap-3">
-        <button type="button" onClick={() => submit(false)} disabled={pending} className={primaryButtonClass}>
+        <button type="submit" disabled={pending} className={primaryButtonClass}>
           {pending ? "Salvando..." : "Salvar alterações"}
         </button>
       </div>

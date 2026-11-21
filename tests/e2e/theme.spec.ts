@@ -47,7 +47,7 @@ async function loginInFreshContext(browser: Browser, mail: string) {
   const page = await context.newPage();
   await gotoHydrated(page, "/login");
   await page.getByLabel("E-mail").fill(mail);
-  await page.getByLabel("Senha").fill(PASSWORD);
+  await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
   return { context, page };

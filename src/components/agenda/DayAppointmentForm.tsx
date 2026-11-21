@@ -183,6 +183,7 @@ export function DayAppointmentForm({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     if (rows.some((r) => !r.quantity || Number(r.quantity) < 1 || r.unitPrice === "")) {
@@ -230,13 +231,16 @@ export function DayAppointmentForm({
       const result = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(result.error ?? "Não foi possível salvar o agendamento.");
+        setPending(false);
         return;
       }
+      // Sucesso: o formulario navega para outra tela. O pending NAO volta a false aqui (o botao fica travado
+      // ate a tela trocar): um Enter/clique nesse intervalo nao manda um segundo envio. So os caminhos de
+      // erro (resposta nao-ok, excecao) destravam o botao.
       router.push(`/agenda?view=day&day=${scheduledOn}`);
       router.refresh();
     } catch {
       setError("Erro de conexão. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

@@ -248,8 +248,10 @@ export function SaleForm({
         const result = await res.json();
         if (!res.ok) {
           setError(result.error ?? "Não foi possível salvar a venda.");
+          setPending(false);
           return;
         }
+        // Sucesso: navega para o detalhe da venda; o pending NAO volta a false (botao travado ate a tela trocar).
         router.push(`/vendas/${result.id}`);
         router.refresh();
       } else {
@@ -272,6 +274,7 @@ export function SaleForm({
         const result = await res.json();
         if (!res.ok) {
           setError(result.error ?? "Não foi possível salvar a venda.");
+          setPending(false);
           return;
         }
         router.push(`/vendas/${initial!.id}`);
@@ -279,7 +282,6 @@ export function SaleForm({
       }
     } catch {
       setError("Erro de conexão. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }
@@ -291,6 +293,7 @@ export function SaleForm({
   // status e ignorado (ver comentario em submit()).
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     submit("CONFIRMED");
   }
 

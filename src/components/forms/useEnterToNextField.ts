@@ -10,7 +10,7 @@ import { applyEnterKeyHint, applyEnterKeyHints, handleEnterKeyDown, ENTER_ROOT_A
 //   <form {...enterNav} onSubmit={...}>
 //
 // Num contenedor sem <form>, marque o botao principal com data-enter-submit
-// (o Enter no ultimo campo leva o foco ate ele). Mini-formularios embutidos:
+// (o Enter no ultimo campo aciona esse botao). Mini-formularios embutidos:
 // data-enter-group no contenedor e data-enter-confirm no botao que confirma.
 export function useEnterToNextField<T extends HTMLElement = HTMLElement>() {
   const ref = useRef<T>(null);

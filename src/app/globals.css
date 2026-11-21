@@ -284,6 +284,13 @@ textarea {
   background-color: var(--field-bg);
 }
 
+/* Campo de senha com botao proprio de mostrar/ocultar (PasswordInput): esconde o olho/"x" nativos do
+   Edge/IE para nao aparecerem dois. */
+input[data-password-input]::-ms-reveal,
+input[data-password-input]::-ms-clear {
+  display: none;
+}
+
 label.text-gray-700 {
   color: var(--color-ink-secondary);
 }

@@ -76,14 +76,14 @@ test.describe("reautenticação para excluir lançamento (step-up)", () => {
 
     const reauthDialog = page.getByRole("alertdialog", { name: "Confirme sua senha" });
     await expect(reauthDialog).toBeVisible();
-    await reauthDialog.getByLabel("Senha").fill("senhaErrada999");
+    await reauthDialog.getByLabel("Senha", { exact: true }).fill("senhaErrada999");
     await reauthDialog.getByRole("button", { name: "Confirmar" }).click();
     await expect(reauthDialog.getByText("Senha incorreta.")).toBeVisible();
     // continua visivel: nem a exclusao nem a elevacao aconteceram
     await expect(page.getByText("Lançamento A E2E")).toBeVisible();
 
     // --- agora com a senha correta ---
-    await reauthDialog.getByLabel("Senha").fill(PASSWORD);
+    await reauthDialog.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await reauthDialog.getByRole("button", { name: "Confirmar" }).click();
     await expect(page.getByText("Lançamento A E2E")).toHaveCount(0);
 

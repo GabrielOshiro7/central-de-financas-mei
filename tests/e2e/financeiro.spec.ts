@@ -89,7 +89,7 @@ test.describe("financeiro - lançamentos manuais", () => {
 
     const reauthDialog = page.getByRole("alertdialog", { name: "Confirme sua senha" });
     await expect(reauthDialog).toBeVisible();
-    await reauthDialog.getByLabel("Senha").fill(PASSWORD);
+    await reauthDialog.getByLabel("Senha", { exact: true }).fill(PASSWORD);
     await reauthDialog.getByRole("button", { name: "Confirmar" }).click();
 
     await expect(page.getByText("Venda balcão E2E editada")).toHaveCount(0);

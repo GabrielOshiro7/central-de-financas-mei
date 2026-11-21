@@ -104,6 +104,7 @@ export function ClientFormModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     if (!name.trim()) {

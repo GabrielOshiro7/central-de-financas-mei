@@ -4,9 +4,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 
-// Enter nos formularios: avanca, pula o que nao e campo, vai ao botao no ultimo
-// campo, nunca envia a partir de um campo, respeita textarea e IME, e confirma
-// o mini-formulario (nunca o da pagina).
+// Enter nos formularios: avanca, pula o que nao e campo, ENVIA uma vez no ultimo
+// campo (requestSubmit no botao; click() num contenedor sem <form>), ignora o
+// Enter com o envio pendente (botao desabilitado), respeita textarea e IME, e
+// confirma o mini-formulario (nunca envia o da pagina).
 afterEach(cleanup);
 
 function Form({ children, onSubmit, onConfirm }: { children?: React.ReactNode; onSubmit: () => void; onConfirm?: () => void }) {
@@ -58,7 +59,7 @@ const focusOn = (label: string) => {
   return el;
 };
 
-describe("Enter navega, nunca envia", () => {
+describe("Enter navega e, no último campo, envia uma vez", () => {
   it("avanca para o proximo campo, pulando desabilitado, somente leitura, oculto, checkbox, botao e link", () => {
     let submitted = 0;
     render(<Form onSubmit={() => submitted++} />);
@@ -74,7 +75,7 @@ describe("Enter navega, nunca envia", () => {
     expect(submitted).toBe(0);
   });
 
-  it("Enter num checkbox tambem so avanca (nao envia)", () => {
+  it("Enter num checkbox tambem so avanca (nao envia: ele nao e o ultimo campo)", () => {
     let submitted = 0;
     render(<Form onSubmit={() => submitted++} />);
     const checkbox = focusOn("Aceito");
@@ -83,28 +84,65 @@ describe("Enter navega, nunca envia", () => {
     expect(submitted).toBe(0);
   });
 
-  it("no ultimo campo do formulario, o foco vai para o botao de envio, sem enviar", () => {
+  function Simple({ onSubmit, disabled = false }: { onSubmit: (submitter: Element | null) => void; disabled?: boolean }) {
+    const enterNav = useEnterToNextField<HTMLFormElement>();
+    return (
+      <form {...enterNav} onSubmit={(e) => { e.preventDefault(); onSubmit((e.nativeEvent as SubmitEvent).submitter); }}>
+        <input aria-label="A" />
+        <input aria-label="B" />
+        <button type="button">Cancelar</button>
+        <button type="submit" disabled={disabled}>Enviar</button>
+      </form>
+    );
+  }
+
+  it("no ultimo campo do formulario, o Enter envia UMA vez (submitter = botao principal) e o foco fica no campo", () => {
+    const submitters: (Element | null)[] = [];
+    render(<Simple onSubmit={(s) => submitters.push(s)} />);
+    focusOn("A");
+    enter(screen.getByLabelText("A"));
+    expect(document.activeElement).toBe(screen.getByLabelText("B"));
+    expect(submitters).toHaveLength(0); // no meio do formulario so navega
+
+    expect(enter(screen.getByLabelText("B"))).toBe(false); // preventDefault: o navegador nao dispara um 2o envio
+    expect(submitters).toHaveLength(1);
+    expect(submitters[0]).toBe(screen.getByRole("button", { name: "Enviar" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("B")); // o foco nao sai do campo
+
+    // Enter com o foco no botao: comportamento nativo (nao e capturado).
+    expect(enter(screen.getByRole("button", { name: "Enviar" }))).toBe(true);
+  });
+
+  it("formulario de um campo so: o primeiro Enter ja envia", () => {
     let submitted = 0;
-    function Simple() {
+    function One() {
       const enterNav = useEnterToNextField<HTMLFormElement>();
       return (
         <form {...enterNav} onSubmit={(e) => { e.preventDefault(); submitted++; }}>
-          <input aria-label="A" />
-          <input aria-label="B" />
+          <input aria-label="E-mail" type="email" />
           <button type="submit">Enviar</button>
         </form>
       );
     }
-    render(<Simple />);
-    focusOn("A");
-    enter(screen.getByLabelText("A"));
-    expect(document.activeElement).toBe(screen.getByLabelText("B"));
-    expect(enter(screen.getByLabelText("B"))).toBe(false);
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Enviar" }));
-    expect(submitted).toBe(0);
+    render(<One />);
+    enter(focusOn("E-mail"));
+    expect(submitted).toBe(1);
+  });
 
-    // Enter com o foco no botao: comportamento nativo (nao e capturado).
-    expect(enter(screen.getByRole("button", { name: "Enviar" }))).toBe(true);
+  it("envio pendente (botao desabilitado): o Enter no ultimo campo e ignorado", () => {
+    let submitted = 0;
+    render(<Simple onSubmit={() => submitted++} disabled />);
+    expect(enter(focusOn("B"))).toBe(false);
+    expect(submitted).toBe(0);
+  });
+
+  it("Enter segurado no ultimo campo nao envia (so o primeiro Enter conta)", () => {
+    let submitted = 0;
+    render(<Simple onSubmit={() => submitted++} />);
+    enter(focusOn("B"), { repeat: true });
+    expect(submitted).toBe(0);
+    enter(screen.getByLabelText("B"));
+    expect(submitted).toBe(1);
   });
 
   it("textarea: Enter continua quebrando linha (nada e capturado)", () => {
@@ -204,11 +242,20 @@ describe("contenedor sem <form> (modal)", () => {
     );
   }
 
-  it("Enter no ultimo campo leva o foco ao botao marcado com data-enter-submit, sem acioná-lo", () => {
+  it("Enter no ultimo campo aciona o botao marcado com data-enter-submit, uma vez, sem tirar o foco do campo", () => {
     let confirmed = 0;
     render(<Modal onConfirm={() => confirmed++} />);
+    const date = focusOn("Data");
+    enter(date);
+    expect(confirmed).toBe(1);
+    expect(document.activeElement).toBe(date);
+  });
+
+  it("botao desabilitado (envio pendente): o Enter no ultimo campo nao faz nada", () => {
+    let confirmed = 0;
+    render(<Modal onConfirm={() => confirmed++} />);
+    (screen.getByRole("button", { name: "Confirmar" }) as HTMLButtonElement).disabled = true;
     enter(focusOn("Data"));
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Confirmar" }));
     expect(confirmed).toBe(0);
   });
 });

@@ -5,8 +5,8 @@ import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 
-// Tecla Enter nos formularios: avanca para o proximo campo e NUNCA envia a
-// partir de um campo; o envio e do botao final. Ver src/lib/forms/enterNavigation.ts.
+// Tecla Enter nos formularios: avanca para o proximo campo e, no ULTIMO campo, envia uma vez.
+// Ver src/lib/forms/enterNavigation.ts (o envio unico, por rota, esta em enterSubmit.spec.ts).
 loadTestEnv();
 assertTestDatabase();
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -55,7 +55,7 @@ async function setupBusiness(page: Page, prefix: string) {
 }
 
 test.describe("Enter nos formulários", () => {
-  test("a) Login: Enter no e-mail vai à senha, Enter na senha vai ao botão (sem enviar), Enter no botão entra", async ({ page, context }) => {
+  test("a) Login: Enter no e-mail vai à senha; Enter na senha (último campo) entra", async ({ page, context }) => {
     test.setTimeout(90_000);
     const { email } = await setupBusiness(page, "enter-login");
     await context.clearCookies();
@@ -63,21 +63,16 @@ test.describe("Enter nos formulários", () => {
     await gotoHydrated(page, "/login");
     await page.getByLabel("E-mail").fill(email);
     await page.getByLabel("E-mail").press("Enter");
-    await expect(page.getByLabel("Senha")).toBeFocused();
+    await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
     await expect(page.locator('p[role="alert"]')).toHaveCount(0); // nada foi enviado
     await expect(page).toHaveURL(/\/login/);
 
-    await page.getByLabel("Senha").fill(PASSWORD);
-    await page.getByLabel("Senha").press("Enter"); // pula "Lembrar de mim"
-    await expect(page.getByRole("button", { name: "Entrar" })).toBeFocused();
-    await page.waitForTimeout(500);
-    await expect(page).toHaveURL(/\/login/); // ainda nao enviou
-
-    await page.keyboard.press("Enter"); // Enter no botão = envio nativo
-    await expect(page).toHaveURL(/\/dashboard/);
+    await page.getByLabel("Senha", { exact: true }).fill(PASSWORD);
+    await page.getByLabel("Senha", { exact: true }).press("Enter"); // pula "Lembrar de mim": a senha e o ultimo campo
+    await expect(page).toHaveURL(/\/dashboard/); // um unico Enter entra
   });
 
-  test("b) Cadastro: Enter percorre os campos até o botão sem enviar", async ({ page }) => {
+  test("b) Cadastro: Enter percorre os campos; no último (Confirmar senha) envia, e o aceite dos Termos continua obrigatório", async ({ page }) => {
     await gotoHydrated(page, "/register");
     await page.getByLabel("Nome").fill("Fulano Enter");
     await page.getByLabel("Nome").press("Enter");
@@ -89,20 +84,13 @@ test.describe("Enter nos formulários", () => {
     await page.getByLabel("Senha", { exact: true }).press("Enter");
     await expect(page.getByLabel("Confirmar senha")).toBeFocused();
     await page.getByLabel("Confirmar senha").fill(PASSWORD);
+    // A caixa de aceite dos Termos NAO entra na navegacao por Enter (fica acessivel por Tab/clique). O Enter em
+    // "Confirmar senha" (ultimo campo) envia; sem o aceite obrigatorio, so mostra o erro.
     await page.getByLabel("Confirmar senha").press("Enter");
-    // Novo campo obrigatorio: o aceite dos Termos e da Politica (caixa) vem antes do botao.
-    // A caixa de aceite dos Termos NAO entra na navegacao por Enter (Enter pula caixas de
-    // marcar e vai ao botao); ela fica acessivel por Tab/clique.
-    await expect(page.getByRole("button", { name: "Criar conta" })).toBeFocused();
-
-    await page.waitForTimeout(500);
-    await expect(page).toHaveURL(/\/register/); // nenhum Enter enviou o formulario
-    // Aceite obrigatorio dos Termos (caixa): sem ele o Enter no botao so mostra o erro.
-    await page.keyboard.press("Enter");
     await expect(page.locator('p[role="alert"]')).toContainText("aceite os Termos de Serviço");
+    await expect(page).toHaveURL(/\/register/);
     await page.getByLabel(/li e aceito/i).check();
-    await page.getByRole("button", { name: "Criar conta" }).focus();
-    await page.keyboard.press("Enter");
+    await page.getByLabel("Confirmar senha").press("Enter");
     await expect(page).toHaveURL(/\/onboarding/);
   });
 
@@ -253,7 +241,7 @@ test.describe("Enter nos formulários", () => {
 
     // Fora da composicao, o mesmo Enter navega.
     await page.getByLabel("E-mail").press("Enter");
-    await expect(page.getByLabel("Senha")).toBeFocused();
+    await expect(page.getByLabel("Senha", { exact: true })).toBeFocused();
   });
 });
 

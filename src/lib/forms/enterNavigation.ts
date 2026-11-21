@@ -1,5 +1,5 @@
-// Enter nos formularios: avanca para o proximo campo e NUNCA envia a partir de
-// um campo; o envio e do botao final (clique, ou Enter/Espaco com o foco nele).
+// Enter nos formularios: avanca para o proximo campo e, no ULTIMO campo, ENVIA o
+// formulario uma vez (como em sites comuns), sem segundo Enter nem clique.
 // Logica de DOM pura (sem React) - o hook que a liga a um <form> ou a um
 // contenedor sem <form> (modais, assistentes) e useEnterToNextField.
 //
@@ -8,14 +8,18 @@
 //   foco no proximo campo do mesmo contenedor, na ordem do DOM, pulando
 //   desabilitados, somente leitura e ocultos. Checkbox, radio, botoes e links
 //   nao sao alvos da navegacao (seguem funcionando com clique, Tab e Espaco).
-// - Enter no ULTIMO campo -> foco no botao principal ([data-enter-submit], ou
-//   o primeiro button[type=submit]), sem enviar.
+// - Enter no ULTIMO campo -> aciona o botao principal ([data-enter-submit], ou o
+//   primeiro button[type=submit]): form.requestSubmit(botao) quando e um submit de
+//   <form> (dispara o onSubmit do formulario, com o botao como "submitter"); .click()
+//   num contenedor sem <form>. O foco continua no campo. Botao desabilitado (envio
+//   pendente) = nada acontece: um segundo Enter durante o envio e ignorado.
 // - textarea: Enter continua quebrando linha.
 // - IME (japones, chines...): Enter durante a composicao pertence a conversao
 //   do texto - nada e feito (isComposing, ou keyCode 229 do Safari).
 // - Mini-formulario dentro de um formulario maior ([data-enter-group]): o
 //   Enter navega so dentro dele e, no ultimo campo, CONFIRMA o mini-formulario
-//   (clica no [data-enter-confirm] do grupo) - nunca o formulario da pagina.
+//   (clica no [data-enter-confirm] do grupo) - nunca envia o formulario da pagina.
+// - Enter segurado (event.repeat) nunca envia: so o primeiro Enter conta.
 // - Quem trata o Enter por conta propria (ex.: combobox de busca) chama
 //   preventDefault antes: o evento chega aqui com defaultPrevented e e ignorado.
 
@@ -115,7 +119,17 @@ export function handleEnterKeyDown(event: KeyboardEvent, root: HTMLElement): voi
     return;
   }
 
-  findSubmitButton(root)?.focus();
+  const submitButton = findSubmitButton(root);
+  if (submitButton) triggerSubmit(submitButton);
+}
+
+// Aciona o botao principal. Submit de um <form>: requestSubmit(botao) = o mesmo que clicar nele (validacao
+// nativa do navegador, evento submit com o submitter, uma unica vez). Fora de um <form> (contenedor de modal
+// ou de etapa), o botao tem onClick proprio: click().
+function triggerSubmit(button: HTMLButtonElement): void {
+  const form = button.form;
+  if (form && button.type === "submit") form.requestSubmit(button);
+  else button.click();
 }
 
 // Foco no primeiro campo que vem DEPOIS de `anchor` (fora dele) - ex.: depois

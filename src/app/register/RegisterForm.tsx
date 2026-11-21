@@ -22,6 +22,7 @@ export function RegisterForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     const parsed = registerSchema.safeParse({ name, email, password, confirmPassword, acceptTerms });
@@ -41,14 +42,17 @@ export function RegisterForm() {
 
       if (!res.ok) {
         setError(data.error ?? "Não foi possível criar a conta.");
+        setPending(false);
         return;
       }
 
+      // Sucesso: o formulario navega para outra tela. O pending NAO volta a false aqui (o botao fica travado
+      // ate a tela trocar): um Enter/clique nesse intervalo nao manda um segundo envio. So os caminhos de
+      // erro (resposta nao-ok, excecao) destravam o botao.
       router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Erro de conexao. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

@@ -175,13 +175,16 @@ export function OnboardingWizard({
       const result = await res.json();
       if (!res.ok) {
         setError(result.error ?? "Não foi possível concluir o cadastro.");
+        setPending(false);
         return;
       }
+      // Sucesso: o formulario navega para outra tela. O pending NAO volta a false aqui (o botao fica travado
+      // ate a tela trocar): um Enter/clique nesse intervalo nao manda um segundo envio. So os caminhos de
+      // erro (resposta nao-ok, excecao) destravam o botao.
       router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Erro de conexão. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

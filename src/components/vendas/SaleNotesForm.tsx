@@ -20,6 +20,7 @@ export function SaleNotesForm({ saleId, initialNotes }: { saleId: string; initia
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
     setPending(true);
     try {

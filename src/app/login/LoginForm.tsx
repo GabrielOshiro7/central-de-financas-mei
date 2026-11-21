@@ -21,6 +21,7 @@ export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     const parsed = loginSchema.safeParse({ email, password, rememberMe });
@@ -40,17 +41,20 @@ export function LoginForm({ sessionMessage }: { sessionMessage?: string }) {
 
       if (!res.ok) {
         setError(data.error ?? "Não foi possível entrar.");
+        setPending(false);
         return;
       }
 
       // Tema salvo no banco: vale ja neste navegador (cookie + atributo no <html>).
       if (data.theme === "light" || data.theme === "dark") void setTheme(data.theme);
 
+      // Sucesso: o formulario navega para outra tela. O pending NAO volta a false aqui (o botao fica travado
+      // ate a tela trocar): um Enter/clique nesse intervalo nao manda um segundo envio. So os caminhos de
+      // erro (resposta nao-ok, excecao) destravam o botao.
       router.push("/dashboard");
       router.refresh();
     } catch {
       setError("Erro de conexao. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

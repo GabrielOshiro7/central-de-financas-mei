@@ -19,6 +19,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     const parsed = resetPasswordSchema.safeParse({ token, password, confirmPassword });
@@ -38,14 +39,16 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
       if (!res.ok) {
         setError(data.error ?? "Não foi possível redefinir a senha.");
+        setPending(false);
         return;
       }
 
+      // Sucesso: mostra a mensagem e navega para /login em 2 s. O pending NAO volta a false (um segundo envio com o
+      // mesmo token seria recusado); so os caminhos de erro destravam o botao.
       setSuccess(true);
       setTimeout(() => router.push("/login"), 2000);
     } catch {
       setError("Erro de conexao. Tente novamente.");
-    } finally {
       setPending(false);
     }
   }

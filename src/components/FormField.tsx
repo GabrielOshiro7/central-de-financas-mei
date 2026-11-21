@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from "react";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 type FormFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
@@ -12,7 +13,8 @@ type FormFieldProps = InputHTMLAttributes<HTMLInputElement> & {
   required?: boolean;
 };
 
-export function FormField({ label, error, hint, id, required, ...inputProps }: FormFieldProps) {
+// type="password" usa o PasswordInput (campo com botao mostrar/ocultar senha): TODO campo de senha do app passa por aqui.
+export function FormField({ label, error, hint, id, required, type, ...inputProps }: FormFieldProps) {
   const isRequired = required ?? !/opcional/i.test(label);
   const hintId = hint && id ? `${id}-hint` : undefined;
   return (
@@ -23,14 +25,25 @@ export function FormField({ label, error, hint, id, required, ...inputProps }: F
       >
         {label}
       </label>
-      <input
-        id={id}
-        aria-describedby={hintId}
-        aria-required={isRequired}
-        {...inputProps}
-        aria-invalid={Boolean(error)}
-        className="mt-1 w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
-      />
+      {type === "password" ? (
+        <PasswordInput
+          id={id}
+          aria-describedby={hintId}
+          aria-required={isRequired}
+          {...inputProps}
+          aria-invalid={Boolean(error)}
+        />
+      ) : (
+        <input
+          id={id}
+          type={type}
+          aria-describedby={hintId}
+          aria-required={isRequired}
+          {...inputProps}
+          aria-invalid={Boolean(error)}
+          className="mt-1 w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
+        />
+      )}
       {hint && (
         <p id={hintId} className="mt-1 text-xs text-gray-500 dark:text-neutral-400">
           {hint}

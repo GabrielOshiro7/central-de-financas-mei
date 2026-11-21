@@ -184,6 +184,7 @@ export function TransactionFormModal({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return; // guarda contra envio duplo (Enter repetido / duplo clique)
     setError(null);
 
     if (!categoryId || categoryId === NEW_CATEGORY_VALUE) {
