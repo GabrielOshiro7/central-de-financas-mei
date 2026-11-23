@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { gotoHydrated } from "./helpers/hydration";
+import { next, openByOldUrl, popup } from "./helpers/newAppointment";
 import { fillMoney } from "./helpers/money";
 import { createOnboardedUser, newTestPrisma } from "./helpers/session";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
@@ -182,9 +183,27 @@ test.describe("finalidade dos campos e aviso padrão das observações", () => {
     await gotoHydrated(page, "/vendas/nova");
     await expect(page.getByText(SENSITIVE_DATA_NOTICE)).toBeVisible();
     await expect(page.getByText("Observações (opcional)")).toBeVisible();
-    await gotoHydrated(page, "/agenda/novo");
-    await expect(page.getByText(SENSITIVE_DATA_NOTICE)).toBeVisible();
+    await openByOldUrl(page);
+    await page.getByLabel("Título (opcional)").fill("Minimiza");
+    await next(page);
+    await next(page); // passo 3: Data + Observacao
+    await expect(popup(page).getByText(SENSITIVE_DATA_NOTICE)).toBeVisible();
     await expect(page.getByText(/Não registre informações de saúde ou dados sensíveis do cliente/)).toHaveCount(0); // texto antigo saiu
+  });
+
+  test("agendamento (popup): o campo WhatsApp explica a finalidade e avisa que atualiza o cadastro do cliente", async ({ page, baseURL }) => {
+    const user = await loggedIn(page, baseURL!, "min-whats");
+    const business = await prisma.business.findUniqueOrThrow({ where: { userId: user.userId } });
+    await prisma.client.create({ data: { businessId: business.id, name: "Cliente Zap Minimiza", whatsapp: "090-0000-1111" } });
+    await openByOldUrl(page);
+    // Sem cliente escolhido o campo nem aparece (nada e coletado).
+    await expect(page.getByLabel("WhatsApp (opcional)")).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Buscar cliente" }).fill("zap");
+    await page.getByRole("option", { name: "Cliente Zap Minimiza" }).click();
+    await expect(popup(page).getByLabel("WhatsApp (opcional)")).toHaveValue("090-0000-1111");
+    await expect(popup(page).getByText("Só para você contatar o cliente; o sistema não envia mensagens.")).toBeVisible();
+    await expect(popup(page).getByText("Alterar aqui atualiza o cadastro do cliente.")).toBeVisible();
+    await expect(popup(page).getByLabel("WhatsApp (opcional)")).toHaveAttribute("aria-required", "false");
   });
 
   test("importação: a coluna observação é opcional e leva o aviso padrão", async ({ page, baseURL }) => {

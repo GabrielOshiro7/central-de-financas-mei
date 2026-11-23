@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
+import { clientDialog, openByOldUrl, popup, stepCounter } from "./helpers/newAppointment";
 
 // Tecla Enter nos formularios: avanca para o proximo campo e, no ULTIMO campo, envia uma vez.
 // Ver src/lib/forms/enterNavigation.ts (o envio unico, por rota, esta em enterSubmit.spec.ts).
@@ -94,14 +95,15 @@ test.describe("Enter nos formulários", () => {
     await expect(page).toHaveURL(/\/onboarding/);
   });
 
-  test("c) Novo agendamento: Enter na busca seleciona o cliente e vai a Serviços; só o botão Agendar envia", async ({ page }) => {
+  test("c) Novo agendamento (popup): Enter na busca seleciona o cliente e vai ao WhatsApp; Enter no último campo de cada passo avança; Enter na Observação quebra linha; Enter no último campo do Pagamento salva", async ({ page }) => {
     test.setTimeout(90_000);
     const { businessId } = await setupBusiness(page, "enter-agenda");
-    await prisma.client.create({ data: { businessId, name: "Maria Enter E2E" } });
+    await prisma.client.create({ data: { businessId, name: "Maria Enter E2E", whatsapp: "090-1111-2222" } });
     await prisma.client.create({ data: { businessId, name: "Joana Enter E2E" } });
     await prisma.product.create({ data: { businessId, name: "Corte Enter E2E", type: "SERVICO", defaultPrice: new Decimal(80) } });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
+    await expect(stepCounter(page)).toHaveText("1/3");
     const search = page.getByRole("combobox", { name: "Buscar cliente" });
     await search.fill("mar");
     await expect(search).toHaveAttribute("aria-expanded", "true");
@@ -109,25 +111,44 @@ test.describe("Enter nos formulários", () => {
     await expect(listbox.getByRole("option")).toHaveCount(1); // so a Maria
     await expect(listbox.getByRole("option", { name: "Maria Enter E2E" })).toHaveAttribute("aria-selected", "true");
 
+    // Enter escolhe o cliente (comportamento do picker) e o foco vai para o WhatsApp, ja preenchido com o do cadastro.
     await search.press("Enter");
-    await expect(page.getByText("Maria Enter E2E")).toBeVisible();
+    await expect(popup(page).getByText("Maria Enter E2E")).toBeVisible();
     await expect(page.getByRole("button", { name: "Trocar" })).toBeVisible();
-    await expect(page.getByLabel("Adicionar serviço")).toBeFocused(); // foco em Serviços
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(page.getByLabel("WhatsApp (opcional)")).toBeFocused();
+    await expect(page.getByLabel("WhatsApp (opcional)")).toHaveValue("090-1111-2222");
+    await expect(stepCounter(page)).toHaveText("1/3"); // escolher nao avanca
     expect(await prisma.appointment.count({ where: { businessId } })).toBe(0);
 
-    // Enter em campos do formulario so navega.
+    // Enter no ultimo campo do passo 1 (WhatsApp) avanca para Servicos, com o foco no primeiro campo do passo.
+    await page.getByLabel("WhatsApp (opcional)").press("Enter");
+    await expect(stepCounter(page)).toHaveText("2/3");
+    await expect(page.getByLabel("Adicionar serviço")).toBeFocused();
+
+    // Servico com valor: 4 passos. Enter no ultimo campo (valor unitario) avanca para a Data.
     await page.getByLabel("Adicionar serviço").selectOption({ label: "Corte Enter E2E" });
-    await page.getByLabel("Data do atendimento").focus();
+    await expect(stepCounter(page)).toHaveText("2/4");
+    await page.getByLabel("Valor unitário").press("Enter");
+    await expect(stepCounter(page)).toHaveText("3/4");
+    await expect(page.getByLabel("Data do atendimento")).toBeFocused();
+
+    // Enter na Data vai para a Observacao (nao avanca); na Observacao, quebra a linha (decisao do projeto).
     await page.getByLabel("Data do atendimento").press("Enter");
-    await expect(page.getByLabel("Categoria de receita")).toBeFocused();
-    await page.waitForTimeout(500);
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    const notes = page.getByLabel("Observação (opcional)");
+    await expect(notes).toBeFocused();
+    await notes.pressSequentially("linha 1");
+    await notes.press("Enter");
+    await notes.pressSequentially("linha 2");
+    await expect(notes).toHaveValue("linha 1\nlinha 2");
+    await expect(stepCounter(page)).toHaveText("3/4");
     expect(await prisma.appointment.count({ where: { businessId } })).toBe(0);
 
-    // O envio e so do botao Agendar.
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/\/agenda\?view=day/);
+    // O avanco e pelo botao Proximo. No passo 4 (Pagamento), Enter no ultimo campo salva.
+    await popup(page).getByRole("button", { name: "Próximo" }).click();
+    await expect(stepCounter(page)).toHaveText("4/4");
+    await page.getByLabel("Meio de pagamento (opcional)").focus();
+    await page.getByLabel("Meio de pagamento (opcional)").press("Enter");
+    await expect(popup(page)).toHaveCount(0);
     expect(await prisma.appointment.count({ where: { businessId } })).toBe(1);
   });
 
@@ -141,7 +162,7 @@ test.describe("Enter nos formulários", () => {
       ],
     });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
     const search = page.getByRole("combobox", { name: "Buscar cliente" });
     await search.fill("ana");
     const options = page.getByRole("listbox").getByRole("option");
@@ -158,7 +179,7 @@ test.describe("Enter nos formulários", () => {
     await search.press("Enter");
     await expect(search).toBeFocused(); // sem resultado: nada acontece
     await expect(page.getByRole("button", { name: "Trocar" })).toHaveCount(0);
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(stepCounter(page)).toHaveText("1/3"); // Enter com texto e sem resultado: nao avanca
   });
 
   test("d) Criar novo cliente (pop-up): Enter só navega nele; salvar cria o cliente e NÃO envia o agendamento; o mini-formulário de serviço confirma com Enter", async ({ page }) => {
@@ -166,9 +187,9 @@ test.describe("Enter nos formulários", () => {
     const { businessId } = await setupBusiness(page, "enter-mini");
     await prisma.product.create({ data: { businessId, name: "Corte Mini E2E", type: "SERVICO", defaultPrice: new Decimal(50) } });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    const dialog = page.getByRole("dialog");
+    const dialog = clientDialog(page);
     await expect(dialog.getByLabel("Nome", { exact: true })).toBeFocused(); // pop-up abre com o foco no Nome
     await dialog.getByLabel("Nome", { exact: true }).fill("Cliente Mini E2E");
     await dialog.getByLabel("Nome", { exact: true }).press("Enter");
@@ -179,12 +200,13 @@ test.describe("Enter nos formulários", () => {
 
     await expect(page.getByText("Cliente Mini E2E")).toBeVisible();
     await expect(page.getByRole("button", { name: "Trocar" })).toBeVisible();
-    await expect(page.getByLabel("Adicionar serviço")).toBeFocused();
+    await expect(page.getByLabel("WhatsApp (opcional)")).toBeFocused();
     expect(await prisma.client.count({ where: { businessId, name: "Cliente Mini E2E" } })).toBe(1);
     expect(await prisma.appointment.count({ where: { businessId } })).toBe(0);
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(popup(page)).toBeVisible();
 
-    // Mini-formulario de servico: Enter no nome vai ao preco; Enter no preco cria o servico.
+    // Passo 2. Mini-formulario de servico: Enter no nome vai ao preco; Enter no preco cria o servico.
+    await page.getByLabel("WhatsApp (opcional)").press("Enter"); // ultimo campo do passo 1: avanca
     await page.getByRole("button", { name: "Criar novo serviço" }).click();
     await page.getByLabel("Nome do serviço").fill("Escova Mini E2E");
     await page.getByLabel("Nome do serviço").press("Enter");
@@ -194,7 +216,7 @@ test.describe("Enter nos formulários", () => {
     await expect(page.getByLabel("Valor unitário")).toBeVisible();
     expect(await prisma.product.count({ where: { businessId, name: "Escova Mini E2E" } })).toBe(1);
     expect(await prisma.appointment.count({ where: { businessId } })).toBe(0);
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(popup(page)).toBeVisible();
   });
 
   test("e) Modal Nova receita: Enter avança e não salva; Observação aceita quebra de linha", async ({ page }) => {

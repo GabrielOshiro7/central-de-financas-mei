@@ -3,6 +3,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { back, createAppointmentViaPopup, createClientInPopup, createServicesInPopup, next, openByOldUrl, openFromAgenda, popup, save, savedNotice, stepCounter } from "./helpers/newAppointment";
 import { E2E_BUSINESS_TZ, businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 import { addMonthsClamped, dateKeyToDbDate, dbDateToKey, formatDateKey, zonedInstant, parseDateKey } from "../../src/lib/time/zoned";
@@ -53,25 +54,11 @@ async function completeOnboarding(page: Page, name: string) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-// Formulario por dia: cliente novo + servicos novos (sem duracao), com preco.
-async function fillNewDayAppointment(page: Page, clientName: string, services: { name: string; price: string }[]) {
-  // "Criar novo cliente" abre o MESMO pop-up de cadastro da pagina Clientes.
-  await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-  const clientDialog = page.getByRole("dialog");
-  await clientDialog.getByLabel("Nome", { exact: true }).fill(clientName);
-  await clientDialog.getByRole("button", { name: "Salvar" }).click();
-  await expect(clientDialog).toHaveCount(0);
-  await expect(page.getByText(clientName)).toBeVisible();
-
-  for (const [index, service] of services.entries()) {
-    await page.getByRole("button", { name: "Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill(service.name);
-    await fillMoney(page.getByLabel("Preço (opcional)"), service.price);
-    await page.getByRole("button", { name: "Criar serviço" }).click();
-    await expect(page.getByLabel("Valor unitário").nth(index)).toBeVisible();
-  }
-  await expect(page.getByLabel("Duração (min)")).toHaveCount(0); // o fluxo por dia nao tem duracao
-  await expect(page.locator("#startAt")).toHaveCount(0); // nem horario
+// Agora o "Novo agendamento" e um popup em passos (helpers/newAppointment.ts); este arquivo so passa por ele.
+// Depois de salvar, o popup fecha e a Agenda continua na visao em que estava: para ver o dia, abre-se a aba "Dia".
+async function goToDayView(page: Page) {
+  await page.getByRole("link", { name: "Dia", exact: true }).click();
+  await expect(page).toHaveURL(/view=day/);
 }
 
 function confirmDialog(page: Page) {
@@ -94,20 +81,26 @@ test.describe("Agenda - fluxo por dia", () => {
     await completeOnboarding(page, "Empresa Agenda E2E");
     const today = businessToday();
 
-    await gotoHydrated(page, "/agenda");
-    await page.getByRole("link", { name: "Novo agendamento", exact: true }).click();
-    await expect(page).toHaveURL(/\/agenda\/novo/);
-    await fillNewDayAppointment(page, "Cliente Dia E2E", [{ name: "Corte Dia E2E", price: "80" }, { name: "Barba Dia E2E", price: "30" }]);
+    await openFromAgenda(page);
+    await createClientInPopup(page, "Cliente Dia E2E");
+    await next(page);
+    await createServicesInPopup(page, [{ name: "Corte Dia E2E", price: "80" }, { name: "Barba Dia E2E", price: "30" }]);
+    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 110,00");
+    await next(page);
 
     // Padroes: hoje da empresa, categoria de receita de servicos, a vista.
     await expect(page.getByLabel("Data do atendimento")).toHaveValue(today);
+    await next(page);
+    await expect(stepCounter(page)).toHaveText("4/4");
     await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
     await expect(page.getByRole("button", { name: "À vista" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 110,00");
     await page.getByLabel("Meio de pagamento (opcional)").selectOption({ label: "Dinheiro" });
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await save(page);
 
-    // Volta na aba Dia, no dia do atendimento.
+    // O popup fecha (sem navegar), a confirmacao aparece e o agendamento esta na Agenda, no dia do atendimento.
+    await expect(popup(page)).toHaveCount(0);
+    await expect(savedNotice(page)).toHaveText(`Agendamento salvo para ${formatDateKey(today)}`);
+    await goToDayView(page);
     await expect(page).toHaveURL(new RegExp(`/agenda\\?view=day&day=${today}`));
     const appointment = row(page, "Cliente Dia E2E");
     await expect(appointment).toBeVisible();
@@ -164,9 +157,15 @@ test.describe("Agenda - fluxo por dia", () => {
     await completeOnboarding(page, "Empresa Prazo E2E");
     const tomorrow = businessToday(1);
 
-    await gotoHydrated(page, `/agenda/novo?date=${tomorrow}`);
-    await fillNewDayAppointment(page, "Cliente Prazo E2E", [{ name: "Pacote Prazo E2E", price: "300" }]);
+    // /agenda/novo?date=... redireciona para /agenda?novo=1&date=... e abre o popup com a data pre-preenchida.
+    await openByOldUrl(page, `?date=${tomorrow}`);
+    await createClientInPopup(page, "Cliente Prazo E2E");
+    await next(page);
+    await createServicesInPopup(page, [{ name: "Pacote Prazo E2E", price: "300" }]);
+    await next(page);
     await expect(page.getByLabel("Data do atendimento")).toHaveValue(tomorrow);
+    await next(page);
+    await expect(stepCounter(page)).toHaveText("4/4");
     await page.getByRole("button", { name: "A prazo" }).click();
 
     // Parcelas mensais com divisão automática: sem "Intervalo (dias)" nem "Dividir igualmente".
@@ -183,22 +182,25 @@ test.describe("Agenda - fluxo por dia", () => {
     await page.getByLabel("Nº de parcelas").press("Enter");
     await expect(dues).toHaveCount(3);
     await expect(page.locator("#due-0")).toBeFocused();
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(popup(page)).toBeVisible(); // o Enter so gerou as parcelas: nada foi enviado
     expect(await Promise.all([0, 1, 2].map((i) => dues.nth(i).inputValue()))).toEqual([tomorrow, addMonthsClamped(tomorrow, 1), addMonthsClamped(tomorrow, 2)]);
     expect(await Promise.all([0, 1, 2].map((i) => digits(amounts.nth(i))))).toEqual(["10000", "10000", "10000"]);
 
     // 4 + sair do campo: recalcula (4 x 75,00).
     await page.getByLabel("Nº de parcelas").fill("4");
-    await page.getByRole("heading", { name: "Pagamento", exact: true }).click();
+    await popup(page).getByText("Condição").click();
     await expect(dues).toHaveCount(4);
     expect(await Promise.all([0, 1, 2, 3].map((i) => digits(amounts.nth(i))))).toEqual(["7500", "7500", "7500", "7500"]);
 
     // Adicionar um serviço (total 380): recalcula (4 x 95,00).
-    await page.getByRole("button", { name: "Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill("Extra Prazo E2E");
-    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
-    await page.getByRole("button", { name: "Criar serviço" }).click();
+    // (o servico se adiciona no passo 2: volta, cria, e retorna ao Pagamento - as parcelas se refazem sozinhas)
+    await back(page);
+    await back(page);
+    await createServicesInPopup(page, [{ name: "Extra Prazo E2E", price: "80" }]);
     await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 380,00");
+    await next(page);
+    await next(page);
+    await expect(stepCounter(page)).toHaveText("4/4");
     await expect(page.getByText("Soma das parcelas: R$ 380,00 / R$ 380,00")).toBeVisible();
     expect(await Promise.all([0, 1, 2, 3].map((i) => digits(amounts.nth(i))))).toEqual(["9500", "9500", "9500", "9500"]);
 
@@ -209,12 +211,16 @@ test.describe("Agenda - fluxo por dia", () => {
 
     // Edição manual de valores (soma errada: o formulário recusa antes de enviar; depois acerta).
     await fillMoney(amounts.nth(1), "50");
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page.locator('p[role="alert"]')).toHaveText("A soma das parcelas (R$ 335,00) não bate com o total do atendimento (R$ 380,00).");
+    await save(page);
+    await expect(popup(page).locator('p[role="alert"]')).toHaveText("A soma das parcelas (R$ 335,00) não bate com o total do atendimento (R$ 380,00).");
+    await expect(popup(page)).toBeVisible();
     await fillMoney(amounts.nth(1), "100");
     await fillMoney(amounts.nth(2), "90");
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await save(page);
+    await expect(popup(page)).toHaveCount(0);
+    await expect(savedNotice(page)).toHaveText(`Agendamento salvo para ${formatDateKey(tomorrow)}`);
 
+    await gotoHydrated(page, `/agenda?view=day&day=${tomorrow}`);
     await expect(page).toHaveURL(new RegExp(`view=day&day=${tomorrow}`));
     const appointment = row(page, "Cliente Prazo E2E");
     await expect(appointment.getByText("· A prazo · 4 parcelas")).toBeVisible();
@@ -255,38 +261,56 @@ test.describe("Agenda - fluxo por dia", () => {
     await completeOnboarding(page, "Empresa Sem Valor E2E");
     const today = businessToday();
 
-    await gotoHydrated(page, "/agenda/novo");
-    // Total zero: sem Categoria de receita nem Pagamento; aviso discreto; cliente opcional.
+    await openByOldUrl(page);
+    await expect(stepCounter(page)).toHaveText("1/3");
+    await expect(page.getByText("Obrigatório se houver serviço com valor.")).toBeVisible();
+    await next(page);
+
+    // Passo 2, total zero: aviso discreto e so 3 passos (sem Pagamento).
+    await expect(stepCounter(page)).toHaveText("2/3");
     await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 0,00");
     await expect(page.getByTestId("no-value-notice")).toHaveText("Sem valor: não gera receita.");
-    await expect(page.getByLabel("Categoria de receita")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toHaveCount(0);
-    await expect(page.getByText("Opcional enquanto o agendamento não tem valor.")).toBeVisible();
 
-    // Sem título, cliente nem serviço: recusa antes de enviar.
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page.locator('p[role="alert"]')).toHaveText("Informe ao menos um título, cliente ou serviço.");
+    // Sem título, cliente nem serviço: recusa antes de avancar.
+    await next(page);
+    await expect(popup(page).locator('p[role="alert"]')).toHaveText("Informe ao menos um título, cliente ou serviço.");
+    await expect(stepCounter(page)).toHaveText("2/3");
 
-    // Adicionar valor (serviço de R$ 80): as seções aparecem, pré-preenchidas; o aviso some.
-    await page.getByRole("button", { name: "Criar novo serviço" }).click();
-    await page.getByLabel("Nome do serviço").fill("Consulta Sem Valor E2E");
-    await fillMoney(page.getByLabel("Preço (opcional)"), "80");
-    await page.getByRole("button", { name: "Criar serviço" }).click();
+    // Adicionar valor (servico de R$ 80): o contador vira x/4 e o aviso some.
+    await createServicesInPopup(page, [{ name: "Consulta Sem Valor E2E", price: "80" }]);
     await expect(page.getByTestId("day-appointment-total")).toHaveText("R$ 80,00");
-    await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
-    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toBeVisible();
+    await expect(stepCounter(page)).toHaveText("2/4");
     await expect(page.getByTestId("no-value-notice")).toHaveCount(0);
-    await expect(page.getByText("Opcional enquanto o agendamento não tem valor.")).toHaveCount(0);
 
-    // Zerar de novo (remover o serviço): seções ocultas de novo.
-    await page.getByRole("button", { name: "Remover" }).click();
+    // Com valor o cliente e obrigatorio: bloqueia e leva de volta ao passo 1.
+    await next(page);
+    await expect(popup(page).locator('p[role="alert"]')).toContainText("Escolha um cliente para agendamentos com valor.");
+    await popup(page).getByRole("button", { name: "Voltar e escolher cliente" }).click();
+    await expect(page.getByLabel("Buscar cliente")).toBeFocused();
+    await createClientInPopup(page, "Cliente Opcional E2E");
+    await next(page);
+    await next(page);
+    await next(page);
+    await expect(stepCounter(page)).toHaveText("4/4");
+    await expect(page.getByLabel("Categoria de receita").locator("option:checked")).toHaveText("Venda de serviços");
+
+    // Zerar de novo (remover o servico) e tirar o cliente: volta a 3 passos, sem Pagamento.
+    await back(page);
+    await back(page);
+    await popup(page).getByRole("button", { name: "Remover" }).click();
+    await expect(stepCounter(page)).toHaveText("2/3");
     await expect(page.getByTestId("no-value-notice")).toBeVisible();
-    await expect(page.getByLabel("Categoria de receita")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Pagamento", exact: true })).toHaveCount(0);
+    await back(page);
+    await popup(page).getByRole("button", { name: "Trocar" }).click();
 
-    // Só com título, sem cliente: salva.
+    // So com titulo, sem cliente: salva.
     await page.getByLabel("Título (opcional)").fill("Reunião com contador");
-    await page.getByRole("button", { name: "Agendar" }).click();
+    await next(page);
+    await next(page);
+    await expect(stepCounter(page)).toHaveText("3/3");
+    await save(page);
+    await expect(popup(page)).toHaveCount(0);
+    await goToDayView(page);
     await expect(page).toHaveURL(new RegExp(`/agenda\\?view=day&day=${today}`));
 
     const meeting = row(page, "Reunião com contador");
@@ -323,10 +347,7 @@ test.describe("Agenda - fluxo por dia", () => {
     await completeOnboarding(page, "Empresa Calendario E2E");
 
     // Um agendamento hoje, so para o dia de hoje ter o "pontinho".
-    await gotoHydrated(page, "/agenda/novo");
-    await fillNewDayAppointment(page, "Cliente Calendario E2E", [{ name: "Corte Calendario E2E", price: "80" }]);
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/\/agenda\?view=day/);
+    await createAppointmentViaPopup(page, { clientName: "Cliente Calendario E2E", services: [{ name: "Corte Calendario E2E", price: "80" }] });
     await page.getByRole("link", { name: "Calendário" }).click();
 
     // exact: cada dia da grade e um botao cujo nome contem o mes/ano.
@@ -397,10 +418,8 @@ test.describe("Agenda - legado com horário (TIMED, gravado no banco)", () => {
     await seedTimed(email);
 
     // Um agendamento por dia no mesmo dia: os TIMED vem primeiro, pelo horario.
-    await gotoHydrated(page, "/agenda/novo");
-    await fillNewDayAppointment(page, "Cliente Por Dia E2E", [{ name: "Escova E2E", price: "40" }]);
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/view=day/);
+    await createAppointmentViaPopup(page, { clientName: "Cliente Por Dia E2E", services: [{ name: "Escova E2E", price: "40" }] });
+    await goToDayView(page);
 
     const rows = page.getByTestId("appointment-row");
     await expect(rows).toHaveCount(3);
@@ -478,10 +497,8 @@ test.describe("Agenda - desfazer conclusão (A4)", () => {
   }
 
   async function createAndCompleteToday(page: Page, clientName: string) {
-    await gotoHydrated(page, "/agenda/novo");
-    await fillNewDayAppointment(page, clientName, [{ name: `Serviço ${clientName}`, price: "100" }]);
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/view=day/);
+    await createAppointmentViaPopup(page, { clientName, services: [{ name: `Serviço ${clientName}`, price: "100" }] });
+    await goToDayView(page);
     return completeNow(page, clientName);
   }
 

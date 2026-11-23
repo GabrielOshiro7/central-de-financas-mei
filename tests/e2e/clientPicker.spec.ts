@@ -3,11 +3,12 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { clientDialog, next, openByOldUrl, popup, save } from "./helpers/newAppointment";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 
-// Escolha de cliente da Agenda: a lista so aparece com o campo em foco (3
+// Escolha de cliente da Agenda (passo 1 do popup "Novo agendamento"): a lista so aparece com o campo em foco (3
 // recentes; ao digitar, busca no servidor) e "Criar novo cliente" abre o MESMO
-// pop-up de cadastro da pagina Clientes.
+// pop-up de cadastro da pagina Clientes, empilhado sobre o popup do agendamento.
 loadTestEnv();
 assertTestDatabase();
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -82,7 +83,7 @@ test.describe("Agenda - escolha de cliente", () => {
     await seedClients(businessId);
     await prisma.product.create({ data: { businessId, name: "Corte Picker E2E", type: "SERVICO", defaultPrice: new Decimal(80) } });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
     const search = page.getByRole("combobox", { name: "Buscar cliente" });
     const options = page.getByRole("listbox").getByRole("option");
 
@@ -125,15 +126,15 @@ test.describe("Agenda - escolha de cliente", () => {
     await page.getByRole("heading", { name: "Novo agendamento" }).click();
     await expect(page.getByRole("listbox")).toHaveCount(0);
 
-    // Enter seleciona o destacado, mostra o cliente com "Trocar" e foca Servicos, sem enviar.
+    // Enter seleciona o destacado, mostra o cliente com "Trocar" e foca o WhatsApp (proximo campo do passo), sem enviar.
     await search.fill("marta");
     await expect(options).toHaveText(["Marta Reis"]);
     await search.press("Enter");
     await expect(page.getByText("Marta Reis")).toBeVisible();
     await expect(page.getByRole("button", { name: "Trocar" })).toBeVisible();
     await expect(page.getByRole("listbox")).toHaveCount(0);
-    await expect(page.getByLabel("Adicionar serviço")).toBeFocused();
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(page.getByLabel("WhatsApp (opcional)")).toBeFocused();
+    await expect(popup(page)).toBeVisible();
     expect(await prisma.appointment.count({ where: { businessId, kind: "DAY" } })).toBe(0);
 
     // Trocar volta a busca com o foco nela.
@@ -141,23 +142,23 @@ test.describe("Agenda - escolha de cliente", () => {
     await expect(search).toBeFocused();
   });
 
-  test("sem resultados: mensagem e Criar novo cliente abre o pop-up com o nome; salvar seleciona e foca Serviços, sem enviar o agendamento", async ({ page }) => {
+  test("sem resultados: mensagem e Criar novo cliente abre o pop-up com o nome; salvar seleciona e foca o WhatsApp, sem enviar o agendamento", async ({ page }) => {
     test.setTimeout(120_000);
     const businessId = await setupBusiness(page, "picker-criar");
     await seedClients(businessId);
     await prisma.product.create({ data: { businessId, name: "Corte Criar E2E", type: "SERVICO", defaultPrice: new Decimal(80) } });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
     const search = page.getByRole("combobox", { name: "Buscar cliente" });
     await search.fill("Zélia Inexistente");
     await expect(page.getByText("Nenhum cliente encontrado")).toBeVisible();
     await expect(page.getByRole("listbox")).toHaveCount(0);
     await search.press("Enter"); // sem resultados: nada acontece
     await expect(search).toBeFocused();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(clientDialog(page)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Criar novo cliente" }).click();
-    const dialog = page.getByRole("dialog");
+    const dialog = clientDialog(page);
     await expect(dialog.getByRole("heading", { name: "Novo cliente" })).toBeVisible();
     // Pop-up completo da pagina Clientes, fora do <form> do agendamento.
     await expect(dialog.getByLabel("Telefone (opcional)")).toBeVisible();
@@ -171,16 +172,19 @@ test.describe("Agenda - escolha de cliente", () => {
 
     await expect(page.getByText("Zélia Inexistente")).toBeVisible();
     await expect(page.getByRole("button", { name: "Trocar" })).toBeVisible();
-    await expect(page.getByLabel("Adicionar serviço")).toBeFocused();
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(page.getByLabel("WhatsApp (opcional)")).toBeFocused();
+    await expect(popup(page)).toBeVisible();
     const created = await prisma.client.findFirstOrThrow({ where: { businessId, name: "Zélia Inexistente" } });
     expect(created.phone).toBe("11 98888-7777");
     expect(await prisma.appointment.count({ where: { businessId, kind: "DAY" } })).toBe(0); // nada do agendamento foi enviado
 
-    // O agendamento so sai pelo botao Agendar, com o cliente recem-criado.
+    // O agendamento so sai pelo "Salvar" do ultimo passo, com o cliente recem-criado.
+    await next(page);
     await page.getByLabel("Adicionar serviço").selectOption({ label: "Corte Criar E2E" });
-    await page.getByRole("button", { name: "Agendar" }).click();
-    await expect(page).toHaveURL(/\/agenda\?view=day/);
+    await next(page); // passo 3 (data)
+    await next(page); // passo 4 (pagamento)
+    await save(page);
+    await expect(popup(page)).toHaveCount(0);
     const appointment = await prisma.appointment.findFirstOrThrow({ where: { businessId, kind: "DAY" } });
     expect(appointment.clientId).toBe(created.id);
   });
@@ -191,15 +195,15 @@ test.describe("Agenda - escolha de cliente", () => {
     await seedClients(businessId);
     const clientsBefore = await prisma.client.count({ where: { businessId } });
 
-    await gotoHydrated(page, "/agenda/novo");
+    await openByOldUrl(page);
     await page.getByRole("button", { name: "+ Criar novo cliente" }).click();
-    const dialog = page.getByRole("dialog");
+    const dialog = clientDialog(page);
     await dialog.getByLabel("Nome", { exact: true }).fill("Nao Deve Existir");
     await dialog.getByRole("button", { name: "Cancelar" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Buscar cliente" })).toBeFocused();
     await expect(page.getByRole("button", { name: "Trocar" })).toHaveCount(0);
-    await expect(page).toHaveURL(/\/agenda\/novo/);
+    await expect(popup(page)).toBeVisible(); // o popup do agendamento continua aberto
     expect(await prisma.client.count({ where: { businessId } })).toBe(clientsBefore);
     expect(await prisma.appointment.count({ where: { businessId, kind: "DAY" } })).toBe(0);
   });

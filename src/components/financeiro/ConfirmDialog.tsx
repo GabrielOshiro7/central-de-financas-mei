@@ -8,6 +8,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = "Confirmar",
+  cancelLabel = "Cancelar",
   pendingLabel = "Excluindo...",
   pending,
   onConfirm,
@@ -18,6 +19,8 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel?: string;
+  // Texto do botao de voltar (padrao "Cancelar").
+  cancelLabel?: string;
   // Default preservado para nao alterar o texto ja exibido pelos dialogs
   // existentes (revert/cancel de Bill) - so sobrescrito por chamadores cuja
   // acao nao e uma exclusao (ex.: inativar cliente, cancelar venda).
@@ -39,7 +42,10 @@ export function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
+      onClick={(event) => {
+        // So o clique NO fundo cancela (um clique que sobe de um filho/portal nao).
+        if (event.target === event.currentTarget) onCancel();
+      }}
     >
       <div
         role="alertdialog"
@@ -64,7 +70,7 @@ export function ConfirmDialog({
             disabled={pending}
             className="border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
-            Cancelar
+            {cancelLabel}
           </button>
           <button
             type="button"

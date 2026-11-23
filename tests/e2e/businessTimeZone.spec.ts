@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
+import { next, openByOldUrl } from "./helpers/newAppointment";
 import { fillMoney } from "./helpers/money";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 import { addDays, dateKeyToDbDate, formatDateKey, todayKey } from "../../src/lib/time/zoned";
@@ -89,7 +90,10 @@ async function expectCompanyClock(
   // padrao de um agendamento novo e o "hoje" da empresa; o rotulo do horario
   // so existe no formulario do fluxo com horario (TIMED), ao editar um
   // agendamento antigo - e mostra a cidade do fuso da empresa.
-  await gotoHydrated(page, "/agenda/novo");
+  await openByOldUrl(page);
+  await page.getByLabel("Título (opcional)").fill("Fuso E2E"); // ao menos um entre titulo, cliente e servico
+  await next(page);
+  await next(page);
   await expect(page.getByLabel("Data do atendimento")).toHaveValue(opts.today);
   await gotoHydrated(page, `/agenda/${opts.timedAppointmentId}/editar`);
   await expect(page.getByLabel(`Início (horário de ${opts.city})`)).toBeVisible();

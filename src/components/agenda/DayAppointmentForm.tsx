@@ -4,11 +4,11 @@ import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Currency } from "@prisma/client";
-import { Plus, Trash2 } from "lucide-react";
-import { MoneyInput } from "@/components/MoneyInput";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ClientPicker, type ClientOption } from "@/components/agenda/ClientPicker";
-import { InstallmentsEditor, roundMoney, sumInstallmentRows, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
+import { timingButtonClass } from "@/components/agenda/paymentTimingStyles";
+import { ServiceRows, servicesTotal, type DayServiceOption, type DayServiceRow } from "@/components/agenda/ServiceRows";
+import { InstallmentsEditor, sumInstallmentRows, type InstallmentRow } from "@/components/vendas/InstallmentsEditor";
 import { formatMoney, isIntegerCurrency } from "@/lib/money";
 import { isDateKey } from "@/lib/time/zoned";
 import { rebaseMonthlyDates } from "@/lib/installments/monthly";
@@ -28,9 +28,8 @@ import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
 // pre-preenchidas como sempre. Todo agendamento precisa de ao menos um entre
 // titulo, cliente e servico.
 
-export type DayServiceOption = { id: string; name: string; defaultPrice: string };
+export type { DayServiceOption, DayServiceRow } from "@/components/agenda/ServiceRows";
 export type DayCategoryOption = { id: string; name: string };
-export type DayServiceRow = { productId: string; quantity: string; unitPrice: string };
 
 export type DayAppointmentInitial = {
   id: string;
@@ -46,21 +45,10 @@ export type DayAppointmentInitial = {
   notes: string;
 };
 
-const linkButtonClass = "text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400";
-const primaryButtonClass =
-  "bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200";
-const secondaryButtonClass =
-  "border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800";
 const inputClass =
   "w-full border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 const labelClass = "mb-1 block text-sm font-medium text-gray-700 dark:text-neutral-300";
 const sectionClass = "border border-gray-200 p-6 dark:border-neutral-800";
-const timingButtonClass = (active: boolean) =>
-  `flex-1 px-3 py-2 text-sm font-medium transition ${
-    active
-      ? "bg-gray-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
-      : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400"
-  }`;
 
 export function DayAppointmentForm({
   mode,
@@ -115,28 +103,12 @@ export function DayAppointmentForm({
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
-  const [showCreateService, setShowCreateService] = useState(false);
-  const [newServiceName, setNewServiceName] = useState("");
-  const [newServicePrice, setNewServicePrice] = useState("");
-  const [savingService, setSavingService] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const total = useMemo(
-    () => roundMoney(rows.reduce((t, r) => t + (Number(r.quantity) || 0) * (Number(r.unitPrice) || 0), 0), decimals),
-    [rows, decimals]
-  );
+  const total = useMemo(() => servicesTotal(rows, decimals), [rows, decimals]);
   // Sem valor: total zero (sem servicos ou so servicos de valor 0).
   const noValue = total <= 0;
-  const availableServices =localServices.filter((s) => !rows.some((r) => r.productId === s.id));
-  const serviceName = (id: string) => localServices.find((s) => s.id === id)?.name ?? "";
-
-  function addService(id: string) {
-    const service = localServices.find((s) => s.id === id);
-    if (!service || rows.some((r) => r.productId === id)) return;
-    setRows((prev) => [...prev, { productId: id, quantity: "1", unitPrice: service.defaultPrice }]);
-  }
 
   // A 1a parcela vence, por padrao, no dia do atendimento: enquanto ela ainda esta
   // nesse dia (o usuario nao a personalizou), acompanha a mudanca do dia e as
@@ -146,39 +118,6 @@ export function DayAppointmentForm({
       setInstallments((prev) => rebaseMonthlyDates(prev, value));
     }
     setScheduledOn(value);
-  }
-
-  function updateRow(index: number, patch: Partial<DayServiceRow>) {
-    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
-  }
-
-  async function createServiceInline() {
-    if (!newServiceName.trim()) return;
-    setSavingService(true);
-    setError(null);
-    try {
-      // Sem duracao: o fluxo por dia nao tem horario (Agenda A3).
-      const res = await fetch("/api/produtos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newServiceName, type: "SERVICO", defaultPrice: newServicePrice || undefined }),
-      });
-      const result = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(result.error ?? "Não foi possível criar o serviço.");
-        return;
-      }
-      const created = { id: result.id as string, name: newServiceName, defaultPrice: newServicePrice };
-      setLocalServices((prev) => [...prev, created]);
-      setRows((prev) => [...prev, { productId: created.id, quantity: "1", unitPrice: newServicePrice }]);
-      setNewServiceName("");
-      setNewServicePrice("");
-      setShowCreateService(false);
-    } catch {
-      setError("Erro de conexão. Tente novamente.");
-    } finally {
-      setSavingService(false);
-    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -264,109 +203,7 @@ export function DayAppointmentForm({
 
       <ClientPicker clientId={clientId} initialClient={initialClient} onChange={setClientId} onError={setError} optional={noValue} />
 
-      <section className={sectionClass}>
-        <h2 className="mb-4 text-sm font-semibold text-gray-900 dark:text-neutral-100">Serviços</h2>
-
-        {rows.length > 0 && (
-          <ul className="mb-3 flex flex-col gap-2">
-            {rows.map((row, index) => (
-              <li key={row.productId} className="grid grid-cols-1 gap-2 border border-gray-200 p-3 sm:grid-cols-12 sm:items-end dark:border-neutral-800">
-                <p className="text-sm font-medium text-gray-900 sm:col-span-4 sm:pb-2 dark:text-neutral-100">{serviceName(row.productId)}</p>
-                <div className="sm:col-span-2">
-                  <label htmlFor={`serviceQuantity-${index}`} className={labelClass}>
-                    Quantidade
-                  </label>
-                  <input
-                    id={`serviceQuantity-${index}`}
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={row.quantity}
-                    onChange={(e) => updateRow(index, { quantity: e.target.value })}
-                    className={inputClass}
-                  />
-                </div>
-                <div className="sm:col-span-4">
-                  <label htmlFor={`servicePrice-${index}`} className={labelClass}>
-                    Valor unitário
-                  </label>
-                  <MoneyInput
-                    id={`servicePrice-${index}`}
-                    currency={currency}
-                    value={row.unitPrice}
-                    onChange={(value) => updateRow(index, { unitPrice: value })}
-                  />
-                </div>
-                <div className="sm:col-span-2 sm:pb-2">
-                  <button
-                    type="button"
-                    onClick={() => setRows((prev) => prev.filter((_, i) => i !== index))}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400"
-                  >
-                    <Trash2 size={14} aria-hidden="true" />
-                    Remover
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {availableServices.length > 0 && (
-          <select aria-label="Adicionar serviço" value="" onChange={(e) => addService(e.target.value)} className={inputClass}>
-            <option value="">Adicionar serviço...</option>
-            {availableServices.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {localServices.length === 0 && <p className="text-sm text-gray-500 dark:text-neutral-400">Nenhum serviço cadastrado ainda.</p>}
-
-        {!showCreateService ? (
-          <button type="button" onClick={() => setShowCreateService(true)} className={`${linkButtonClass} mt-2 inline-flex items-center gap-1`}>
-            <Plus size={14} aria-hidden="true" />
-            Criar novo serviço
-          </button>
-        ) : (
-          <div data-enter-group="" className="mt-2 flex flex-col gap-2 border border-gray-200 p-3 dark:border-neutral-800">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <div>
-                <label htmlFor="newServiceName" className={labelClass}>
-                  Nome do serviço
-                </label>
-                <input id="newServiceName" type="text" value={newServiceName} onChange={(e) => setNewServiceName(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="newServicePrice" className={labelClass}>
-                  Preço (opcional)
-                </label>
-                <MoneyInput id="newServicePrice" currency={currency} value={newServicePrice} onChange={setNewServicePrice} />
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 dark:text-neutral-400">Preço com imposto incluído (総額表示).</p>
-            <div className="flex gap-2">
-              <button type="button" data-enter-confirm="" onClick={createServiceInline} disabled={savingService} className={primaryButtonClass}>
-                {savingService ? "Salvando..." : "Criar serviço"}
-              </button>
-              <button type="button" onClick={() => setShowCreateService(false)} className={secondaryButtonClass}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-4 flex justify-between bg-gray-50 p-4 text-base font-semibold text-gray-900 dark:bg-neutral-800 dark:text-neutral-100">
-          <span>Total</span>
-          <span data-testid="day-appointment-total">{formatMoney(total, currency)}</span>
-        </div>
-        {noValue && (
-          <p data-testid="no-value-notice" className="mt-2 text-xs text-gray-500 dark:text-neutral-400">
-            Sem valor: não gera receita.
-          </p>
-        )}
-      </section>
+      <ServiceRows services={localServices} setServices={setLocalServices} rows={rows} setRows={setRows} currency={currency} total={total} onError={setError} />
 
       <section className={sectionClass}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1,5 +1,11 @@
 import type { ClientType } from "@prisma/client";
 
+// Telefone e WhatsApp do cliente: texto livre (nao valida formato por pais), mas com limite de tamanho. Mesma regra no
+// cadastro/edicao do cliente (clientSchema), no clientWhatsapp do agendamento (reaproveita o schema do whatsapp) e nos
+// inputs (maxLength).
+export const CLIENT_CONTACT_MAX_LENGTH = 40;
+export const CLIENT_CONTACT_TOO_LONG = "Use no máximo 40 caracteres.";
+
 export const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string }[] = [
   { value: "PESSOA_FISICA", label: "Pessoa física" },
   { value: "PESSOA_JURIDICA", label: "Pessoa jurídica" },

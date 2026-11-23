@@ -359,3 +359,78 @@ describe("ClientPicker - pop-up Criar novo cliente", () => {
     expect(screen.queryByText("Trocar")).toBeNull();
   });
 });
+
+// Popup "Novo agendamento": o picker entrega o cliente escolhido COM o WhatsApp (onPick), o Enter na busca vazia sem opcao
+// destacada chama onEnterEmpty (avanca de passo) e a variante "plain" nao desenha card.
+describe("ClientPicker - uso no popup de novo agendamento", () => {
+  function Popup({ onPick, onEnterEmpty, initialClient }: { onPick: (client: ClientOption | null) => void; onEnterEmpty?: () => void; initialClient?: ClientOption | null }) {
+    const [clientId, setClientId] = useState(initialClient?.id ?? "");
+    return (
+      <ClientPicker
+        variant="plain"
+        clientId={clientId}
+        initialClient={initialClient}
+        onChange={setClientId}
+        onPick={onPick}
+        onEnterEmpty={onEnterEmpty}
+        onError={() => {}}
+        hint="Obrigatório se houver serviço com valor."
+      />
+    );
+  }
+
+  it("onPick recebe o cliente escolhido com o whatsapp (Enter na opcao destacada)", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      const q = new URL(url, "http://test").searchParams.get("q") ?? "";
+      return { ok: true, json: async () => ({ mode: q ? "search" : "recent", clients: q ? [{ id: "w1", name: "Wanda Zap", tradeName: "", whatsapp: "090-1234-5678" }] : RECENT }) };
+    });
+    const picked: (ClientOption | null)[] = [];
+    render(<Popup onPick={(c) => picked.push(c)} />);
+    await focusSearch();
+    type("wan");
+    await settle();
+    keyDown("Enter");
+    expect(picked).toEqual([{ id: "w1", name: "Wanda Zap", tradeName: "", whatsapp: "090-1234-5678" }]);
+  });
+
+  it("Trocar devolve onPick(null)", async () => {
+    const picked: (ClientOption | null)[] = [];
+    render(<Popup onPick={(c) => picked.push(c)} initialClient={{ id: "x", name: "Xavier", tradeName: "", whatsapp: "1" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "Trocar" }));
+    expect(picked).toEqual([null]);
+  });
+
+  it("Enter na busca VAZIA e sem opcao destacada chama onEnterEmpty; com texto e sem resultado, nao", async () => {
+    let enterEmpty = 0;
+    render(<Popup onPick={() => {}} onEnterEmpty={() => enterEmpty++} />);
+    await focusSearch(); // vazio: recentes, nenhuma opcao destacada
+    keyDown("Enter");
+    expect(enterEmpty).toBe(1);
+
+    type("zzz");
+    await settle();
+    keyDown("Enter"); // com texto e sem resultado: nada
+    expect(enterEmpty).toBe(1);
+  });
+
+  it("com opcao destacada, o Enter escolhe o cliente (e nao chama onEnterEmpty)", async () => {
+    let enterEmpty = 0;
+    render(<Popup onPick={() => {}} onEnterEmpty={() => enterEmpty++} />);
+    await focusSearch();
+    type("ana");
+    await settle();
+    keyDown("Enter");
+    expect(enterEmpty).toBe(0);
+    expect(screen.getByRole("button", { name: "Trocar" })).toBeTruthy();
+  });
+
+  it("variante plain: sem card (sem borda/padding de secao), dica visivel, lista no fluxo da pagina (nao absoluta)", async () => {
+    const { container } = render(<Popup onPick={() => {}} />);
+    const section = container.querySelector("section")!;
+    expect(section.className).not.toMatch(/border|p-6/);
+    expect(screen.getByText("Obrigatório se houver serviço com valor.")).toBeTruthy();
+    await focusSearch();
+    const list = screen.getByRole("listbox").parentElement!;
+    expect(list.className).not.toMatch(/absolute/);
+  });
+});

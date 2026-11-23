@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { ClientFormModal, type SavedClient } from "@/components/clientes/ClientFormModal";
 import { focusNextFieldAfter, isImeComposing } from "@/lib/forms/enterNavigation";
 
-export type ClientOption = { id: string; name: string; tradeName: string };
+// whatsapp: so o popup de novo agendamento usa (campo WhatsApp preenchido ao escolher o cliente); os outros usos podem omitir.
+export type ClientOption = { id: string; name: string; tradeName: string; whatsapp?: string };
 
 const linkButtonClass = "text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400";
 const inputClass =
@@ -41,6 +42,12 @@ export function ClientPicker({
   onChange,
   onError,
   optional = false,
+  variant = "card",
+  hint,
+  onPick,
+  onEnterEmpty,
+  invalid = false,
+  describedBy,
 }: {
   clientId: string;
   // Cliente ja escolhido ao abrir a tela (edicao, "agendar o proximo").
@@ -49,6 +56,18 @@ export function ClientPicker({
   optional?: boolean;
   onChange: (id: string) => void;
   onError: (message: string | null) => void;
+  // "card" (padrao, paginas): secao com borda. "plain" (popup de novo agendamento): sem borda nem padding, sem card
+  // dentro de card, e a lista de resultados entra no fluxo da pagina (nao e cortada pela rolagem do popup).
+  variant?: "card" | "plain";
+  // Texto de apoio abaixo do titulo (substitui o aviso de "opcional").
+  hint?: string;
+  // Recebe o cliente escolhido/criado (com o WhatsApp) ou null ao trocar - alem do onChange(id).
+  onPick?: (client: ClientOption | null) => void;
+  // Enter na busca VAZIA e sem opcao destacada (o popup usa para avancar de passo).
+  onEnterEmpty?: () => void;
+  // Erro de validacao do campo (aria-invalid + aria-describedby apontando para a mensagem).
+  invalid?: boolean;
+  describedBy?: string;
 }) {
   const [selected, setSelected] = useState<ClientOption | null>(initialClient ?? null);
   const [text, setText] = useState("");
@@ -72,6 +91,7 @@ export function ClientPicker({
   const moveFocusAfterPick = useRef(false);
   const focusSearchAfterClear = useRef(false);
   const savedInModal = useRef(false);
+  const plain = variant === "plain";
   const listboxId = useId();
   const optionId = (id: string) => `${listboxId}-option-${id}`;
 
@@ -137,12 +157,14 @@ export function ClientPicker({
     setOpen(false);
     setActiveIndex(-1);
     onChange(client.id);
+    onPick?.(client);
   }
 
   function clearSelection() {
     focusSearchAfterClear.current = true;
     setSelected(null);
     onChange("");
+    onPick?.(null);
   }
 
   function handleFocus() {
@@ -199,6 +221,7 @@ export function ClientPicker({
       // formulario e, sem resultado destacado, nao faz nada.
       event.preventDefault();
       if (activeClient) pick(activeClient, true);
+      else if (!text.trim()) onEnterEmpty?.();
     }
   }
 
@@ -225,9 +248,17 @@ export function ClientPicker({
   }
 
   return (
-    <section ref={sectionRef} className="border border-gray-200 p-6 dark:border-neutral-800">
-      <h2 className={`${optional ? "mb-1" : "mb-4"} text-sm font-semibold text-gray-900 dark:text-neutral-100`}>Cliente</h2>
-      {optional && <p className="mb-4 text-xs text-gray-500 dark:text-neutral-400">Opcional enquanto o agendamento não tem valor.</p>}
+    <section ref={sectionRef} className={plain ? undefined : "border border-gray-200 p-6 dark:border-neutral-800"}>
+      {plain ? (
+        <h3 className="sr-only">Cliente</h3>
+      ) : (
+        <h2 className={`${optional || hint ? "mb-1" : "mb-4"} text-sm font-semibold text-gray-900 dark:text-neutral-100`}>Cliente</h2>
+      )}
+      {hint ? (
+        <p className={`${plain ? "mb-2" : "mb-4"} text-xs text-gray-500 dark:text-neutral-400`}>{hint}</p>
+      ) : (
+        optional && <p className="mb-4 text-xs text-gray-500 dark:text-neutral-400">Opcional enquanto o agendamento não tem valor.</p>
+      )}
 
       {!clientId ? (
         <div className="flex flex-col gap-2">
@@ -245,6 +276,8 @@ export function ClientPicker({
               aria-activedescendant={activeClient ? optionId(activeClient.id) : undefined}
               aria-autocomplete="list"
               aria-busy={showLoading}
+              aria-invalid={invalid || undefined}
+              aria-describedby={describedBy}
               autoComplete="off"
               value={text}
               onChange={handleSearchChange}
@@ -256,7 +289,13 @@ export function ClientPicker({
             />
 
             {open && (
-              <div className="absolute inset-x-0 top-full z-20 mt-1 border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+              <div
+                className={
+                  plain
+                    ? "mt-1 border border-gray-200 bg-white dark:border-neutral-700 dark:bg-neutral-900"
+                    : "absolute inset-x-0 top-full z-20 mt-1 border border-gray-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                }
+              >
                 {showList && (
                   <>
                     {!query && <p className="px-3 pt-2 text-xs font-medium text-gray-500 dark:text-neutral-400">Recentes</p>}
@@ -306,7 +345,9 @@ export function ClientPicker({
 
           {/* A acao tambem fica na lista vazia; aqui so quando ela nao esta. */}
           {!showEmpty && (
-            <button type="button" onClick={openCreateModal} className={`${linkButtonClass} self-start`}>
+            // mousedown sem tirar o foco da busca: senao a lista fecha entre o clique e o soltar (no popup ela esta no
+            // fluxo da pagina e o botao "sobe", perdendo o clique).
+            <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={openCreateModal} className={`${linkButtonClass} self-start`}>
               + Criar novo cliente
             </button>
           )}

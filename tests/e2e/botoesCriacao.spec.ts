@@ -84,10 +84,13 @@ const CASES: Case[] = [
   {
     path: "/agenda",
     label: "Novo agendamento",
-    role: "link",
+    // Agora e um botao que abre o popup "Novo agendamento" (em passos), sem sair da Agenda.
+    role: "button",
     expectDestination: async (page) => {
-      await expect(page).toHaveURL(/\/agenda\/novo$/);
-      await expect(page.getByRole("heading", { name: "Novo agendamento", level: 1 })).toBeVisible();
+      const dialog = page.getByRole("dialog", { name: "Novo agendamento" });
+      await expect(dialog).toBeVisible();
+      await expect(page).toHaveURL(/\/agenda\?novo=1$/);
+      await expect(dialog.getByLabel("Título (opcional)")).toBeVisible();
     },
   },
   {

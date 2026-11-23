@@ -35,7 +35,7 @@ function watchExternal(page: Page, baseURL: string) {
 }
 
 const PUBLIC_PAGES = ["/", "/login", "/register", "/forgot-password", "/privacidade", "/termos", "/cookies", "/tokushoho"];
-const APP_PAGES = ["/dashboard", "/financeiro/receitas", "/financeiro/pagar", "/financeiro/importar", "/agenda", "/agenda/novo", "/vendas", "/vendas/nova", "/clientes", "/caixa", "/insights", "/configuracoes"];
+const APP_PAGES = ["/dashboard", "/financeiro/receitas", "/financeiro/pagar", "/financeiro/importar", "/agenda", "/agenda?novo=1", "/agenda/novo", "/vendas", "/vendas/nova", "/clientes", "/caixa", "/insights", "/configuracoes"];
 
 test.describe("nenhuma requisição sai do próprio site", () => {
   test("telas públicas (landing, login, cadastro, recuperação e páginas legais)", async ({ browser, baseURL }) => {

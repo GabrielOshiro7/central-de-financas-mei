@@ -17,6 +17,9 @@ type FormFieldProps = InputHTMLAttributes<HTMLInputElement> & {
 export function FormField({ label, error, hint, id, required, type, ...inputProps }: FormFieldProps) {
   const isRequired = required ?? !/opcional/i.test(label);
   const hintId = hint && id ? `${id}-hint` : undefined;
+  // Erro do campo: o <p> tem role="alert" e id, e o input o referencia em aria-describedby (junto com a dica).
+  const errorId = error && id ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div>
       <label
@@ -28,7 +31,7 @@ export function FormField({ label, error, hint, id, required, type, ...inputProp
       {type === "password" ? (
         <PasswordInput
           id={id}
-          aria-describedby={hintId}
+          aria-describedby={describedBy}
           aria-required={isRequired}
           {...inputProps}
           aria-invalid={Boolean(error)}
@@ -37,7 +40,7 @@ export function FormField({ label, error, hint, id, required, type, ...inputProp
         <input
           id={id}
           type={type}
-          aria-describedby={hintId}
+          aria-describedby={describedBy}
           aria-required={isRequired}
           {...inputProps}
           aria-invalid={Boolean(error)}
@@ -49,7 +52,11 @@ export function FormField({ label, error, hint, id, required, type, ...inputProp
           {hint}
         </p>
       )}
-      {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

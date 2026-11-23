@@ -26,7 +26,8 @@ import {
 } from "@/components/agenda/AppointmentList";
 import { AgendaCalendarGrid, type CalendarDayCell } from "@/components/agenda/AgendaCalendarGrid";
 import { MonthSummary } from "@/components/agenda/MonthSummary";
-import { CREATE_BUTTON_CLASS, CreateButtonContent } from "@/components/CreateButton";
+import { NewAppointmentButton, NewAppointmentOnDateButton } from "@/components/agenda/NewAppointmentTriggers";
+import { AgendaNewAppointment } from "@/components/agenda/AgendaNewAppointment";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { clockFor } from "@/lib/time/zoned";
 
@@ -132,17 +133,6 @@ function groupByDay(entries: AgendaEntry[]): Map<string, AgendaEntry[]> {
   const groups = new Map<string, AgendaEntry[]>();
   for (const entry of entries) groups.set(entry.dayKey, [...(groups.get(entry.dayKey) ?? []), entry]);
   return groups;
-}
-
-function NewAppointmentShortcut({ dateKey }: { dateKey: string }) {
-  return (
-    <Link
-      href={`/agenda/novo?date=${dateKey}`}
-      className="text-sm font-medium text-gray-900 hover:underline dark:text-neutral-100"
-    >
-      + Novo agendamento nesta data
-    </Link>
-  );
 }
 
 export default async function AgendaPage(props: PageProps<"/agenda">) {
@@ -312,7 +302,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
                 {selectedItems.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
                     <p>Nenhum agendamento neste dia.</p>
-                    <NewAppointmentShortcut dateKey={calendarSelectedKey} />
+                    <NewAppointmentOnDateButton dateKey={calendarSelectedKey} />
                   </div>
                 ) : (
                   <AppointmentSimpleList
@@ -341,10 +331,11 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-neutral-100">Agenda</h1>
-        <Link href="/agenda/novo" className={CREATE_BUTTON_CLASS}>
-          <CreateButtonContent label="Novo agendamento" />
-        </Link>
+        <NewAppointmentButton />
       </div>
+
+      {/* Popup "Novo agendamento" (aberto por ?novo=1) e a confirmacao "Agendamento salvo para ...". */}
+      <AgendaNewAppointment />
 
       <div className="flex gap-2">
         <Link href={tabHref("calendar")} className={tabButtonClass(view === "calendar")}>

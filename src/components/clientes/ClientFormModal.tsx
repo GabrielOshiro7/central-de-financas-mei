@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientType } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { SubmitButton } from "@/components/SubmitButton";
-import { CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
+import { CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG, CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 import { useDialogFocus } from "@/components/useDialogFocus";
 
@@ -28,7 +28,7 @@ export type ClientFormInitial = {
 
 // Cliente salvo, devolvido a quem abriu o modal (ex.: a escolha de cliente da
 // Agenda seleciona o recem-criado).
-export type SavedClient = { id: string; name: string; tradeName: string };
+export type SavedClient = { id: string; name: string; tradeName: string; whatsapp: string };
 
 // Cadastro/edicao de cliente (Etapa 6). So `name` e obrigatorio - o restante
 // e deliberadamente opcional (nao assume CPF/CNPJ nem formato de telefone de
@@ -59,6 +59,7 @@ export function ClientFormModal({
 }) {
   const enterNav = useEnterToNextField<HTMLFormElement>();
   const router = useRouter();
+  const titleId = useId();
   const isEditing = Boolean(initial);
 
   const [name, setName] = useState(initial?.name ?? initialName ?? "");
@@ -111,6 +112,11 @@ export function ClientFormModal({
       setError("Digite o nome do cliente.");
       return;
     }
+    // O maxLength dos campos barra a digitacao; isto cobre colar/preencher por script (o backend recusa igual).
+    if (phone.trim().length > CLIENT_CONTACT_MAX_LENGTH || whatsapp.trim().length > CLIENT_CONTACT_MAX_LENGTH) {
+      setError(CLIENT_CONTACT_TOO_LONG);
+      return;
+    }
 
     setPending(true);
     try {
@@ -140,7 +146,7 @@ export function ClientFormModal({
         setError(result.error ?? "Não foi possível salvar o cliente.");
         return;
       }
-      const saved: SavedClient = { id: isEditing ? initial!.id : result.id, name: name.trim(), tradeName: tradeName.trim() };
+      const saved: SavedClient = { id: isEditing ? initial!.id : result.id, name: name.trim(), tradeName: tradeName.trim(), whatsapp: whatsapp.trim() };
       if (!isEditing) reset();
       onSaved?.(saved);
       if (refreshOnSave) router.refresh();
@@ -153,15 +159,23 @@ export function ClientFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={handleClose}>
+    // O fundo so fecha se o clique foi NO fundo (event.target === event.currentTarget): um clique que sobe de um
+    // elemento filho - ou de um modal aberto por cima, via portal - nao fecha este.
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) handleClose();
+      }}
+    >
       <div
         role="dialog"
         ref={dialogRef}
         aria-modal="true"
+        aria-labelledby={titleId}
         className="max-h-[90vh] w-full max-w-md overflow-y-auto bg-white p-6 shadow-lg dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
+        <h2 id={titleId} className="text-sm font-semibold text-gray-900 dark:text-neutral-100">
           {isEditing ? "Editar cliente" : "Novo cliente"}
         </h2>
 
@@ -208,9 +222,9 @@ export function ClientFormModal({
             onChange={(e) => setDocument(e.target.value)}
           />
 
-          <FormField id="phone" label="Telefone (opcional)" hint="Só para você contatar o cliente; o sistema não envia mensagens." value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <FormField id="phone" label="Telefone (opcional)" hint="Só para você contatar o cliente; o sistema não envia mensagens." maxLength={CLIENT_CONTACT_MAX_LENGTH} value={phone} onChange={(e) => setPhone(e.target.value)} />
 
-          <FormField id="whatsapp" label="WhatsApp (opcional)" hint="Só para você contatar o cliente." value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+          <FormField id="whatsapp" label="WhatsApp (opcional)" hint="Só para você contatar o cliente." maxLength={CLIENT_CONTACT_MAX_LENGTH} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
 
           <FormField id="email" label="E-mail (opcional)" hint="Só para você contatar o cliente; o sistema não envia e-mails a ele." type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
 

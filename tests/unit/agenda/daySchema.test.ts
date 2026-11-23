@@ -75,3 +75,41 @@ describe("dayAppointmentInputSchema - com valor (total > 0)", () => {
     expect(messages({ ...paid, startAt: "2026-10-20T09:00" }).length).toBeGreaterThan(0);
   });
 });
+
+// clientWhatsapp: WhatsApp do cliente escolhido, gravado junto da criacao (popup Novo agendamento). So a rota POST liga
+// allowClientWhatsapp; o .strict() continua recusando qualquer outro campo desconhecido.
+describe("dayAppointmentInputSchema - clientWhatsapp", () => {
+  const create = dayAppointmentInputSchema("BRL", { allowClientWhatsapp: true });
+  const createMessages = (input: unknown) => {
+    const result = create.safeParse(input);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it("aceita com cliente: texto, vazio (remove) e ausente (nao mexe)", () => {
+    expect(createMessages({ ...paid, clientWhatsapp: "090-1234-5678" })).toEqual([]);
+    expect(createMessages({ ...paid, clientWhatsapp: "" })).toEqual([]);
+    expect(createMessages(paid)).toEqual([]);
+    const parsed = create.parse({ ...paid, clientWhatsapp: "  090 1234  " });
+    expect(parsed.clientWhatsapp).toBe("090 1234"); // aparado, como o whatsapp do clientSchema
+  });
+
+  it("sem cliente: recusa", () => {
+    expect(createMessages({ ...base, title: "Reuniao", clientWhatsapp: "090" })).toEqual(["Selecione um cliente para informar o WhatsApp."]);
+  });
+
+  it("o limite de tamanho e o do clientSchema para whatsapp (mesmo schema): 40 passa, 41 e recusado", () => {
+    expect(createMessages({ ...paid, clientWhatsapp: "9".repeat(40) })).toEqual([]);
+    expect(createMessages({ ...paid, clientWhatsapp: "9".repeat(41) })).toEqual(["Use no máximo 40 caracteres."]);
+  });
+
+  it(".strict() continua recusando campos desconhecidos (inclusive com clientWhatsapp ligado)", () => {
+    expect(create.safeParse({ ...paid, clientPhone: "1" }).success).toBe(false);
+    expect(create.safeParse({ ...paid, clientEmail: "a@b.c" }).success).toBe(false);
+    expect(schema.safeParse({ ...paid, qualquer: 1 }).success).toBe(false);
+  });
+
+  it("sem allowClientWhatsapp (edicao/PATCH): o campo e recusado", () => {
+    expect(messages({ ...paid, clientWhatsapp: "090" })).toEqual(["Campo não permitido: clientWhatsapp."]);
+    expect(messages(paid)).toEqual([]);
+  });
+});

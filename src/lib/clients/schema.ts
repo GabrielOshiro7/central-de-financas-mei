@@ -1,4 +1,5 @@
 import { z } from "@/lib/zod";
+import { CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG } from "@/lib/clients/options";
 
 const clientTypeValues = ["PESSOA_FISICA", "PESSOA_JURIDICA"] as const;
 
@@ -12,8 +13,8 @@ export function clientSchema() {
     tradeName: z.string().trim().optional().or(z.literal("")),
     clientType: z.enum(clientTypeValues).default("PESSOA_FISICA"),
     document: z.string().trim().optional().or(z.literal("")),
-    phone: z.string().trim().optional().or(z.literal("")),
-    whatsapp: z.string().trim().optional().or(z.literal("")),
+    phone: z.string().trim().max(CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG).optional().or(z.literal("")),
+    whatsapp: z.string().trim().max(CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG).optional().or(z.literal("")),
     email: z
       .string()
       .trim()

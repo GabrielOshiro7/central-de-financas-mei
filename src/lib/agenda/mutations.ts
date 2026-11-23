@@ -222,20 +222,45 @@ export async function createDayAppointment(businessId: string, input: DayAppoint
   const loaded = await validateDayInput(businessId, input);
   if (!loaded.ok) return { ok: false, error: loaded.error };
 
-  const created = await prisma.appointment.create({
-    data: {
-      businessId,
-      kind: "DAY",
-      status: "AGENDADO",
-      autoCompleteEligible: true,
-      ...dayAppointmentFields(input),
-      services: { create: dayServiceRows(input, loaded.names) },
-      installments: { create: dayInstallmentRows(input) },
-    },
-    select: { id: true },
-  });
+  // WhatsApp do cliente + agendamento na MESMA transacao. O WhatsApp e gravado PRIMEIRO e a criacao vem depois: se a
+  // criacao falhar (ex.: uma constraint do banco), o rollback desfaz tambem o WhatsApp - o cadastro do cliente fica
+  // exatamente como estava (tests/integration/agenda/clientWhatsappAtomic.test.ts prova isso).
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      if (input.clientId && input.clientWhatsapp !== undefined) {
+        await applyClientWhatsapp(tx, businessId, input.clientId, input.clientWhatsapp);
+      }
+      const appointment = await tx.appointment.create({
+        data: {
+          businessId,
+          kind: "DAY",
+          status: "AGENDADO",
+          autoCompleteEligible: true,
+          ...dayAppointmentFields(input),
+          services: { create: dayServiceRows(input, loaded.names) },
+          installments: { create: dayInstallmentRows(input) },
+        },
+        select: { id: true },
+      });
+      return appointment;
+    });
+    return { ok: true, value: created };
+  } catch (error) {
+    if (error instanceof ClientNotFoundError) return { ok: false, error: "Cliente não encontrado." };
+    throw error;
+  }
+}
 
-  return { ok: true, value: created };
+class ClientNotFoundError extends Error {}
+
+// Atualiza SOMENTE client.whatsapp (nunca updateClient: ele grava null nos campos opcionais ausentes). Confere que o
+// cliente e da empresa; "" remove o WhatsApp; valor igual ao atual nao escreve.
+async function applyClientWhatsapp(tx: Prisma.TransactionClient, businessId: string, clientId: string, whatsapp: string) {
+  const current = await tx.client.findFirst({ where: { id: clientId, businessId }, select: { whatsapp: true } });
+  if (!current) throw new ClientNotFoundError();
+  const next = whatsapp.trim();
+  if ((current.whatsapp ?? "") === next) return;
+  await tx.client.update({ where: { id: clientId }, data: { whatsapp: next || null } });
 }
 
 // Editar (Agenda A3): so em AGENDADO, via updateMany condicional (mesmo

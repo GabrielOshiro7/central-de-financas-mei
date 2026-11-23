@@ -41,7 +41,7 @@ async function watchViolations(page: Page): Promise<() => Promise<Violation[]>> 
 }
 
 const PUBLIC_PAGES = ["/", "/login", "/register", "/forgot-password", "/privacidade", "/termos", "/cookies", "/tokushoho"];
-const APP_PAGES = ["/dashboard", "/financeiro/receitas", "/financeiro/despesas", "/financeiro/pagar", "/financeiro/recorrentes", "/agenda", "/agenda/novo", "/vendas", "/vendas/nova", "/clientes", "/caixa", "/insights", "/configuracoes"];
+const APP_PAGES = ["/dashboard", "/financeiro/receitas", "/financeiro/despesas", "/financeiro/pagar", "/financeiro/recorrentes", "/agenda", "/agenda?novo=1", "/vendas", "/vendas/nova", "/clientes", "/caixa", "/insights", "/configuracoes"];
 
 test.describe("CSP em observação: nenhuma violação nas telas principais", () => {
   test("controle: o coletor enxerga uma violação provocada (o 'zero' dos outros testes não é cegueira)", async ({ browser }) => {
@@ -86,7 +86,8 @@ test.describe("CSP em observação: nenhuma violação nas telas principais", ()
     const collect = await watchViolations(page);
     for (const path of APP_PAGES) {
       await gotoHydrated(page, path);
-      await expect(page).toHaveURL(new RegExp(`${path.replace(/\//g, "\\/")}$`));
+      // (o caminho entra no regex: escapa tambem o "?" de "/agenda?novo=1")
+      await expect(page).toHaveURL(new RegExp(`${path.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}$`));
       expect(await collect(), `violacoes de CSP em ${path}`).toEqual([]);
     }
     await context.close();

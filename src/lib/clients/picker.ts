@@ -1,10 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { phoneDigitsOrClause } from "@/lib/clients/phoneSearch";
 
 // Consultas da escolha de cliente da Agenda (ClientPicker): os "recentes" e a
 // busca. Sempre escopadas por businessId (resolvido da sessao pela rota) e so
 // com clientes ATIVOS. Nada aqui carrega a lista inteira de clientes.
-export type ClientPickerOption = { id: string; name: string; tradeName: string };
+// whatsapp: "" quando o cliente nao tem (o popup de novo agendamento mostra o campo preenchido com ele).
+export type ClientPickerOption = { id: string; name: string; tradeName: string; whatsapp: string };
 
 export const RECENT_CLIENTS_LIMIT = 3;
 export const CLIENT_SEARCH_LIMIT = 8;
@@ -38,8 +40,8 @@ export function foldSearchTerm(term: string): string {
 
 const escapeLike = (text: string) => text.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-type PickerRow = { id: string; name: string; tradeName: string | null };
-const toOption = (row: PickerRow): ClientPickerOption => ({ id: row.id, name: row.name, tradeName: row.tradeName ?? "" });
+type PickerRow = { id: string; name: string; tradeName: string | null; whatsapp: string | null };
+const toOption = (row: PickerRow): ClientPickerOption => ({ id: row.id, name: row.name, tradeName: row.tradeName ?? "", whatsapp: row.whatsapp ?? "" });
 
 // Os RECENTES: os 3 clientes ativos com o atendimento OU a venda registrado
 // mais recentemente (data de criacao do registro); se houver menos de 3,
@@ -58,7 +60,7 @@ export async function listRecentClients(businessId: string): Promise<ClientPicke
       ) registros
       GROUP BY client_id
     )
-    SELECT c.id, c.name, c.trade_name AS "tradeName"
+    SELECT c.id, c.name, c.trade_name AS "tradeName", c.whatsapp
     FROM clients c
     LEFT JOIN used ON used.client_id = c.id
     WHERE c.business_id = ${businessId} AND c.active
@@ -77,12 +79,13 @@ export async function searchClientsForPicker(businessId: string, term: string): 
   const startsWith = `${escapeLike(folded)}%`;
 
   const rows = await prisma.$queryRaw<PickerRow[]>(Prisma.sql`
-    SELECT c.id, c.name, c.trade_name AS "tradeName"
+    SELECT c.id, c.name, c.trade_name AS "tradeName", c.whatsapp
     FROM clients c
     WHERE c.business_id = ${businessId} AND c.active
       AND (
         lower(translate(c.name, ${ACCENTED}, ${PLAIN})) LIKE ${contains} ESCAPE '\\'
         OR lower(translate(coalesce(c.trade_name, ''), ${ACCENTED}, ${PLAIN})) LIKE ${contains} ESCAPE '\\'
+        ${phoneDigitsOrClause(term)}
       )
     ORDER BY (lower(translate(c.name, ${ACCENTED}, ${PLAIN})) LIKE ${startsWith} ESCAPE '\\') DESC, c.name ASC, c.id ASC
     LIMIT ${CLIENT_SEARCH_LIMIT}
@@ -93,6 +96,6 @@ export async function searchClientsForPicker(businessId: string, term: string): 
 // Cliente ja escolhido (prefill e edicao): da empresa, ativo ou nao - o
 // agendamento mostra o cliente dele mesmo se foi inativado depois.
 export async function getClientPickerOption(businessId: string, id: string): Promise<ClientPickerOption | null> {
-  const client = await prisma.client.findFirst({ where: { id, businessId }, select: { id: true, name: true, tradeName: true } });
+  const client = await prisma.client.findFirst({ where: { id, businessId }, select: { id: true, name: true, tradeName: true, whatsapp: true } });
   return client ? toOption(client) : null;
 }

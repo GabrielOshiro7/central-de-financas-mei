@@ -3,6 +3,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { gotoHydrated } from "./helpers/hydration";
 import { fillMoney } from "./helpers/money";
+import { next, openByOldUrl, popup, save } from "./helpers/newAppointment";
 import { businessToday } from "./helpers/businessDate";
 import { assertTestDatabase, loadTestEnv } from "../testEnv";
 import { dateKeyToDbDate } from "../../src/lib/time/zoned";
@@ -73,7 +74,10 @@ test("dinheiro em pt-BR: Total do agendamento, Receitas e Dashboard (iene, com n
   });
 
   // Novo agendamento: servico de ¥12.000 -> Total "¥ 12.000" (e 2 unidades -> "¥ 24.000").
-  await gotoHydrated(page, `/agenda/novo?clientId=${client.id}`);
+  // (/agenda/novo?clientId=... redireciona e abre o popup de novo agendamento com o cliente ja escolhido)
+  await openByOldUrl(page, `?clientId=${client.id}`);
+  await expect(popup(page).getByText("Cliente Iene E2E")).toBeVisible();
+  await next(page);
   await page.getByLabel("Adicionar serviço").selectOption({ label: "Corte Iene E2E" });
   const total = page.getByTestId("day-appointment-total");
   await expect(total).toHaveText("¥ 12.000");
@@ -81,7 +85,11 @@ test("dinheiro em pt-BR: Total do agendamento, Receitas e Dashboard (iene, com n
   await expect(total).toHaveText("¥ 24.000");
   await page.getByLabel("Quantidade").first().fill("1");
   await expect(total).toHaveText("¥ 12.000");
-  await page.getByRole("button", { name: "Agendar" }).click();
+  await next(page); // passo 3 (data)
+  await next(page); // passo 4 (pagamento)
+  await save(page);
+  await expect(popup(page)).toHaveCount(0);
+  await page.getByRole("link", { name: "Dia", exact: true }).click();
   await expect(page).toHaveURL(/view=day/);
   await expect(page.getByText("Total do dia: 1 atendimento · ¥ 12.000")).toBeVisible();
 

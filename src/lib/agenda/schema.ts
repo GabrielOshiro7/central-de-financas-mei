@@ -2,6 +2,7 @@ import { z } from "@/lib/zod";
 import type { Currency } from "@prisma/client";
 import { isIntegerCurrency } from "@/lib/money";
 import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
+import { clientSchema } from "@/lib/clients/schema";
 
 // Validação dos parâmetros de URL do redesign do calendário (?month=,
 // ?day=) - ano aceito 2000-2100 (requisito explícito), formato estrito
@@ -115,9 +116,15 @@ export function isNoValueDayInput(input: { services: { quantity: number; unitPri
 //   e, se vierem, sao IGNORADOS (nao sao gravados - ver dayAppointmentFields
 //   em mutations.ts); cliente e servicos sao opcionais.
 // - Sempre: ao menos um entre cliente, servico e titulo.
-export function dayAppointmentInputSchema(currency: Currency | null) {
+//
+// clientWhatsapp (SO na criacao - a rota POST liga `allowClientWhatsapp`): WhatsApp do cliente escolhido, gravado
+// na MESMA transacao do agendamento (createDayAppointment). Ausente = nao mexe no cadastro; "" = remove o WhatsApp
+// do cliente; texto = grava. Mesmo schema (e limite) do campo whatsapp do clientSchema. Exige clientId. Na edicao
+// (PATCH) o campo e recusado como desconhecido, como qualquer outro campo fora do schema (.strict()).
+export function dayAppointmentInputSchema(currency: Currency | null, options: { allowClientWhatsapp?: boolean } = {}) {
   return z
     .object({
+      clientWhatsapp: clientSchema().shape.whatsapp,
       clientId: z.string().trim().optional().or(z.literal("")),
       title: z
         .string()
@@ -152,6 +159,14 @@ export function dayAppointmentInputSchema(currency: Currency | null) {
     })
     .strict()
     .superRefine((data, ctx) => {
+      if (data.clientWhatsapp !== undefined) {
+        if (!options.allowClientWhatsapp) {
+          ctx.addIssue({ code: "custom", message: "Campo não permitido: clientWhatsapp.", path: ["clientWhatsapp"] });
+        } else if (!data.clientId) {
+          ctx.addIssue({ code: "custom", message: "Selecione um cliente para informar o WhatsApp.", path: ["clientWhatsapp"] });
+        }
+      }
+
       const productIds = data.services.map((s) => s.productId);
       if (new Set(productIds).size !== productIds.length) {
         ctx.addIssue({ code: "custom", message: "O mesmo serviço foi adicionado duas vezes - use a quantidade.", path: ["services"] });

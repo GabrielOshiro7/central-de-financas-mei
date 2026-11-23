@@ -7,6 +7,7 @@ import type { AppointmentStatus, Currency, SaleStatus } from "@prisma/client";
 import { ConfirmDialog } from "@/components/financeiro/ConfirmDialog";
 import { CompleteAppointmentDialog, type CompleteDialogItem } from "@/components/agenda/CompleteAppointmentDialog";
 import { UndoCompletionAction } from "@/components/agenda/UndoCompletionAction";
+import { openAppointmentPopup } from "@/lib/agenda/popupUrl";
 
 // Botoes com cantos retos (regra de design da Etapa 8).
 const straightButtonBase = "px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
@@ -26,7 +27,7 @@ export function AppointmentActions({
   revenueCategories,
   defaultCategoryId,
   completeItems,
-  nextAppointmentHref,
+  nextAppointment,
   todayKey,
   receivedLabel,
   subject,
@@ -46,7 +47,8 @@ export function AppointmentActions({
   completeItems: CompleteDialogItem[];
   // Link pronto pra "agendar o proximo" (mesmo cliente/servicos) - construido
   // pelo chamador a partir dos dados que ja tem, ver AppointmentList.tsx.
-  nextAppointmentHref: string;
+  // Cliente e servicos do atendimento: o botao "Agendar o proximo" abre o popup de novo agendamento com eles.
+  nextAppointment: { clientId?: string; serviceIds: string[] };
   // "Hoje" da empresa (DateKey, do servidor) para o dialogo de conclusao (F4).
   todayKey: string;
 }) {
@@ -98,9 +100,9 @@ export function AppointmentActions({
               ver venda #{completedResult.saleNumber}
             </Link>
           </span>
-          <Link href={nextAppointmentHref} className={secondaryButtonClass}>
+          <button type="button" onClick={() => openAppointmentPopup(nextAppointment)} className={secondaryButtonClass}>
             Agendar o próximo
-          </Link>
+          </button>
         </div>
         <UndoCompletionAction
           subject={subject}

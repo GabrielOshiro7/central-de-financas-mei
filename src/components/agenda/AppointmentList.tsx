@@ -54,11 +54,9 @@ export function totalsText(totals: AgendaTotalsLabel): string {
   return `${totals.count} ${totals.count === 1 ? "atendimento" : "atendimentos"} · ${totals.amountLabel}`;
 }
 
-function nextAppointmentHref(item: AppointmentListItem): string {
-  const params = new URLSearchParams();
-  if (item.clientId) params.set("clientId", item.clientId);
-  for (const serviceId of item.serviceIds) params.append("serviceId", serviceId);
-  return `/agenda/novo?${params.toString()}`;
+// "Agendar o proximo": o popup abre com o mesmo cliente e os mesmos servicos do atendimento concluido.
+function nextAppointmentPrefill(item: AppointmentListItem): { clientId?: string; serviceIds: string[] } {
+  return { clientId: item.clientId ?? undefined, serviceIds: item.serviceIds };
 }
 
 type RowContext = {
@@ -162,7 +160,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
         revenueCategories={ctx.revenueCategories}
         defaultCategoryId={ctx.defaultCategoryId}
         completeItems={item.completeItems}
-        nextAppointmentHref={nextAppointmentHref(item)}
+        nextAppointment={nextAppointmentPrefill(item)}
         todayKey={ctx.todayKey}
       />
     </li>

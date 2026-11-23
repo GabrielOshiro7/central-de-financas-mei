@@ -21,9 +21,9 @@ type Biz = Awaited<ReturnType<typeof newBusiness>>;
 
 const at = (iso: string) => new Date(iso);
 
-async function client(biz: Biz, name: string, extra: { tradeName?: string; active?: boolean; createdAt?: Date } = {}) {
+async function client(biz: Biz, name: string, extra: { tradeName?: string; active?: boolean; createdAt?: Date; whatsapp?: string } = {}) {
   return prisma.client.create({
-    data: { businessId: biz.businessId, name, tradeName: extra.tradeName ?? null, active: extra.active ?? true, ...(extra.createdAt ? { createdAt: extra.createdAt } : {}) },
+    data: { businessId: biz.businessId, name, tradeName: extra.tradeName ?? null, whatsapp: extra.whatsapp ?? null, active: extra.active ?? true, ...(extra.createdAt ? { createdAt: extra.createdAt } : {}) },
   });
 }
 
@@ -129,11 +129,11 @@ describe("clientes recentes (listRecentClients)", () => {
 
   it("devolve id, nome e nome fantasia (vazio quando nao ha)", async () => {
     const biz = await newBusiness("rec-forma");
-    const c = await client(biz, "Studio Um", { tradeName: "Um & Cia" });
+    const c = await client(biz, "Studio Um", { tradeName: "Um & Cia", whatsapp: "090-1234-5678" });
     const d = await client(biz, "Sem Fantasia", { createdAt: at("2026-01-01T00:00:00Z") });
     expect(await listRecentClients(biz.businessId)).toEqual([
-      { id: c.id, name: "Studio Um", tradeName: "Um & Cia" },
-      { id: d.id, name: "Sem Fantasia", tradeName: "" },
+      { id: c.id, name: "Studio Um", tradeName: "Um & Cia", whatsapp: "090-1234-5678" },
+      { id: d.id, name: "Sem Fantasia", tradeName: "", whatsapp: "" },
     ]);
   });
 });
@@ -211,9 +211,9 @@ describe("cliente ja escolhido (getClientPickerOption)", () => {
   it("devolve o cliente da empresa (ativo ou nao) e nunca o de outra", async () => {
     const mine = await newBusiness("opt-a");
     const other = await newBusiness("opt-b");
-    const inativo = await client(mine, "Cliente Inativo", { active: false, tradeName: "Fantasia" });
+    const inativo = await client(mine, "Cliente Inativo", { active: false, tradeName: "Fantasia", whatsapp: "11 91234-5678" });
     const alheio = await client(other, "Alheio");
-    expect(await getClientPickerOption(mine.businessId, inativo.id)).toEqual({ id: inativo.id, name: "Cliente Inativo", tradeName: "Fantasia" });
+    expect(await getClientPickerOption(mine.businessId, inativo.id)).toEqual({ id: inativo.id, name: "Cliente Inativo", tradeName: "Fantasia", whatsapp: "11 91234-5678" });
     expect(await getClientPickerOption(mine.businessId, alheio.id)).toBeNull();
     expect(await getClientPickerOption(mine.businessId, "nao-existe")).toBeNull();
   });

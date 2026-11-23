@@ -2,6 +2,7 @@ import { test, expect, type Browser, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { gotoHydrated } from "./helpers/hydration";
+import { openByOldUrl } from "./helpers/newAppointment";
 import { createOnboardedUser, newTestPrisma } from "./helpers/session";
 import { seedA11yData, type A11yFixture } from "./helpers/a11yFixture";
 import { discoverWarmupTargets } from "./helpers/warmup";
@@ -200,12 +201,12 @@ for (const theme of THEMES) {
     test("lista suspensa de cliente aberta", async ({ browser, baseURL }) => {
       const context = await newContext(browser, baseURL!, theme, { signedIn: true });
       const page = await context.newPage();
-      await gotoHydrated(page, "/agenda/novo");
+      await openByOldUrl(page);
       const input = page.getByLabel("Buscar cliente");
       await input.click();
       await input.fill("Cli");
       await expect(page.getByRole("listbox")).toBeVisible();
-      await scan(page, theme, "/agenda/novo", "lista suspensa de cliente");
+      await scan(page, theme, "/agenda?novo=1", "popup Novo agendamento: lista suspensa de cliente");
       await context.close();
     });
 

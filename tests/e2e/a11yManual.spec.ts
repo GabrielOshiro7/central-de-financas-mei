@@ -1,6 +1,7 @@
 import { test, expect, type Browser, type Page } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { gotoHydrated } from "./helpers/hydration";
+import { openByOldUrl } from "./helpers/newAppointment";
 import { createOnboardedUser, newTestPrisma } from "./helpers/session";
 import { seedA11yData, type A11yFixture } from "./helpers/a11yFixture";
 import { a11yPages } from "./helpers/a11yPages";
@@ -231,7 +232,7 @@ test("teclado: login, menu lateral e lista de clientes só com Tab/Enter/setas",
   // Lista suspensa de cliente: setas + Enter.
   const logged = await newContext(browser, baseURL!, "light", { signedIn: true });
   const p2 = await logged.newPage();
-  await gotoHydrated(p2, "/agenda/novo");
+  await openByOldUrl(p2);
   const search = p2.getByLabel("Buscar cliente");
   await search.focus();
   await p2.keyboard.type("Cli");
@@ -550,6 +551,7 @@ test("formulários: todo campo tem rótulo associado e a obrigatoriedade é prog
     ["/clientes", "Novo cliente", "Cliente"],
     ["/financeiro/receitas", "Nova receita", "Receita"],
     ["/financeiro/pagar", "Nova conta a pagar", "Conta"],
+    ["/agenda", "Novo agendamento", "Agendamento"],
   ];
   for (const [path, button, what] of modals) {
     await gotoHydrated(p, path);

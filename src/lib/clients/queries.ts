@@ -1,5 +1,6 @@
 import { Prisma, type SaleStatus, type BillStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { phoneSearchDigits } from "@/lib/clients/phoneSearch";
 import { compareKeys, dbDateToKey, todayKey, type BusinessClock } from "@/lib/time/zoned";
 
 const { Decimal } = Prisma;
@@ -30,6 +31,21 @@ export async function listClients(
   const pageSize = Math.min(100, Math.max(1, filters.pageSize ?? 25));
   const status = filters.status ?? "ACTIVE";
 
+  // Busca por telefone/WhatsApp ignorando a formatacao (digitos contra digitos, ver phoneSearch.ts): os ids que
+  // casam entram no OR abaixo. Consulta parametrizada, sem migracao.
+  const phoneDigits = filters.search ? phoneSearchDigits(filters.search) : null;
+  const phoneMatchIds = phoneDigits
+    ? (
+        await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+          SELECT c.id FROM clients c
+          WHERE c.business_id = ${businessId}
+            AND (
+              regexp_replace(coalesce(c.phone, ''), '[^0-9]', '', 'g') LIKE ${`%${phoneDigits}%`}
+              OR regexp_replace(coalesce(c.whatsapp, ''), '[^0-9]', '', 'g') LIKE ${`%${phoneDigits}%`}
+            )`)
+      ).map((row) => row.id)
+    : [];
+
   const where: Prisma.ClientWhereInput = {
     businessId,
     ...(status === "ACTIVE" ? { active: true } : status === "INACTIVE" ? { active: false } : {}),
@@ -44,6 +60,7 @@ export async function listClients(
             { whatsapp: { contains: filters.search, mode: "insensitive" } },
             { email: { contains: filters.search, mode: "insensitive" } },
             { document: { contains: filters.search, mode: "insensitive" } },
+            ...(phoneMatchIds.length > 0 ? [{ id: { in: phoneMatchIds } }] : []),
           ],
         }
       : {}),

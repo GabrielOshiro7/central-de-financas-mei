@@ -308,3 +308,59 @@ describe("enterkeyhint (teclado virtual)", () => {
     expect(screen.getByLabelText("A").getAttribute("enterkeyhint")).toBe("next");
   });
 });
+
+// data-enter-skip: o campo marcado nao e alvo da navegacao por Enter (o popup de novo agendamento o usa no seletor
+// "Adicionar servico" quando ja ha linhas: Enter no valor da ultima linha = Proximo, um Enter so).
+describe("data-enter-skip", () => {
+  function Step({ skip, onNext }: { skip: boolean; onNext: () => void }) {
+    const enterNav = useEnterToNextField<HTMLDivElement>();
+    return (
+      <div {...enterNav}>
+        <input aria-label="Valor" />
+        <select aria-label="Adicionar" {...(skip ? { "data-enter-skip": "" } : {})}>
+          <option value="">...</option>
+        </select>
+        <button type="button" data-enter-submit="" onClick={onNext}>
+          Proximo
+        </button>
+      </div>
+    );
+  }
+
+  it("com o atributo, o Enter no campo anterior pula o campo marcado e vai direto ao botao primario (um Enter so)", () => {
+    let advanced = 0;
+    render(<Step skip onNext={() => advanced++} />);
+    expect(enter(focusOn("Valor"))).toBe(false);
+    expect(advanced).toBe(1);
+  });
+
+  it("sem o atributo, o Enter no campo anterior vai ao proximo campo (o seletor) e so o segundo Enter avanca", () => {
+    let advanced = 0;
+    render(<Step skip={false} onNext={() => advanced++} />);
+    enter(focusOn("Valor"));
+    expect(advanced).toBe(0);
+    expect(document.activeElement).toBe(screen.getByLabelText("Adicionar"));
+    enter(screen.getByLabelText("Adicionar"));
+    expect(advanced).toBe(1);
+  });
+
+  it("o campo marcado, quando e o unico, ainda faz o Enter avancar (sem linhas de servico, Enter no seletor = Proximo)", () => {
+    let advanced = 0;
+    function OnlySkipped() {
+      const enterNav = useEnterToNextField<HTMLDivElement>();
+      return (
+        <div {...enterNav}>
+          <select aria-label="Adicionar" data-enter-skip="">
+            <option value="">...</option>
+          </select>
+          <button type="button" data-enter-submit="" onClick={() => advanced++}>
+            Proximo
+          </button>
+        </div>
+      );
+    }
+    render(<OnlySkipped />);
+    enter(focusOn("Adicionar"));
+    expect(advanced).toBe(1);
+  });
+});
