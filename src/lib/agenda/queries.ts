@@ -52,7 +52,8 @@ export async function listAppointmentsForMonth(businessId: string, year: number,
 // --- Telas da Agenda com os dois fluxos (Agenda A3) ------------------------
 
 const AGENDA_ENTRY_INCLUDE = {
-  client: { select: { name: true } },
+  // Contato (whatsapp/phone) so para os atalhos "Ligar"/"WhatsApp" do cartao; nenhum outro campo do cliente.
+  client: { select: { name: true, whatsapp: true, phone: true } },
   services: APPOINTMENT_SERVICES_WITH_PRODUCT_PRICE,
   // bills PAID: o valor ja recebido, avisado no dialogo de Desfazer (Agenda A4).
   sale: { select: { id: true, saleNumber: true, status: true, total: true, bills: { where: { status: "PAID" }, select: { amount: true } } } },

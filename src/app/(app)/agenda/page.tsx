@@ -26,7 +26,8 @@ import {
 } from "@/components/agenda/AppointmentList";
 import { AgendaCalendarGrid, type CalendarDayCell } from "@/components/agenda/AgendaCalendarGrid";
 import { MonthSummary } from "@/components/agenda/MonthSummary";
-import { NewAppointmentButton, NewAppointmentOnDateButton } from "@/components/agenda/NewAppointmentTriggers";
+import { EmptyDayButton, NewAppointmentButton } from "@/components/agenda/NewAppointmentTriggers";
+import { contactFor } from "@/lib/clients/contactLinks";
 import { AgendaNewAppointment } from "@/components/agenda/AgendaNewAppointment";
 import { autoCompleteDueAppointments } from "@/lib/agenda/autoComplete";
 import { clockFor } from "@/lib/time/zoned";
@@ -90,7 +91,7 @@ function receivedLabel(entry: AgendaEntry, currency: Currency): string | null {
 // `todayKey` = hoje da empresa: um DAY de dia passado ainda AGENDADO e
 // elegivel e um que a conclusao automatica nao conseguiu concluir (Agenda A5)
 // - so sinalizado, calculado aqui na leitura, sem gravar nada.
-function toListItems(entries: AgendaEntry[], currency: Currency, todayKey: string): AppointmentListItem[] {
+function toListItems(entries: AgendaEntry[], currency: Currency, todayKey: string, country: string): AppointmentListItem[] {
   return entries.map((entry) => ({
     id: entry.id,
     kind: entry.kind,
@@ -101,6 +102,7 @@ function toListItems(entries: AgendaEntry[], currency: Currency, todayKey: strin
     // DAY sem valor (ex.: reuniao) pode nao ter cliente.
     clientId: entry.clientId,
     clientName: entry.client?.name ?? null,
+    contact: contactFor(entry.client, country),
     title: entry.title,
     noValue: isNoValueAppointment(entry),
     serviceNames: entry.services.map((s) => (entry.kind === "DAY" && s.quantity > 1 ? `${s.nameSnapshot} × ${s.quantity}` : s.nameSnapshot)),
@@ -206,7 +208,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
   if (view === "day") {
     const { start, end } = agendaDayRange(dayTabKey, timeZone);
     const entries = await listAgendaForDay(business.id, dayTabKey, timeZone);
-    const items = toListItems(entries, business.currency, todayKey);
+    const items = toListItems(entries, business.currency, todayKey, business.country);
     const dayTotals = totalsLabel(entries, business.currency);
     const previousHref = `/agenda?view=day&day=${agendaDateKey(new Date(start.getTime() - 1), timeZone)}`;
     const nextHref = `/agenda?view=day&day=${agendaDateKey(end, timeZone)}`;
@@ -241,7 +243,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
     const grouped = groupByDay(monthAppointments);
 
     if (view === "month") {
-      const items = toListItems(monthAppointments, business.currency, todayKey);
+      const items = toListItems(monthAppointments, business.currency, todayKey, business.country);
       const counts: Record<AppointmentStatus, number> = { ...EMPTY_COUNTS };
       for (const appointment of monthAppointments) counts[appointment.status] += 1;
       const dayTotals = Object.fromEntries([...grouped].map(([key, entries]) => [key, totalsLabel(entries, business.currency)]));
@@ -279,10 +281,10 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
         })
       );
 
-      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? [], business.currency, todayKey) : [];
+      const selectedItems = calendarSelectedKey ? toListItems(grouped.get(calendarSelectedKey) ?? [], business.currency, todayKey, business.country) : [];
 
       content = (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,480px)_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,480px)_1fr]">
           <AgendaCalendarGrid
             // Força remontar (zera foco/seletor locais) sempre que o
             // servidor de fato navegou pra um mes/dia diferente - nunca um
@@ -300,10 +302,7 @@ export default async function AgendaPage(props: PageProps<"/agenda">) {
               <>
                 <h2 className="text-base font-semibold text-gray-900 dark:text-neutral-100">{formatAgendaDateLong(agendaDayRange(calendarSelectedKey, timeZone).start, timeZone)}</h2>
                 {selectedItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center gap-3 border border-dashed border-gray-300 bg-white px-6 py-16 text-center text-sm text-gray-500 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-                    <p>Nenhum agendamento neste dia.</p>
-                    <NewAppointmentOnDateButton dateKey={calendarSelectedKey} />
-                  </div>
+                  <EmptyDayButton dateKey={calendarSelectedKey} />
                 ) : (
                   <AppointmentSimpleList
                     items={selectedItems}

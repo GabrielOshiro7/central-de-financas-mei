@@ -6,6 +6,8 @@ import { formatDateKey } from "@/lib/time/zoned";
 import { AppointmentStatusBadge } from "@/components/agenda/AppointmentStatusBadge";
 import { NoValueBadge } from "@/components/agenda/NoValueBadge";
 import { AppointmentActions } from "@/components/agenda/AppointmentActions";
+import { AppointmentContact } from "@/components/agenda/AppointmentContact";
+import type { ClientContact } from "@/lib/clients/contactLinks";
 import { DayAppointmentActions } from "@/components/agenda/DayAppointmentActions";
 import type { CompleteDialogItem } from "@/components/agenda/CompleteAppointmentDialog";
 
@@ -23,6 +25,8 @@ export type AppointmentListItem = {
   // Nulos so no DAY sem valor (ex.: reuniao), que nao exige cliente.
   clientId: string | null;
   clientName: string | null;
+  // Telefone/WhatsApp do cliente ja prontos para exibir (numero e links); null: sem cliente ou sem contato.
+  contact: ClientContact | null;
   // So DAY: titulo do agendamento (identificacao principal quando existe).
   title: string | null;
   // So DAY: total zero ("Sem valor") - sem informacao de pagamento.
@@ -103,6 +107,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
               {item.paymentLabel ? ` · ${item.paymentLabel}` : ""}
             </p>
           )}
+          <AppointmentContact clientName={item.clientName} contact={item.contact} />
           {item.autoCompleteFailed && (
             <p data-testid="auto-complete-failed" className="flex items-center gap-1 text-sm text-gray-700 dark:text-neutral-300">
               <AlertTriangle size={14} aria-hidden="true" />
@@ -141,6 +146,7 @@ export function AppointmentRow({ item, ...ctx }: { item: AppointmentListItem } &
         </div>
         <p className="text-sm text-gray-700 dark:text-neutral-300">{item.clientName ?? ""}</p>
         <p className="text-sm text-gray-500 dark:text-neutral-400">{item.serviceNames.join(", ")}</p>
+        <AppointmentContact clientName={item.clientName} contact={item.contact} />
         {(item.status === "AGENDADO" || item.status === "CONFIRMADO") && (
           <Link href={`/agenda/${item.id}/editar`} className="text-sm font-medium text-gray-600 hover:underline dark:text-neutral-400">
             Editar / remarcar

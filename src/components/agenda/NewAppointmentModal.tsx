@@ -17,7 +17,7 @@ import { isDateKey } from "@/lib/time/zoned";
 import { rebaseMonthlyDates } from "@/lib/installments/monthly";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/sales/options";
 import { APPOINTMENT_TITLE_MAX_LENGTH } from "@/lib/agenda/options";
-import { CLIENT_CONTACT_MAX_LENGTH } from "@/lib/clients/options";
+import { CLIENT_CONTACT_MAX_LENGTH, CLIENT_COUNTRY_CODE_HINT } from "@/lib/clients/options";
 import type { PopupGuard, PopupPrefill } from "@/lib/agenda/popupUrl";
 import {
   STEP_LABELS,
@@ -348,7 +348,7 @@ export function NewAppointmentModal({
                 <FormField
                   id="clientWhatsapp"
                   label="WhatsApp (opcional)"
-                  hint="Só para você contatar o cliente; o sistema não envia mensagens."
+                  hint={`Só para você contatar o cliente; o sistema não envia mensagens. ${CLIENT_COUNTRY_CODE_HINT}`}
                   type="tel"
                   inputMode="tel"
                   autoComplete="off"

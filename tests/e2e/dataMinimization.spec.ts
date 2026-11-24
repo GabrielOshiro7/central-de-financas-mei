@@ -146,6 +146,8 @@ test.describe("finalidade dos campos e aviso padrão das observações", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByText("Usado apenas para você identificar e buscar o cliente nas suas vendas.")).toBeVisible();
     await expect(dialog.getByText("Só para você contatar o cliente; o sistema não envia mensagens.")).toBeVisible();
+    // Dica do WhatsApp: a finalidade continua e entra o aviso do codigo do pais (o atalho "WhatsApp" da Agenda so vale para BR e JP).
+    await expect(dialog.getByText("Só para você contatar o cliente. Para número de outro país, inclua o código: +55 (Brasil) ou +81 (Japão).")).toBeVisible();
     await expect(dialog.getByText("Só para você contatar o cliente; o sistema não envia e-mails a ele.")).toBeVisible();
     await expect(dialog.getByText("Guardado só como registro do cliente.")).toBeVisible();
     await expect(dialog.getByText(SENSITIVE_DATA_NOTICE)).toBeVisible();
@@ -202,6 +204,7 @@ test.describe("finalidade dos campos e aviso padrão das observações", () => {
     await page.getByRole("option", { name: "Cliente Zap Minimiza" }).click();
     await expect(popup(page).getByLabel("WhatsApp (opcional)")).toHaveValue("090-0000-1111");
     await expect(popup(page).getByText("Só para você contatar o cliente; o sistema não envia mensagens.")).toBeVisible();
+    await expect(popup(page).getByText("Para número de outro país, inclua o código: +55 (Brasil) ou +81 (Japão).")).toBeVisible();
     await expect(popup(page).getByText("Alterar aqui atualiza o cadastro do cliente.")).toBeVisible();
     await expect(popup(page).getByLabel("WhatsApp (opcional)")).toHaveAttribute("aria-required", "false");
   });

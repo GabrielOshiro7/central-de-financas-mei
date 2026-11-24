@@ -4,6 +4,8 @@ import type { ClientType } from "@prisma/client";
 // cadastro/edicao do cliente (clientSchema), no clientWhatsapp do agendamento (reaproveita o schema do whatsapp) e nos
 // inputs (maxLength).
 export const CLIENT_CONTACT_MAX_LENGTH = 40;
+// Frase da dica do campo WhatsApp: o atalho "WhatsApp" do cartao da Agenda so existe para numeros do Brasil e do Japao.
+export const CLIENT_COUNTRY_CODE_HINT = "Para número de outro país, inclua o código: +55 (Brasil) ou +81 (Japão).";
 export const CLIENT_CONTACT_TOO_LONG = "Use no máximo 40 caracteres.";
 
 export const CLIENT_TYPE_OPTIONS: { value: ClientType; label: string }[] = [

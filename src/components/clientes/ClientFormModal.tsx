@@ -6,7 +6,7 @@ import type { ClientType } from "@prisma/client";
 import { FormField } from "@/components/FormField";
 import { SensitiveDataNotice } from "@/components/SensitiveDataNotice";
 import { SubmitButton } from "@/components/SubmitButton";
-import { CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG, CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
+import { CLIENT_CONTACT_MAX_LENGTH, CLIENT_CONTACT_TOO_LONG, CLIENT_COUNTRY_CODE_HINT, CLIENT_TYPE_OPTIONS } from "@/lib/clients/options";
 import { useEnterToNextField } from "@/components/forms/useEnterToNextField";
 import { useDialogFocus } from "@/components/useDialogFocus";
 
@@ -224,7 +224,7 @@ export function ClientFormModal({
 
           <FormField id="phone" label="Telefone (opcional)" hint="Só para você contatar o cliente; o sistema não envia mensagens." maxLength={CLIENT_CONTACT_MAX_LENGTH} value={phone} onChange={(e) => setPhone(e.target.value)} />
 
-          <FormField id="whatsapp" label="WhatsApp (opcional)" hint="Só para você contatar o cliente." maxLength={CLIENT_CONTACT_MAX_LENGTH} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
+          <FormField id="whatsapp" label="WhatsApp (opcional)" hint={`Só para você contatar o cliente. ${CLIENT_COUNTRY_CODE_HINT}`} maxLength={CLIENT_CONTACT_MAX_LENGTH} value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} />
 
           <FormField id="email" label="E-mail (opcional)" hint="Só para você contatar o cliente; o sistema não envia e-mails a ele." type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
